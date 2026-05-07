@@ -1,0 +1,26 @@
+{
+  "name": "employment-authority-backend",
+  "version": "1.0.0",
+  "description": "Backend services for Jerusalem Employment Authority",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log",
+    "test:bot": "npm run build && node lib/test-bot.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^17.4.2",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.5.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^4.9.0"
+  },
+  "private": true
+}
