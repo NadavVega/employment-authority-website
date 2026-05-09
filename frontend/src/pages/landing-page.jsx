@@ -70,7 +70,7 @@ const LandingPage = () => {
         <Box sx={{ flexGrow: 1, p: 2 }}>
             <Box sx={{ mb: 4, textAlign: 'center' }}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                    {isAuthenticated ? `שלום, ${currentUser.displayName}` : 'ברוכים הבאים למרכז המידע למעסיקים בירושלים'}
+                    {isAuthenticated ? `${currentUser.displayName}, שלום` : 'ברוכים הבאים למרכז המידע למעסיקים בירושלים'}
                 </Typography>
             </Box>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Box, Button, CssBaseline, Container, InputBase, alpha } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
 import DemoRoleSwitcher from '../ui/demo-role-switcher';
 import jerusalemLogo from '../../assets/images/logo-new2.svg'; 
@@ -10,6 +11,7 @@ import jerusalemLogo from '../../assets/images/logo-new2.svg';
  */
 const MainLayout = ({ children }) => {
     const { isAuthenticated, isCoordinator, isAdmin } = useAuth();
+    const navigate = useNavigate();
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -61,7 +63,8 @@ const MainLayout = ({ children }) => {
                       <img 
                             src={jerusalemLogo} 
                             alt="Jerusalem Municipality Logo" 
-                            style={{ height: '75px' }} // Increased logo size
+                            style={{ height: '75px', cursor: 'pointer' }} // Add cursor: 'pointer' for UX
+                            onClick={() => navigate('/landing')}
                             onError={(e) => { e.target.style.display = 'none'; }} 
                         />
                         
@@ -80,9 +83,8 @@ const MainLayout = ({ children }) => {
                         {isAuthenticated && (
                             <Button color="inherit" sx={{ fontWeight: 'bold' }}>אלפון מעסיקים</Button>
                         )}
-                        
-                        <Button color="inherit" sx={{ fontWeight: 'bold' }}>אירועים</Button>
-                        <Button color="inherit" sx={{ fontWeight: 'bold' }}>דף הבית</Button>
+                         <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/events')}>אירועים</Button>
+                        <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/landing')}>דף הבית</Button>
                     </Box>
 
                 </Toolbar>
