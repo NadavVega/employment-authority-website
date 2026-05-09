@@ -64,7 +64,7 @@ const MainLayout = ({ children }) => {
                             src={jerusalemLogo} 
                             alt="Jerusalem Municipality Logo" 
                             style={{ height: '75px', cursor: 'pointer' }} // Add cursor: 'pointer' for UX
-                            onClick={() => navigate('/landing')}
+                            onClick={() => navigate('/home')}
                             onError={(e) => { e.target.style.display = 'none'; }} 
                         />
                         
@@ -84,7 +84,7 @@ const MainLayout = ({ children }) => {
                             <Button color="inherit" sx={{ fontWeight: 'bold' }}>אלפון מעסיקים</Button>
                         )}
                          <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/events')}>אירועים</Button>
-                        <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/landing')}>דף הבית</Button>
+                        <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/home')}>דף הבית</Button>
                     </Box>
 
                 </Toolbar>

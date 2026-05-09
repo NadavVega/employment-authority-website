@@ -15,8 +15,8 @@ function App() {
         <Router>
           <MainLayout>
             <Routes>
-              {/* Define the URL paths and which component they should render */}
-              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/home" element={<LandingPage />} />
               <Route path="/events" element={<EventsPage />} />
             </Routes>
           </MainLayout>
