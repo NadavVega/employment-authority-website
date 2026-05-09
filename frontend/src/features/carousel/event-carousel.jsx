@@ -1,73 +1,119 @@
 import React, { useState } from 'react';
+import { Box, Typography, Paper, Button } from '@mui/material';
 import { useAuth } from '../../context/auth-context';
 
 /**
- * EventsCarousel displays a slider of upcoming events.
- * It handles the navigation logic and conditional rendering for the registration button based on user role.
+ * EventsCarousel displays a modern, sliding interface for upcoming events.
+ * It integrates with the AuthContext to determine if the user can register.
+ * * @param {Object} props
+ * @param {Array} props.events - Array of event objects to display.
  */
 export const EventsCarousel = ({ events }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const { isGuest, isEmployer } = useAuth();
+    const { isGuest } = useAuth(); // Fetch role-based access from context
 
-    // We return early if there are no events to prevent rendering errors.
+    // Fallback UI if the events array is empty or undefined
     if (!events || events.length === 0) {
-        return <div className="text-center p-4">אין אירועים קרובים החודש.</div>;
+        return (
+            <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: '#f8fafc' }}>
+                <Typography color="textSecondary">No upcoming events at the moment.</Typography>
+            </Paper>
+        );
     }
 
     const currentEvent = events[currentIndex];
 
-    const handleNext = () => {
-        // We use modulo to create a continuous loop when clicking next.
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % events.length);
-    };
-
-    const handlePrev = () => {
-        // We add the array length before applying modulo to handle negative indices safely.
-        setCurrentIndex((prevIndex) => (prevIndex - 1 + events.length) % events.length);
-    };
+    // Navigation handlers
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % events.length);
+    const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? events.length - 1 : prev - 1));
 
     return (
-        <div className="carousel-container border rounded shadow-lg overflow-hidden w-full max-w-4xl mx-auto my-6">
-            {/* Top part: Image Placeholder */}
-            <div className="image-placeholder bg-gray-100 h-64 flex items-center justify-center relative">
-                <button onClick={handlePrev} className="absolute left-4 text-2xl font-bold p-2">&lt;</button>
-                <img 
-                    src={currentEvent.imageUrl || '/default-event.jpg'} 
-                    alt={currentEvent.title} 
-                    className="h-full object-cover"
-                />
-                <button onClick={handleNext} className="absolute right-4 text-2xl font-bold p-2">&gt;</button>
-            </div>
+        <Paper 
+            elevation={6} // Adds a deep, modern shadow
+            sx={{ 
+                position: 'relative', 
+                height: '450px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'flex-end',
+                overflow: 'hidden',
+                borderRadius: 4,
+                // Dynamic background image with a modern fallback
+                backgroundImage: `url(${currentEvent.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000'})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                transition: 'background-image 0.5s ease-in-out'
+            }}
+        >
+            {/* Navigation Buttons */}
+            <Button 
+                onClick={handlePrev} 
+                sx={{ 
+                    position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', 
+                    minWidth: '48px', height: '48px', borderRadius: '50%', 
+                    bgcolor: 'rgba(255,255,255,0.8)', color: 'black', 
+                    '&:hover': { bgcolor: 'white' }, zIndex: 10 
+                }}
+            >
+                &lt;
+            </Button>
+            <Button 
+                onClick={handleNext} 
+                sx={{ 
+                    position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', 
+                    minWidth: '48px', height: '48px', borderRadius: '50%', 
+                    bgcolor: 'rgba(255,255,255,0.8)', color: 'black', 
+                    '&:hover': { bgcolor: 'white' }, zIndex: 10 
+                }}
+            >
+                &gt;
+            </Button>
 
-            {/* Bottom part: Details (Blue box styling based on your image) */}
-            <div className="details-section bg-blue-800 text-white p-6 text-center">
-                <h2 className="text-2xl font-bold mb-2">{currentEvent.title}</h2>
-                <p className="mb-4">{currentEvent.description}</p>
-                <div className="event-meta text-sm mb-4">
-                    <span>תאריך: {currentEvent.date}</span> | <span>מיקום: {currentEvent.location}</span>
-                </div>
+            {/* Bottom Content Block - Uses a gradient overlay to ensure text readability */}
+            <Box 
+                sx={{ 
+                    background: 'linear-gradient(to top, rgba(0, 32, 63, 0.95) 0%, rgba(0, 32, 63, 0.7) 70%, transparent 100%)',
+                    color: 'white', 
+                    pt: 8, pb: 4, px: 4,
+                    width: '100%', position: 'relative', zIndex: 5, textAlign: 'right'
+                }}
+            >
+                <Typography variant="h4" fontWeight="bold" gutterBottom>
+                    {currentEvent.title}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2, opacity: 0.9, maxWidth: '80%' }}>
+                    {currentEvent.description || currentEvent.subtitle}
+                </Typography>
+                <Typography variant="subtitle2" sx={{ mb: 3, color: '#facc15' }}>
+                    Date: {currentEvent.date} | Location: {currentEvent.location || 'Jerusalem'}
+                </Typography>
 
-                {/* Role-based Access Control for Registration */}
+                {/* Role-Based Access Control (RBAC) Logic for the Registration Button */}
                 {!isGuest ? (
-                    <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded">
-                        הירשם עכשיו
-                    </button>
+                    <Button variant="contained" sx={{ bgcolor: '#facc15', color: 'black', fontWeight: 'bold', '&:hover': { bgcolor: '#eab308' } }}>
+                        Register Now
+                    </Button>
                 ) : (
-                    <p className="text-sm text-gray-300">
-                        כדי להירשם לאירוע, אנא <a href="/login" className="underline">התחבר למערכת</a>.
-                    </p>
+                    <Typography variant="body2" sx={{ color: '#cbd5e1' }}>
+                        * To register for this event, please <a href="/login" style={{ color: '#60a5fa', textDecoration: 'none' }}>login to your account</a>.
+                    </Typography>
                 )}
-
-                {/* Dots indicator */}
-                <div className="flex justify-center mt-4 space-x-2 space-x-reverse">
+                
+                {/* Carousel Pagination Dots */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, gap: 1 }}>
                     {events.map((_, index) => (
-                        <span 
-                            key={index} 
-                            className={`h-3 w-3 rounded-full ${index === currentIndex ? 'bg-yellow-500' : 'bg-gray-400'}`}
-                        ></span>
+                        <Box 
+                            key={index}
+                            onClick={() => setCurrentIndex(index)}
+                            sx={{ 
+                                width: '10px', height: '10px', borderRadius: '50%', 
+                                bgcolor: index === currentIndex ? '#facc15' : 'rgba(255,255,255,0.4)', 
+                                cursor: 'pointer', transition: '0.3s' 
+                            }}
+                        />
                     ))}
-                </div>
-            </div>
-        </div>
+                </Box>
+            </Box>
+        </Paper>
     );
 };
