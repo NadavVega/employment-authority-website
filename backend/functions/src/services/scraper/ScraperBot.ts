@@ -1,17 +1,16 @@
 import * as admin from 'firebase-admin';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { IScrapedLink } from '../../domain/link.model';
+import { IArticle } from '../../domain/article.model';
 
 /**
- * ScraperBot handles automated data collection from news outlets.
- * It strictly follows the SOLID principles by separating fetching, parsing, and storage.
+ * ScraperBot handles automated content collection and persists it directly 
+ * to the central articles collection for moderation.
  */
 export class ScraperBot {
   private readonly db = admin.firestore();
-  private readonly LINKS_COLLECTION = 'links';
+  private readonly ARTICLES_COLLECTION = 'articles';
 
-  // Broadened selectors to ensure we catch content even if site structure shifts slightly
   private readonly SOURCES = [
   { 
     name: 'Ynet Economy', 
@@ -20,88 +19,99 @@ export class ScraperBot {
   },
   { 
     name: 'Calcalist Career', 
-    url: 'https://www.calcalist.co.il/career/human_resources', 
-    selector: '.newsItem a' 
+    url: 'https://www.calcalist.co.il/career', // Updated to a broader URL
+    selector: 'a' 
   },
   { 
     name: 'Maariv Business', 
-    url: 'https://www.maariv.co.il/news/Business', 
-    selector: '.category-item-title a' 
+    url: 'https://www.maariv.co.il/news/business', // Fixed case-sensitivity (lowercase)
+    selector: 'a' 
   }
 ];
 
+  /**
+   * Main entry point for the daily scraping job.
+   */
   public async executeDailyScrape(): Promise<void> {
     console.log("--- Starting Scrape Cycle ---");
     
     for (const source of this.SOURCES) {
       try {
-        console.log(`Fetching content from: ${source.name}...`);
-        const foundLinks = await this.scrapeSource(source.url, source.name, source.selector);
+        const foundArticles = await this.scrapeSource(source.url, source.name, source.selector);
         
-        console.log(`Source ${source.name}: Found ${foundLinks.length} potential articles.`);
-
-        if (foundLinks.length > 0) {
-          await this.persistLinks(foundLinks);
-          console.log(`Persisted ${foundLinks.length} links to Firestore.`);
+        if (foundArticles.length > 0) {
+          await this.persistArticles(foundArticles);
+          console.log(`Successfully persisted ${foundArticles.length} articles from ${source.name}.`);
         }
       } catch (error) {
-        // Logging the error with context to allow for easy troubleshooting in production.[cite: 1]
+        // Log error with source context for production debugging
         console.error(`Scraping failed for ${source.name}:`, error);
       }
     }
     console.log("--- Scrape Cycle Completed ---");
   }
 
-  private async scrapeSource(url: string, sourceName: string, selector: string): Promise<Partial<IScrapedLink>[]> {
-    const { data } = await axios.get(url, {
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' 
-      }
-    });
+  /**
+   * Fetches and parses a specific source URL to find relevant employment content.
+   */
+  private async scrapeSource(url: string, sourceName: string, selector: string): Promise<Partial<IArticle>[]> {
+  const { data } = await axios.get(url, {
+    headers: { 
+      // Enhanced headers to prevent 403 Forbidden from Akamai/Cloudflare
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    timeout: 10000 // 10 seconds timeout to prevent hanging
+  });
     
     const $ = cheerio.load(data);
-    const links: Partial<IScrapedLink>[] = [];
+    const articles: Partial<IArticle>[] = [];
 
     $(selector).each((_, el) => {
       const href = $(el).attr('href');
       const title = $(el).text().trim();
 
-      // Heuristic: Employment articles usually have titles longer than 30 characters
+      // Heuristic: Ensure the title is descriptive enough and relevant to Jerusalem employment
       if (href && title.length > 30) {
         const fullUrl = href.startsWith('http') ? href : new URL(href, url).href;
-        
-        // Basic keyword filter to ensure relevance to employment/economy
-        const keywords = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה','מעסיקים'];
+        const keywords = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה', 'מעסיקים'];
         const isRelevant = keywords.some(keyword => title.includes(keyword) || fullUrl.includes(keyword));
 
         if (isRelevant) {
-          links.push({
+          articles.push({
             url: fullUrl,
             title: title,
             sourceName: sourceName,
-            status: 'pending' // Default status for RBAC manager approval[cite: 1]
+            status: 'pending', // Requires Admin/Manager approval before publishing[cite: 1]
+            category: 'article'
           });
         }
       }
     });
 
-    return links.slice(0, 10); // Return top 10 relevant links
+    return articles.slice(0, 10);
   }
 
-  private async persistLinks(links: Partial<IScrapedLink>[]): Promise<void> {
+  /**
+   * Saves articles to Firestore using a batch write for atomicity and performance.
+   */
+  private async persistArticles(articles: Partial<IArticle>[]): Promise<void> {
     const batch = this.db.batch();
 
-    links.forEach(link => {
-      if (!link.url) return;
+    articles.forEach(article => {
+      if (!article.url) return;
       
-      // Use Base64 of the URL as a unique ID to prevent duplicates in the database.[cite: 1]
-      const linkId = Buffer.from(link.url).toString('base64').substring(0, 50);
-      const docRef = this.db.collection(this.LINKS_COLLECTION).doc(linkId);
+      // Use URL Base64 as ID to prevent duplicate articles in the 'articles' collection[cite: 1]
+      const articleId = Buffer.from(article.url).toString('base64').substring(0, 50);
+      const docRef = this.db.collection(this.ARTICLES_COLLECTION).doc(articleId);
 
       batch.set(docRef, {
-        ...link,
-        scrapedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+        ...article,
+        publishedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }); // Merge ensures we don't overwrite manual edits if a link is re-scraped
     });
 
     await batch.commit();

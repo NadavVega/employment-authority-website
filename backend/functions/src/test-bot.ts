@@ -40,7 +40,7 @@ async function testScraper(): Promise<void> {
     await bot.executeDailyScrape();
     
     console.log('--- Test Completed Successfully ---');
-    console.log('Action Required: Verify the "links" collection in Firestore Console.');
+    console.log('Action Required: Verify the "articles" collection in Firestore Console.');
   } catch (error) {
     // We log the error in English as per project standards
     console.error('Infrastructure failure: Failed to initialize Firebase or run scraper.', error);
