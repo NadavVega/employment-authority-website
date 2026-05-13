@@ -6,6 +6,7 @@ import { MOCK_ARTICLES } from '../utils/mock-data';
 import EventCalendar from '../features/calendar/event-calendar'; 
 import HeroCarousel from '../features/carousel/hero-carousel';
 import PromotionalVideo from '../features/promotional-content/promotional-video';
+import { ArticleReviewList } from '../components/manager/ArticleReviewList';
 
 
 /**
@@ -64,7 +65,10 @@ const ImageOverlayCard = ({ title, subtitle, minHeight }) => (
  * - Bottom: Full-width Event Calendar.
  */
 const LandingPage = () => {
-    const { isAuthenticated, currentUser, isGuest } = useAuth();
+    const { isAuthenticated, currentUser, isGuest, isAdmin, isCoordinator } = useAuth();
+
+    // Determine if the user has privileges to manage articles
+    const canManageArticles = isAdmin || isCoordinator;
 
     return (
         <Box sx={{ flexGrow: 1, p: 2 }}>
@@ -129,6 +133,13 @@ const LandingPage = () => {
                 </Typography>
                 <EventCalendar isGuest={isGuest} />
             </Box>
+
+            {/* MANAGER ROW: Article Review Dashboard */}
+            {canManageArticles && (
+                <Box sx={{ mt: 6, p: 3, bgcolor: '#f0f4f8', borderRadius: 2 }}>
+                    <ArticleReviewList />
+                </Box>
+            )}
         </Box>
     );
 };
