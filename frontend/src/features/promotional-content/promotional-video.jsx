@@ -28,7 +28,7 @@ const PromotionalVideo = () => {
                     (e.g., frameborder to frameBorder, style object instead of string).
                 */}
                 <iframe 
-                    src="https://player.vimeo.com/video/1187966141?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" 
+                    src="https://www.youtube.com/watch?v=VtXOEo86ego"
                     frameBorder="0" 
                     allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
                     referrerPolicy="strict-origin-when-cross-origin" 

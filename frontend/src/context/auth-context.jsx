@@ -71,6 +71,15 @@ export const AuthProvider = ({ children }) => {
          * We use a listner to detect auth state changes in Firebase. When a user logs in or out, this callback is triggered.
          */
         const unsubscribe = subscribeToAuthState(async (user) => {
+            //TODO: remove this bypass logic before production deployment. It is only intended for development convenience to skip the Firebase auth process.
+            // =========================================================
+            // Bypass mechanism for development: If the DEV_BYPASS flag is set in local storage, we skip the whitelist check and directly set the user as authenticated. This allows developers to work without needing to set up Firebase auth during development, but it should be removed before production deployment.                    
+            if (localStorage.getItem('DEV_BYPASS') === 'true') {
+                setLoading(false);
+                return;
+            }
+            // =========================================================
+
             if (user) {
                 try {
                     // If a user is authenticated, we check if their email is in the whitelist.
