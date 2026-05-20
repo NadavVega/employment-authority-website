@@ -1,98 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography } from '@mui/material';
-import EventsHero from '../features/promotional-content/event-hero'; 
-import { EventsCarousel } from '../features/carousel/event-carousel'; 
+import React, { useState } from 'react';
+import { useAuth } from '../context/auth-context';
 
-/**
- * EventsPage: Seamless, modern layout connecting the full-screen hero 
- * directly with the main content. Now handles rich dynamic mock data.
- */
+// Utility Data
+import employmentLogo from '../assets/images/employment-logo.png';
+import '../design/event-page-design.css'; 
+import cityView from '../assets/images/city-view.png';
+
+// TODO: [SRP/DIP] Remove MOCK_EVENTS once Firebase is connected. We will replace this with a custom hook, e.g., const { events, isLoading } = useEvents(); The hook will call eventService.getEvents() to fetch data from Firestore.
+
+const MOCK_EVENTS = [
+    {
+        id: 'e1',
+        title: 'הכשרת Data Analyst – 3 חודשים',
+        type: 'הכשרה',
+        // TODO: [Adapter Pattern] When fetching from Firestore, the service layer MUST format. the Firestore Timestamp into this exact { day, month } object before passing it to the UI.
+        date: { day: '22', month: 'יוני' },
+        time: '13:00–09:00',
+        location: 'מרכז התעסוקה ירושלים',
+        capacity: '25 מקומות',
+        description: 'קורס מואץ: Python, SQL, Tableau. בשיתוף חברות ביג-דטה ירושלמיות.'
+    },
+    {
+        id: 'e2',
+        title: 'יום קריירה – טכנולוגיה ומשפט',
+        type: 'יום קריירה',
+        date: { day: '15', month: 'יוני' },
+        time: '16:00–09:00',
+        location: 'מלחה טק פארק',
+        capacity: '200 מקומות',
+        description: 'ירידת עבודה לחברות טק ומשרדי עורכי דין מובילים. הכנת קו"ח ועמדות ראיון במקום.'
+    },
+    {
+        id: 'e3',
+        title: 'ירידת עבודה – מגזר הבריאות',
+        type: 'ירידת עבודה',
+        date: { day: '5', month: 'יולי' },
+        time: '17:00–10:00',
+        location: 'בנייני האומה',
+        capacity: '500 מקומות',
+        description: 'מפגש עם בתי החולים וקופות החולים המובילים בירושלים.'
+    },
+    {
+        id: 'e4',
+        title: 'סדנת הכנה לראיון עבודה',
+        type: 'סדנה',
+        date: { day: '28', month: 'יוני' },
+        time: '20:00–17:00',
+        location: 'זום / מקוון',
+        capacity: '50 מקומות',
+        description: 'כלים מעשיים וסימולציות למעבר ראיונות HR וראיונות מקצועיים בהצלחה.'
+    }
+];
+
+const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
+
 export const EventsPage = () => {
-    const [events, setEvents] = useState([]);
+    // TODO: [RBAC Logic] Extract userRole and currentUser from useAuth() to handle specific permissions.
+    const { isGuest } = useAuth();
+    const [activeFilter, setActiveFilter] = useState('הכל');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        // Mock data with unique, high-quality images for each carousel slide
-        setEvents([
-            {
-                id: 1,
-                title: 'כנס מעסיקים טכנולוגי - הר חוצבים',
-                description: 'הצטרפו אלינו למפגש אקסלוסיבי למנהלי פיתוח ו-HR בחברות ההייטק הירושלמיות. בתוכנית: פאנל מומחים ועדכונים על מענקי עידוד תעסוקה.',
-                date: '20.06.2026',
-                location: 'פארק הייטק הר חוצבים',
-                // Tech/Programming related image
-                image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000' 
-            },
-            {
-                id: 2,
-                title: 'יריד התעסוקה הגדול של ירושלים',
-                description: 'ההזדמנות שלכם לגייס את הכישרונות הטובים ביותר בעיר. מאות מחפשי עבודה אקדמאים יגיעו לפגוש אתכם פנים מול פנים.',
-                date: '01.07.2026',
-                location: 'בנייני האומה, ירושלים',
-                // Networking/Crowd related image
-                image: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?q=80&w=1000'
-            },
-            {
-                id: 3,
-                title: 'סדנת אסטרטגיות שילוב וגיוון',
-                description: 'סדנא מעשית למעסיקים בנושא גיוון תעסוקתי, בדגש על שילוב אוכלוסיות יעד ושבירת תקרות זכוכית בארגון שלכם.',
-                date: '15.07.2026',
-                location: 'זום (מפגש מקוון)',
-                // Office/Workshop related image
-                image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000'
-            }
-        ]);
-    }, []);
+    const filteredEvents = MOCK_EVENTS.filter(event => {
+        const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+        const matchesSearch = event.title.includes(searchQuery) || event.description.includes(searchQuery);
+        return matchesFilter && matchesSearch;
+    });
 
     return (
-        <Box sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', width: '100%' }}>
+        <div className="events-page-wrapper" dir="rtl">
             
-            {/* Full-bleed Parallax Hero section */}
-            <EventsHero />
-
-            {/* Seamless content container */}
-            <Box 
-                sx={{ 
-                    width: '100%', 
-                    bgcolor: '#F8FAFC', 
-                    position: 'relative',
-                    zIndex: 2, 
-                    pt: 8, 
-                    pb: 12
-                }}
+            {/* ===== HEADER / HERO SECTION ===== */}
+            <header 
+                className="site-hero" 
+                style={{ backgroundImage: `url('${cityView}')` }}
             >
-                <Container maxWidth="lg">
-                    
-                    <Typography 
-                        variant="h4" 
-                        color="primary" 
-                        fontWeight="300" 
-                        textAlign="center"
-                        sx={{ mb: 6, letterSpacing: '0.02em' }}
-                    >
-                        האירועים הבולטים החודש
-                    </Typography>
+                <div className="hero-overlay"></div>
+                <div className="hero-content">
+                    <img src={employmentLogo} alt="רשות התעסוקה ירושלים" className="hero-logo" />
+                    <div className="hero-text">
+                        <h1 className="hero-title">אירועים ופעילויות</h1>
+                        <p className="hero-subtitle">ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
+                    </div>
+                </div>
+            </header>
 
-                    {/* The Carousel - Automatically displays the unique images passed in the events array */}
-                    <EventsCarousel events={events} />
+            {/* ===== TOOLBAR (Filters & Search) ===== */}
+            <div className="events-toolbar">
+                <div className="search-container">
+                    <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input 
+                        type="text" 
+                        placeholder="חיפוש אירועים..." 
+                        className="search-input"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
 
-                    {/* Calendar placeholder */}
-                    <Box 
-                        sx={{ 
-                            textAlign: 'center', 
-                            mt: 10,
-                            p: 6, 
-                            bgcolor: 'white', 
-                            borderRadius: 4, 
-                            border: '1px solid rgba(0,0,0,0.05)'
-                        }}
-                    >
-                        <Typography variant="h5" color="textSecondary" fontWeight="300">
-                            Interactive Calendar (Coming Soon)
-                        </Typography>
-                    </Box>
-                    
-                </Container>
-            </Box>
-        </Box>
+                <div className="filter-pills">
+                    {FILTER_CATEGORIES.map(category => (
+                        <button 
+                            key={category}
+                            className={`filter-pill ${activeFilter === category ? 'active' : ''}`}
+                            onClick={() => setActiveFilter(category)}
+                        >
+                            {category}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* ===== EVENTS GRID ===== */}
+            <main className="events-grid">
+                {filteredEvents.length > 0 ? (
+                    filteredEvents.map(event => (
+                        <div className="event-card" key={event.id}>
+                            
+                            <div className="event-card-header">
+                                <div className="event-date-badge">
+                                    <span className="event-date-day">{event.date.day}</span>
+                                    <span className="event-date-mon">{event.date.month}</span>
+                                </div>
+                                <div className="event-card-type">{event.type}</div>
+                            </div>
+
+                            <div className="event-card-body">
+                                <h3 className="event-title">{event.title}</h3>
+                                
+                                <div className="event-meta">
+                                    <div className="event-meta-item">
+                                        <svg className="meta-icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        <span>{event.time}</span>
+                                    </div>
+                                    <div className="event-meta-item">
+                                        <svg className="meta-icon" viewBox="0 0 24 24">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        <span>{event.location}</span>
+                                    </div>
+                                    <div className="event-meta-item">
+                                        <svg className="meta-icon" viewBox="0 0 24 24">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                        <span>{event.capacity}</span>
+                                    </div>
+                                </div>
+
+                                <p className="event-desc">{event.description}</p>
+                                
+                                {!isGuest && (
+                                    <button className="btn-event">
+                                        <span>הרשמה לאירוע</span>
+                                    </button>
+                                )}
+                            </div>
+                            
+                        </div>
+                    ))
+                ) : (
+                    <div className="no-results-message">
+                        <p>לא נמצאו אירועים התואמים לחיפוש שלך.</p>
+                    </div>
+                )}
+            </main>
+            
+        </div>
     );
 };
+
+export default EventsPage;
