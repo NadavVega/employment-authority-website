@@ -1,0 +1,147 @@
+/* ===== GLOBAL THEME VARIABLES ===== */
+:root {
+  /* The 60-30-10 Palette */
+  --color-primary: #003b8b;
+  --color-primary-dark: #002b66;
+  --color-primary-darker: #001a40;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-gold: #fbb03b;
+  --color-text-muted: #64748b;
+  --color-sky: #38bdf8;
+  
+  /* Spacing System */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  
+  /* Radii */
+  --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+  
+  /* Typography Scale */
+  --text-xs: 12px; --text-sm: 14px; --text-base: 18px; --text-lg: 24px;
+  --t: 0.2s ease-in-out;
+}
+
+/* ===== BASE TYPOGRAPHY & RESETS ===== */
+* { box-sizing: border-box; }
+
+body {
+    font-family: inherit;
+    margin: 0; padding: 0;
+    background-color: #f8fafc; /* Keep global soft background */
+    color: var(--color-primary-dark);
+    -webkit-font-smoothing: antialiased; /* Crisper text */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-primary-dark);
+    margin-top: 0;
+    font-weight: 800;
+}
+
+/* ===== GLOBAL UI COMPONENTS ===== */
+
+/* The Primary Brand Button */
+.btn-primary {
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: var(--space-2); 
+  padding: 12px 28px; /* Slightly thicker for a better click area */
+  background: var(--color-primary); 
+  color: white;
+  border-radius: var(--radius-full); /* This makes it a perfect pill shape! */
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  transition: all var(--t);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 59, 139, 0.2); /* Adds a subtle glowing shadow */
+}
+
+.btn-primary:hover { 
+    background: var(--color-primary-dark); 
+    transform: translateY(-2px); /* Lifts up slightly when you hover */
+    box-shadow: 0 6px 16px rgba(0, 59, 139, 0.3);
+}
+
+/* Let's add a Secondary Button style for "Cancel" buttons */
+.btn-secondary {
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  padding: 12px 28px;
+  background: transparent; 
+  color: var(--color-text-muted);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  transition: all var(--t);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: #f1f5f9;
+    color: var(--color-primary-dark);
+    border-color: var(--color-text-muted);
+}
+
+.input-standard {
+    width: 100%; padding: 12px 16px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    font-family: inherit; font-size: var(--text-sm);
+    color: var(--color-primary-dark); background-color: var(--color-surface); 
+    transition: all var(--t); outline: none;
+}
+.input-standard:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(0, 59, 139, 0.08); }
+
+
+/* ===== THE "MODERN OVERLAP" GLOBAL LAYOUT ===== */
+/* Use this wrapper for any page with depth (like Add Event, Directory) */
+
+.modern-layout-wrapper {
+    min-height: 100vh;
+}
+
+/* 1. The Rich Header block (60% primary color + 10% gold line) */
+.page-header-rich {
+    background-color: var(--color-primary-dark); 
+    border-bottom: 4px solid var(--color-gold); 
+    padding: var(--space-8) var(--space-12) 100px var(--space-12); /* Large padding on bottom */
+    color: white;
+    text-align: right;
+    position: relative;
+    z-index: 1;
+}
+
+.page-header-content {
+    max-width: 800px; /* Aligns content with the card below */
+    margin: 0 auto;
+}
+
+.page-header-content h1 {
+    font-size: 32px; font-weight: 800;
+    margin: 0 0 var(--space-2) 0;
+    color: white; /* Force white text */
+}
+
+.page-header-content p {
+    margin: 0; font-size: var(--text-base); opacity: 0.9; color: white;
+}
+
+/* 2. The Floating/Overlapping Card (Uses Negative Margin) */
+.floating-content-card {
+    max-width: 800px;
+    margin: 0 auto;
+    margin-top: -60px; /* The "Modern" Overlap trick */
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); /* Deep shadow for depth */
+    padding: var(--space-8);
+    position: relative;
+    z-index: 10;
+}

@@ -1,23 +1,7 @@
-:root {
-  --color-primary: #003b8b;
-  --color-primary-dark: #002b66;
-  --color-primary-darker: #001a40;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-gold: #fbb03b;
-  --color-text-muted: #64748b;
-  --color-sky: #38bdf8;
-  
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
-  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
-  
-  --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
-  
-  --text-xs: 12px; --text-sm: 14px; --text-base: 18px; --text-lg: 24px;
-  --t: 0.2s ease-in-out;
-}
+/* ===== EVENTS PAGE SPECIFIC STYLING ===== */
+/* (Relies on global-theme.css for variables) */
 
-/* ===== HEADER ===== */
+/* --- The Custom Events Hero (With Background Image) --- */
 .site-hero {
     position: relative;
     height: 230px;
@@ -30,7 +14,6 @@
     align-items: center; 
 }
 
-/* Darker gradient on the right to make the colored logo pop */
 .hero-overlay {
     position: absolute;
     inset: 0;
@@ -62,21 +45,10 @@
     justify-content: center;
 }
 
-.hero-title {
-    font-size: 36px;
-    font-weight: 800;
-    margin: 0 0 var(--space-2) 0;
-    color: #ffffff; 
-}
+.hero-title { font-size: 36px; font-weight: 800; margin: 0 0 var(--space-2) 0; color: #ffffff; }
+.hero-subtitle { margin: 0; font-size: var(--text-base); opacity: 0.9; color: #ffffff; }
 
-.hero-subtitle {
-    margin: 0;
-    font-size: var(--text-base);
-    opacity: 0.9;
-    color: #ffffff;
-}
-
-/* ===== TOOLBAR ===== */
+/* --- Events Toolbar & Filters --- */
 .events-toolbar {
     display: flex;
     justify-content: space-between;
@@ -86,77 +58,65 @@
     background-color: var(--color-surface); 
 }
 
-.filter-pills {
-    display: flex;
-    gap: var(--space-3);
-    flex-wrap: wrap; 
-}
+.filter-pills { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
 .filter-pill {
     background: transparent;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--color-border);
     padding: 8px 20px;
     border-radius: var(--radius-full); 
     color: var(--color-primary-dark);
     cursor: pointer;
     font-size: var(--text-sm);
-    font-family: inherit; 
     font-weight: 500;
     transition: all var(--t);
     outline: none;
 }
 
-.filter-pill:hover {
-    border-color: var(--color-primary);
-    background-color: rgba(0, 59, 139, 0.05); 
-}
+.filter-pill:hover { border-color: var(--color-primary); background-color: rgba(0, 59, 139, 0.05); }
+.filter-pill.active { background: var(--color-primary-dark); color: white; border-color: var(--color-primary-dark); }
 
-.filter-pill.active {
-    background: var(--color-primary-dark); 
-    color: white;
-    border-color: var(--color-primary-dark);
-}
-
-.search-container {
-    position: relative;
+/* --- Search Bar Specifics --- */
+.search-container { 
+    position: relative; 
     width: 400px; 
     max-width: 100%; 
 }
 
-.search-input {
-    width: 100%;
-    padding: 12px 20px;
-    padding-right: 40px; 
-    border: 1px solid #cbd5e1;
-    border-radius: var(--radius-full);
-    font-family: inherit;
-    font-size: var(--text-sm);
-    color: var(--color-primary-dark);
-    background-color: #f8fafc; 
-    transition: all var(--t);
-    outline: none;
-    box-sizing: border-box; 
-}
-
-.search-input::placeholder { color: #94a3b8; }
-.search-input:focus {
-    border-color: var(--color-primary);
-    background-color: white;
-    box-shadow: 0 0 0 2px rgba(0, 59, 139, 0.1); 
-}
-
 .search-icon {
-    position: absolute;
-    right: 16px; 
-    top: 50%;
+    position: absolute; 
+    right: 16px; /* Icon sits 16px from the right edge */
+    top: 50%; 
     transform: translateY(-50%);
-    color: #94a3b8;
+    color: var(--color-text-muted); 
     pointer-events: none; 
-    width: 18px;
+    width: 18px; 
     height: 18px;
 }
 
-/* ===== EVENTS GRID ===== */
+/* ADD THIS NEW BLOCK FOR THE INPUT */
+.search-input {
+    width: 100%;
+    /* top: 12px, RIGHT: 40px, bottom: 12px, left: 16px */
+    /* That 40px right padding is the magic that pushes text past the icon */
+    padding: 12px 40px 12px 16px; 
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full); /* Pill-shape to match your filter buttons */
+    font-family: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-primary-dark);
+    background-color: var(--color-surface);
+    transition: all var(--t);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.search-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(0, 59, 139, 0.08); /* Modern blue glow on click */
+}
+
+/* --- Events Grid & Cards --- */
 .events-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
@@ -176,10 +136,7 @@
   height: 100%;
 }
 
-.event-card:hover {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
+.event-card:hover { box-shadow: 0 4px 6px rgba(0,0,0,0.1); transform: translateY(-2px); }
 
 .event-card-header {
   background: var(--color-primary);
@@ -197,66 +154,94 @@
   text-align: center;
   min-width: 52px;
 }
-
 .event-date-day { font-size: var(--text-lg); font-weight: 800; line-height: 1; display: block; }
 .event-date-mon { font-size: var(--text-xs); font-weight: 600; display: block; }
 
 .event-card-type {
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  color: white;
-  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px; border-radius: var(--radius-full); font-size: var(--text-xs);
+  font-weight: 700; color: white; background: rgba(255, 255, 255, 0.2);
 }
 
-.event-card-body { 
-    padding: var(--space-5);
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; 
-}
-
+.event-card-body { padding: var(--space-5); display: flex; flex-direction: column; flex-grow: 1; }
 .event-title { font-size: var(--text-base); font-weight: 700; color: var(--color-primary-dark); margin-bottom: var(--space-2); }
 .event-meta { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-4); }
 .event-meta-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-muted); }
 
-/* Elegant SVG icons */
 .meta-icon {
-    width: 16px;
-    height: 16px;
-    stroke: var(--color-primary); 
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    flex-shrink: 0;
+    width: 16px; height: 16px; stroke: var(--color-primary); fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
 }
 
 .event-desc { 
-    font-size: var(--text-sm); 
-    color: var(--color-text-muted); 
-    line-height: 1.6; 
-    margin-bottom: var(--space-4);
-    flex-grow: 1; /* Pushes the button down */
+    font-size: var(--text-sm); color: var(--color-text-muted); 
+    line-height: 1.6; margin-bottom: var(--space-4); flex-grow: 1; 
 }
 
-.btn-event {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 8px 16px;
-  background: var(--color-primary);
-  color: white;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-family: inherit;
-  font-weight: 700;
-  transition: background var(--t);
-  border: none;
-  cursor: pointer;
-  align-self: flex-start; /* Aligns to right side in RTL */
-  margin-top: auto; /* Forces button to the bottom */
+/* Overriding the global button just for alignment inside the card */
+.event-card .btn-primary {
+    align-self: flex-start; 
+    margin-top: auto; 
 }
 
-.btn-event:hover { background: var(--color-primary-dark); }
+/* --- EVENT CARD HEADER UPDATES --- */
+.event-logo-header {
+    height: 32px;
+    max-width: 100px;
+    object-fit: contain;
+    background-color: white; /* In case the logo has transparent parts, it won't blend into the blue */
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* Ensure the date pill looks good */
+.date-pill {
+    background-color: var(--color-gold);
+    color: var(--color-primary-darker);
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 14px;
+}
+
+/* --- SIDE-BY-SIDE BUTTONS --- */
+.event-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+.event-card-actions button {
+    flex: 1; /* Makes both buttons take up exactly 50% of the space */
+    padding: 8px 0; /* Slightly thinner padding to fit well */
+}
+
+/* --- THE FULL DETAILS MODAL --- */
+.event-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 26, 64, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.event-modal-content {
+    background: white;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.event-modal-close {
+    position: absolute;
+    top: 16px; left: 16px;
+    background: none; border: none;
+    font-size: 24px; cursor: pointer;
+    color: var(--color-text-muted);
+}
