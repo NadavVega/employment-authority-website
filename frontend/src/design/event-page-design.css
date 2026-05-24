@@ -245,3 +245,172 @@
     font-size: 24px; cursor: pointer;
     color: var(--color-text-muted);
 }
+/* --- PHONE SPLIT INPUT --- */
+.phone-split-input {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    overflow: hidden;
+    transition: border-color var(--t);
+    max-width: 300px;
+}
+
+.phone-split-input:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(0, 59, 139, 0.08);
+}
+
+.phone-prefix {
+    border: none;
+    background: #f8fafc;
+    padding: 10px;
+    border-left: 1px solid var(--color-border);
+    color: var(--color-primary-dark);
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+
+.phone-suffix {
+    border: none;
+    padding: 10px;
+    flex: 1;
+    outline: none;
+    font-size: 14px;
+    color: var(--color-primary-dark);
+}
+
+.btn-remove-phone {
+    background: none;
+    border: none;
+    color: #ef4444;
+    padding: 0 10px;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.btn-remove-phone:hover {
+    opacity: 1;
+}
+
+/* --- VALIDATIONS & ERRORS --- */
+.error-border {
+    border-color: #ef4444 !important;
+}
+
+.error-text {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+}
+
+/* --- MAP MODAL EXTRAS --- */
+.map-modal-custom {
+    max-width: 800px !important;
+    padding: 24px !important;
+}
+
+.validation-dialog-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    border-radius: var(--radius-lg);
+}
+
+.validation-dialog-box {
+    background: white;
+    border: 1px solid var(--color-border);
+    padding: 24px;
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    max-width: 400px;
+    text-align: right;
+}
+
+.validation-dialog-box h4 {
+    color: var(--color-primary-dark);
+    margin: 0 0 8px 0;
+}
+.validation-dialog-box p {
+    color: var(--color-text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+/* --- CONTRAST & FORM LAYOUT UPDATES --- */
+
+/* Add a very subtle background to the main wrapper to make the form card pop */
+.modern-layout-wrapper {
+    background-color: #f4f7fa; 
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+/* Make the form container stand out with a solid white background and soft shadow */
+.form-contrast-wrapper {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: 0 4px 20px rgba(0, 24, 64, 0.05);
+    border: 1px solid var(--color-border);
+}
+
+/* Styled Section Titles */
+.section-title {
+    color: var(--color-primary-dark);
+    font-size: 18px;
+    border-bottom: 2px solid var(--color-gold);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+}
+
+/* Accessibility Panel Background */
+.accessibility-panel {
+    margin-top: 10px;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    border: 1px solid #e2e8f0;
+}
+
+/* --- FIX FOR PHONE SPLIT LTR/RTL --- */
+.phone-split-input {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    overflow: hidden;
+    transition: border-color var(--t);
+    max-width: 320px;
+}
+
+/* Because the page is RTL, forcing LTR on the phone container flips the border logic. We adjust it here: */
+.phone-split-input .phone-prefix {
+    border: none;
+    background: #f8fafc;
+    padding: 10px;
+    border-right: 1px solid var(--color-border); /* Changed to right border for LTR */
+    color: var(--color-primary-dark);
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+
+.phone-split-input .phone-suffix {
+    border: none;
+    padding: 10px;
+    flex: 1;
+    outline: none;
+    font-size: 16px; /* Slightly larger for easier typing */
+    letter-spacing: 1px; /* Better readability for phone numbers */
+    color: var(--color-primary-dark);
+}
