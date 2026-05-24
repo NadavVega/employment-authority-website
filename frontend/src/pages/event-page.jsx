@@ -143,7 +143,6 @@ export const EventsPage = () => {
                                 key={event.id}
                                 event={event}
                                 isGuest={isGuest}
-                                isAdmin={isAdmin}
                             />
                         ))
                 ) : (
