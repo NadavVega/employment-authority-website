@@ -1,58 +1,53 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export const EventCard = ({ event, isAdmin }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Helper to format YYYY-MM-DD
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-    };
-
+export const EventCard = ({ event, isGuest, isAdmin }) => {
     return (
-        <>
-            <div className="event-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Header with Logo and Date */}
-                <div style={{ backgroundColor: 'var(--color-primary)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div className="date-pill">{formatDate(event.date)}</div>
-                    {event.media?.logoUrl ? (
-                        <img src={event.media.logoUrl} alt="לוגו" className="event-logo-header" />
-                    ) : <div style={{ width: '50px' }}></div>}
+        <div className="event-card">
+            <div className="event-card-header">
+                <div className="event-date-badge">
+                    <span className="event-date-day">{event.date?.day}</span>
+                    <span className="event-date-mon">{event.date?.month}</span>
                 </div>
-
-                {/* Body */}
-                <div className="event-card-body">
-                    <h3 className="event-title">{event.title}</h3>
-                    <div className="event-meta">
-                        <div className="event-meta-item"><span>🕒 {event.time}</span></div>
-                        <div className="event-meta-item"><span>📍 {event.location}</span></div>
-                    </div>
-                    <p className="event-desc">{event.description}</p>
-                    
-                    <div className="event-card-actions">
-                        <button onClick={() => setIsModalOpen(true)} className="btn-secondary">פרטי אירוע</button>
-                        {event.status === 'pending_approval' ? (
-                            <button className="btn-primary" style={{ backgroundColor: 'var(--color-gold)' }}>בדיקה</button>
-                        ) : (
-                            <button className="btn-primary">הרשמה</button>
-                        )}
-                    </div>
-                </div>
+                <div className="event-card-type">{event.type}</div>
             </div>
 
-            {/* Modal for Details */}
-            {isModalOpen && (
-                <div className="event-modal-overlay" onClick={() => setIsModalOpen(false)}>
-                    <div className="event-modal-content" onClick={e => e.stopPropagation()} dir="rtl">
-                        <button className="event-modal-close" onClick={() => setIsModalOpen(false)}>×</button>
-                        <h2>{event.title}</h2>
-                        {event.media?.photoUrl && <img src={event.media.photoUrl} style={{width:'100%', borderRadius:'8px'}} />}
-                        <p><strong>תיאור:</strong> {event.description}</p>
-                        {/* Add other fields here */}
+            <div className="event-card-body">
+                <h3 className="event-title">{event.title}</h3>
+
+                <div className="event-meta">
+                    <div className="event-meta-item">
+                        <svg className="meta-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span>{event.time}</span>
+                    </div>
+                    <div className="event-meta-item">
+                        <svg className="meta-icon" viewBox="0 0 24 24">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>{event.location}</span>
+                    </div>
+                    <div className="event-meta-item">
+                        <svg className="meta-icon" viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>{event.capacity}</span>
                     </div>
                 </div>
-            )}
-        </>
+
+                <p className="event-desc">{event.description}</p>
+
+                {!isGuest && (
+                    <button className="btn-event">
+                        <span>הרשמה לאירוע</span>
+                    </button>
+                )}
+            </div>
+        </div>
     );
 };

@@ -127,12 +127,29 @@ export const EventsPage = () => {
 
             {/* ===== EVENTS GRID ===== */}
             <main className="events-grid">
-                {visibleEvents.length > 0 ? (
-                    visibleEvents.map(event => (
-                        <EventCard key={event.id} event={event} isAdmin={isAdmin} />
-                    ))
+                {visibleEvents.filter(event => {
+                    const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+                    const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
+                    return matchesFilter && matchesSearch;
+                }).length > 0 ? (
+                    visibleEvents
+                        .filter(event => {
+                            const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+                            const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
+                            return matchesFilter && matchesSearch;
+                        })
+                        .map(event => (
+                            <EventCard
+                                key={event.id}
+                                event={event}
+                                isGuest={isGuest}
+                                isAdmin={isAdmin}
+                            />
+                        ))
                 ) : (
-                    <p>לא נמצאו אירועים.</p>
+                    <div className="no-results-message">
+                        <p>לא נמצאו אירועים התואמים לחיפוש שלך.</p>
+                    </div>
                 )}
             </main>
         </div>
