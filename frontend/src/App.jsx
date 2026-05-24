@@ -5,10 +5,15 @@ import theme from './utils/theme';
 import { AuthProvider, useAuth } from './context/auth-context';
 import MainLayout from './components/layout/main-layout';
 
+//import design files
+import './design/global-theme.css';
+import './design/event-page-design.css';
+
 // Importing page components
 import LoginPage from './pages/login-page';
 import { EventsPage } from './pages/event-page';
 import HomePage from './pages/home-page';
+import AddEventPage from './pages/add-event-page'; 
 
 /**
  * ProtectedRoute Guard Component
@@ -46,6 +51,14 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <EventsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/add-event" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <AddEventPage />
                 </MainLayout>
               </ProtectedRoute>
             } />

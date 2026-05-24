@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/auth-context';
+import { useNavigate } from 'react-router-dom';
+import { EventCard } from '../components/events/event-card';
+
+// firebase
+import { useEffect } from 'react';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase/config'; // Adjust path if needed
 
 // Utility Data
 import employmentLogo from '../assets/images/employment-logo.png';
@@ -8,62 +15,58 @@ import cityView from '../assets/images/city-view.png';
 
 // TODO: [SRP/DIP] Remove MOCK_EVENTS once Firebase is connected. We will replace this with a custom hook, e.g., const { events, isLoading } = useEvents(); The hook will call eventService.getEvents() to fetch data from Firestore.
 
-const MOCK_EVENTS = [
-    {
-        id: 'e1',
-        title: 'הכשרת Data Analyst – 3 חודשים',
-        type: 'הכשרה',
-        // TODO: [Adapter Pattern] When fetching from Firestore, the service layer MUST format. the Firestore Timestamp into this exact { day, month } object before passing it to the UI.
-        date: { day: '22', month: 'יוני' },
-        time: '13:00–09:00',
-        location: 'מרכז התעסוקה ירושלים',
-        capacity: '25 מקומות',
-        description: 'קורס מואץ: Python, SQL, Tableau. בשיתוף חברות ביג-דטה ירושלמיות.'
-    },
-    {
-        id: 'e2',
-        title: 'יום קריירה – טכנולוגיה ומשפט',
-        type: 'יום קריירה',
-        date: { day: '15', month: 'יוני' },
-        time: '16:00–09:00',
-        location: 'מלחה טק פארק',
-        capacity: '200 מקומות',
-        description: 'ירידת עבודה לחברות טק ומשרדי עורכי דין מובילים. הכנת קו"ח ועמדות ראיון במקום.'
-    },
-    {
-        id: 'e3',
-        title: 'ירידת עבודה – מגזר הבריאות',
-        type: 'ירידת עבודה',
-        date: { day: '5', month: 'יולי' },
-        time: '17:00–10:00',
-        location: 'בנייני האומה',
-        capacity: '500 מקומות',
-        description: 'מפגש עם בתי החולים וקופות החולים המובילים בירושלים.'
-    },
-    {
-        id: 'e4',
-        title: 'סדנת הכנה לראיון עבודה',
-        type: 'סדנה',
-        date: { day: '28', month: 'יוני' },
-        time: '20:00–17:00',
-        location: 'זום / מקוון',
-        capacity: '50 מקומות',
-        description: 'כלים מעשיים וסימולציות למעבר ראיונות HR וראיונות מקצועיים בהצלחה.'
-    }
-];
-
 const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
 export const EventsPage = () => {
     // TODO: [RBAC Logic] Extract userRole and currentUser from useAuth() to handle specific permissions.
-    const { isGuest } = useAuth();
+    const { isGuest, userRole, isAdmin } = useAuth(); // This is a temporary solution until we implement proper RBAC. For now, we will use userRole to determine if the user can see pending events and if they can add events.
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAddEventOpen, setIsAddEventOpen] = useState(false);
 
-    const filteredEvents = MOCK_EVENTS.filter(event => {
+    //navigate hook to redirect after adding an event
+    const navigate = useNavigate();
+    
+    // 1. Create a state to hold the real events from Firebase
+    const [realEvents, setRealEvents] = useState([]);
+
+    // 2. THIS IS STEP 3: Fetching, Filtering, and Sorting from Firestore
+    useEffect(() => {
+        const eventsRef = collection(db, 'events');
+        
+        // Only get "published" events, and sort them so the closest date is first
+        // const q = query(
+        //     eventsRef, 
+        //     where("status", "==", "published"),
+        //     orderBy("date", "asc") 
+        // );
+        // this is temporary until we implement RBAC and can filter on the client side. For now, we want to see all events in the admin panel, including those pending approval.
+        const q = query(eventsRef, orderBy("date", "asc"));
+
+        // onSnapshot listens to the database live. If an Admin approves an event, 
+        // it instantly appears on the screen without refreshing!
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedEvents = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setRealEvents(fetchedEvents);
+        });
+
+        // Cleanup the listener when the page closes
+        return () => unsubscribe();
+    }, []);
+
+    // 3. Update your filter to look at realEvents instead of MOCK_EVENTS
+    const filteredEvents = realEvents.filter(event => {
         const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
         const matchesSearch = event.title.includes(searchQuery) || event.description.includes(searchQuery);
         return matchesFilter && matchesSearch;
+    });
+
+    const visibleEvents = realEvents.filter((event) => {
+    if (isAdmin) return true; // Admins see all
+    return event.status === 'published'; // Others only see published
     });
 
     return (
@@ -110,70 +113,45 @@ export const EventsPage = () => {
                             {category}
                         </button>
                     ))}
+                    {(userRole === 'coordinator' || userRole === 'admin') && (
+                        <button 
+                            className="btn-primary" /* <-- CHANGED from btn-event */
+                            style={{ marginRight: 'auto' }} 
+                            onClick={() => navigate('/add-event')}
+                        >
+                            + הוסף אירוע
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* ===== EVENTS GRID ===== */}
             <main className="events-grid">
-                {filteredEvents.length > 0 ? (
-                    filteredEvents.map(event => (
-                        <div className="event-card" key={event.id}>
-                            
-                            <div className="event-card-header">
-                                <div className="event-date-badge">
-                                    <span className="event-date-day">{event.date.day}</span>
-                                    <span className="event-date-mon">{event.date.month}</span>
-                                </div>
-                                <div className="event-card-type">{event.type}</div>
-                            </div>
-
-                            <div className="event-card-body">
-                                <h3 className="event-title">{event.title}</h3>
-                                
-                                <div className="event-meta">
-                                    <div className="event-meta-item">
-                                        <svg className="meta-icon" viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <polyline points="12 6 12 12 16 14"></polyline>
-                                        </svg>
-                                        <span>{event.time}</span>
-                                    </div>
-                                    <div className="event-meta-item">
-                                        <svg className="meta-icon" viewBox="0 0 24 24">
-                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                            <circle cx="12" cy="10" r="3"></circle>
-                                        </svg>
-                                        <span>{event.location}</span>
-                                    </div>
-                                    <div className="event-meta-item">
-                                        <svg className="meta-icon" viewBox="0 0 24 24">
-                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="9" cy="7" r="4"></circle>
-                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                        </svg>
-                                        <span>{event.capacity}</span>
-                                    </div>
-                                </div>
-
-                                <p className="event-desc">{event.description}</p>
-                                
-                                {!isGuest && (
-                                    <button className="btn-event">
-                                        <span>הרשמה לאירוע</span>
-                                    </button>
-                                )}
-                            </div>
-                            
-                        </div>
-                    ))
+                {visibleEvents.filter(event => {
+                    const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+                    const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
+                    return matchesFilter && matchesSearch;
+                }).length > 0 ? (
+                    visibleEvents
+                        .filter(event => {
+                            const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+                            const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
+                            return matchesFilter && matchesSearch;
+                        })
+                        .map(event => (
+                            <EventCard
+                                key={event.id}
+                                event={event}
+                                isGuest={isGuest}
+                                isAdmin={isAdmin}
+                            />
+                        ))
                 ) : (
                     <div className="no-results-message">
                         <p>לא נמצאו אירועים התואמים לחיפוש שלך.</p>
                     </div>
                 )}
             </main>
-            
         </div>
     );
 };
