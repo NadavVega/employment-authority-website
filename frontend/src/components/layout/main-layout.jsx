@@ -1,95 +1,114 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box, Button, CssBaseline, Container, InputBase, alpha } from '@mui/material';
+import { 
+    AppBar, Toolbar, Typography, Box, Button, CssBaseline, 
+    InputBase, Slide, useScrollTrigger 
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
 import DemoRoleSwitcher from '../ui/demo-role-switcher';
 import jerusalemLogo from '../../assets/images/logo-new2.svg'; 
 
 /**
- * MainLayout - Re-architected to resemble the official Jerusalem Municipality portal.
- * Features a richer top navigation area with dedicated spaces for search and a prominent "Personal Area".
+ * HideOnScroll Component
+ * Listens to window scrolling. Hides the navbar when scrolling down, 
+ * and reveals it smoothly when scrolling up.
+ */
+function HideOnScroll({ children }) {
+    // trigger becomes true when the user scrolls down
+    const trigger = useScrollTrigger();
+
+    return (
+        <Slide appear={false} direction="down" in={!trigger}>
+            {children}
+        </Slide>
+    );
+}
+
+/**
+ * MainLayout
+ * Wraps the entire application. Features a smart sticky navigation bar 
+ * and full-bleed layout structure for modern pages.
  */
 const MainLayout = ({ children }) => {
-    const { isAuthenticated, isCoordinator, isAdmin } = useAuth();
+    const { isAuthenticated, isAdmin } = useAuth();
+    const navigate = useNavigate();
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <CssBaseline />
             
-            {/* Top Utility Bar (Black/Darker Blue in the image) */}
-            <AppBar position="static" sx={{ bgcolor: '#1a1a1a', color: 'white' }} elevation={0}>
-                <Toolbar variant="dense" sx={{ justifyContent: 'space-between', minHeight: '48px', px: { xs: 2, md: 5 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                         <Typography variant="caption">עיריית ירושלים</Typography>
-                         <Typography variant="caption">|</Typography>
-                         <Typography variant="caption">רשות התעסוקה</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                         {/* Search Bar Placeholder */}
-                         <Box sx={{ 
-                             bgcolor: 'white', 
-                             borderRadius: 1, 
-                             px: 1, 
-                             display: 'flex', 
-                             alignItems: 'center',
-                             height: '28px'
-                         }}>
-                             <InputBase placeholder="חיפוש..." sx={{ fontSize: '0.8rem', color: 'black' }} />
-                         </Box>
-                         {/* Personal Area / Login Action */}
-                         {!isAuthenticated ? (
-                            <Button variant="contained" color="secondary" size="small" sx={{ fontWeight: 'bold', color: 'black' }}>
-                                אזור אישי / כניסה
-                            </Button>
-                        ) : (
-                            <Button variant="outlined" color="inherit" size="small">
-                                התנתק
-                            </Button>
-                        )}
-                    </Box>
-                </Toolbar>
-            </AppBar>
-
-            {/* Main Navigation Bar */}
-            <AppBar position="static" color="primary" elevation={2}>
-                <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, md: 5 } }}>
+            {/* The Smart Header Wrapper */}
+            <HideOnScroll>
+                {/* position="sticky" keeps it at the top of the viewport when visible */}
+                <AppBar position="sticky" elevation={3} sx={{ top: 0, zIndex: 1100 }}>
                     
-                    {/* 
-                        Right Side (Visual Right for the user):
-                        Navigation Links. In RTL, the first element in the DOM appears on the right.
-                    */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <img 
-                            src={jerusalemLogo} 
-                            alt="Jerusalem Municipality Logo" 
-                            style={{ height: '75px' }} // Increased logo size
-                            onError={(e) => { e.target.style.display = 'none'; }} 
-                        />
-                        
+                    {/* Top Utility Bar (Dark Mode) */}
+                    <Box sx={{ 
+                        bgcolor: '#1a1a1a', color: 'white', px: { xs: 2, md: 5 }, 
+                        py: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                             <Typography variant="caption">עיריית ירושלים</Typography>
+                             <Typography variant="caption">|</Typography>
+                             <Typography variant="caption">רשות התעסוקה</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                             {/* Search Bar */}
+                             <Box sx={{ bgcolor: 'white', borderRadius: 1, px: 1, display: 'flex', alignItems: 'center', height: '28px' }}>
+                                 <InputBase placeholder="חיפוש..." sx={{ fontSize: '0.8rem', color: 'black' }} />
+                             </Box>
+                             
+                             {/* Auth Buttons */}
+                             {!isAuthenticated ? (
+                                <Button variant="contained" color="secondary" size="small" sx={{ fontWeight: 'bold', color: 'black' }}>
+                                    אזור אישי / כניסה
+                                </Button>
+                            ) : (
+                                <Button variant="outlined" color="inherit" size="small">
+                                    התנתק
+                                </Button>
+                            )}
+                        </Box>
                     </Box>
 
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {/* Manager & Coordinator specific tools */}
-                        {isAdmin && (
-                            <Button color="secondary" sx={{ fontWeight: 'bold' }}>
-                                ניהול בוט
-                            </Button>
-                        )}
+                    {/* Main Navigation Bar (Primary Color) */}
+                    <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, md: 5 }, bgcolor: 'primary.main' }}>
                         
-                        {/* RBAC Logic */}
-                        {isAuthenticated && (
-                            <Button color="inherit" sx={{ fontWeight: 'bold' }}>אלפון מעסיקים</Button>
-                        )}
-                        
-                        <Button color="inherit" sx={{ fontWeight: 'bold' }}>אירועים</Button>
-                        <Button color="inherit" sx={{ fontWeight: 'bold' }}>דף הבית</Button>
-                    </Box>
+                        {/* Logo Section */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <img 
+                                src={jerusalemLogo} 
+                                alt="Jerusalem Municipality Logo" 
+                                style={{ height: '75px', cursor: 'pointer' }}
+                                onClick={() => navigate('/home')}
+                                onError={(e) => { e.target.style.display = 'none'; }} 
+                            />
+                        </Box>
 
-                </Toolbar>
-            </AppBar>
-            <Container component="main" maxWidth={false} sx={{ mt: 4, mb: 4, flex: 1, px: { xs: 2, md: 8 } }}>
+                        {/* Links Section */}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            {isAdmin && (
+                                <Button color="secondary" sx={{ fontWeight: 'bold' }}>
+                                    ניהול בוט
+                                </Button>
+                            )}
+                            {isAuthenticated && (
+                                <Button color="inherit" sx={{ fontWeight: 'bold' }}>אלפון מעסיקים</Button>
+                            )}
+                             <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/events')}>אירועים</Button>
+                            <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/home')}>דף הבית</Button>
+                        </Box>
+                    </Toolbar>
+                </AppBar>
+            </HideOnScroll>
+
+            {/* Main Content Area 
+              Changed from Container to Box to allow 100% full-bleed pages (like the Hero image).
+              Internal pages are now responsible for their own margins/padding.
+            */}
+            <Box component="main" sx={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
                 {children}
-            </Container>
+            </Box>
 
             <DemoRoleSwitcher />
 
