@@ -30,3 +30,15 @@ backend/privateKey.json
 .firebaserc
 frontend/.env.local
 **/fullstack-install-*.txt
+# Dependencies
+node_modules/
+jspm_packages/
+
+# TypeScript compilation output
+lib/
+dist/
+
+# Firebase logs and cache
+*.log
+.firebase/
+.runtimeconfig.json

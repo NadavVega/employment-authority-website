@@ -1,2 +1,5 @@
 .env
 .secrets
+*.log
+test_bot_output.log
+lib/
