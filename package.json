@@ -1,8 +1,16 @@
 {
-  "dependencies": {
-    "axios": "^1.16.0",
-    "cheerio": "^1.2.0",
-    "dotenv": "^17.4.2",
-    "firebase-admin": "^13.9.0"
+  "name": "employment-authority",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend/functions"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend/functions\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend/functions"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

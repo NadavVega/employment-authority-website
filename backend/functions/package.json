@@ -4,6 +4,7 @@
   "description": "Backend services for Jerusalem Employment Authority",
   "main": "lib/index.js",
   "scripts": {
+    "dev": "npm run build && firebase emulators:start --only functions",
     "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
