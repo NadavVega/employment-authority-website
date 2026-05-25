@@ -1,0 +1,33 @@
+/* Clean flat layout removing the blue overlay */
+.flat-page-wrapper {
+    background-color: #ffffff;
+    min-height: 100vh;
+    padding: 40px 10%; /* Center the form with margins */
+}
+.flat-header {
+    margin-bottom: 40px;
+    color: var(--color-primary-dark);
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 16px;
+}
+.flat-header h1 { margin: 0 0 8px 0; font-size: 28px;}
+.flat-header p { margin: 0; color: var(--color-text-muted); }
+
+.event-form { background-color: transparent; padding: 0; }
+.event-form label { color: var(--color-primary-dark); font-weight: 600; }
+.section-title { color: var(--color-primary-dark); border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-bottom: 20px; }
+
+.form-columns-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.form-column { display: flex; flex-direction: column; gap: 16px; }
+
+.panel-box { margin-top: 10px; background: #f8fafc; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+
+.phone-split-input { display: flex; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: #ffffff; overflow: hidden; max-width: 320px; }
+.phone-split-input:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgb(255, 255, 255); }
+.phone-prefix { border: none; background: #f8fafc; padding: 10px; border-right: 1px solid var(--color-border); color: var(--color-primary-dark); cursor: pointer; outline: none; }
+.phone-suffix { border: none; padding: 10px; flex: 1; outline: none; letter-spacing: 1px; color: var(--color-primary-dark); }
+.btn-remove-phone { background: none; border: none; color: #ef4444; padding: 0 10px; cursor: pointer; font-size: 16px; opacity: 0.7; }
+
+.error-border { border-color: #ef4444 !important; }
+.error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; }
+.radio-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--color-primary-dark); }

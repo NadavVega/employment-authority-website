@@ -2,43 +2,31 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { EventForm } from '../components/events/event-form'; 
+import '../design/event-form.css';
 
 export const AddEventPage = () => {
     const navigate = useNavigate();
     const { userRole, isAdmin } = useAuth();
 
-    // Security Check
+    if (userRole === undefined) return <div dir="rtl" style={{ padding: '40px', textAlign: 'center' }}>טוען נתוני משתמש...</div>;
+
     if (userRole !== 'coordinator' && userRole !== 'admin') {
         return (
             <div dir="rtl" className="error-screen">
                 <h2>שגיאת הרשאה</h2>
-                <p>אין לך גישה לעמוד זה. (Access Denied)</p>
-                {/* Fixed Button Class */}
-                <button onClick={() => navigate('/')} className="btn-primary">חזרה לדף הבית</button>
+                <p>אין לך גישה לעמוד זה.</p>
+                <button onClick={() => navigate('/')} className="btn-primary pill-btn">חזרה לדף הבית</button>
             </div>
         );
     }
 
     return (
-        /* Fixed: Using the Global Modern Wrapper */
-        <div className="modern-layout-wrapper" dir="rtl">
-            
-            {/* Fixed: Using the Global Rich Header */}
-            <div className="page-header-rich">
-                <div className="page-header-content">
-                    <h1>{isAdmin ? 'פרסום אירוע חדש' : 'בקשה לפרסום אירוע'}</h1>
-                    <p>מלאו את הפרטים מטה כדי להוסיף פעילות חדשה למערכת</p>
-                </div>
+        <div className="flat-page-wrapper" dir="rtl">
+            <div className="flat-header">
+                <h1>{isAdmin ? 'פרסום אירוע חדש' : 'בקשה לפרסום אירוע'}</h1>
+                <p>מלאו את הפרטים מטה כדי להוסיף פעילות חדשה למערכת</p>
             </div>
-
-            {/* Fixed: Using the Global Floating Card */}
-            <div className="floating-content-card">
-                <EventForm 
-                    onSuccess={() => navigate('/events')} 
-                    onCancel={() => navigate(-1)}         
-                />
-            </div>
-
+            <EventForm onSuccess={() => navigate('/events')} onCancel={() => navigate(-1)} />
         </div>
     );
 };
