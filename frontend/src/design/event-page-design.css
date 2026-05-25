@@ -276,7 +276,7 @@
 
 .phone-split-input:focus-within {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(0, 59, 139, 0.08);
+    box-shadow: 0 0 0 3px rgb(255, 255, 255);
 }
 
 .phone-split-input select.phone-prefix,
