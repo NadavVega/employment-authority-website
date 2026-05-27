@@ -5,22 +5,25 @@ import { EventCard } from '../components/events/event-card';
 
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
+import { eventService } from '../services/interfaces/event-services'; 
 
+//importing styles
+import '../design/event-card.css';
+import '../design/event-page.css'; 
+
+// importing images and logos 
 import employmentLogo from '../assets/images/employment-logo.png';
-import '../design/event-page-design.css'; 
 import cityView from '../assets/images/city-view.png';
 
-const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
+const FILTER_CATEGORIES = ['הכל', 'ממתינים לאישור', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
 export const EventsPage = () => {
-    const { isGuest, userRole, isAdmin } = useAuth(); 
+    const { currentUser, isGuest, userRole, isAdmin } = useAuth(); 
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
     
     const [realEvents, setRealEvents] = useState([]);
-    
-    // State to handle the Full Screen Modal
     const [selectedEventModal, setSelectedEventModal] = useState(null);
 
     useEffect(() => {
@@ -44,9 +47,17 @@ export const EventsPage = () => {
     const pastEvents = [];
 
     realEvents.forEach(event => {
-        if (!isAdmin && event.status !== 'published') return; 
+        // Skip deleted events entirely
+        if (event.status === 'deleted') return;
+
+        // Permissions Check
+        if (event.status === 'pending') {
+            if (!isAdmin && event.createdBy !== currentUser?.uid) return;
+        } else if (event.status !== 'published') {
+            return;
+        }
+
         const eventDateValue = event.date?.toDate ? event.date.toDate() : new Date(event.date);
-        
         if (eventDateValue < today) {
             pastEvents.push(event);
         } else {
@@ -55,10 +66,42 @@ export const EventsPage = () => {
     });
 
     const filterFunction = (event) => {
+        const isPendingFilter = activeFilter === 'ממתינים לאישור';
+        if (isPendingFilter) {
+            return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
+        }
+        
         const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
         const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
         return matchesFilter && matchesSearch;
     };
+
+    const handleApproveEvent = async (eventId) => {
+        try {
+            await eventService.updateEvent(eventId, { status: 'published' });
+        } catch (error) {
+            console.error("Failed to approve:", error);
+            alert("שגיאה באישור האירוע.");
+        }
+    };
+
+    // THIS IS THE MISSING DELETE FUNCTION
+    const handleDeleteEvent = async (eventId) => {
+        if (window.confirm("האם אתה בטוח שברצונך למחוק אירוע זה?")) {
+            try {
+                await eventService.updateEvent(eventId, { status: 'deleted' });
+            } catch (error) {
+                console.error("Failed to delete event:", error);
+                alert("שגיאה במחיקת האירוע.");
+            }
+        }
+    };
+
+    // Filter to hide 'ממתינים לאישור' tab from guests or regular employers
+    const visibleFilters = FILTER_CATEGORIES.filter(cat => {
+        if (cat === 'ממתינים לאישור') return (isAdmin || userRole === 'coordinator');
+        return true;
+    });
 
     return (
         <div className="events-page-wrapper" dir="rtl">
@@ -76,7 +119,6 @@ export const EventsPage = () => {
 
             <div className="events-toolbar">
                 <div className="search-container">
-                    {/* Added the Blue Magnifying Glass Back */}
                     <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -88,7 +130,7 @@ export const EventsPage = () => {
                 </div>
 
                 <div className="filter-pills">
-                    {FILTER_CATEGORIES.map(category => (
+                    {visibleFilters.map(category => (
                         <button 
                             key={category} className={`filter-pill ${activeFilter === category ? 'active' : ''}`}
                             onClick={() => setActiveFilter(category)}
@@ -112,11 +154,15 @@ export const EventsPage = () => {
                             key={event.id} 
                             event={event} 
                             isGuest={isGuest} 
-                            onOpenDetails={(e) => setSelectedEventModal(e)} // Pass trigger to card
+                            onOpenDetails={(e) => setSelectedEventModal(e)} 
+                            onApprove={handleApproveEvent}
+                            onDelete={handleDeleteEvent} // ADDED HERE JUST IN CASE
                         />
                     ))
                 ) : (
-                    <div className="no-results-message"><p>לא נמצאו אירועים פעילים.</p></div>
+                    <div className="no-results-message" style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#64748b', marginTop: '40px' }}>
+                        <p>לא נמצאו אירועים.</p>
+                    </div>
                 )}
             </main>
 
@@ -135,6 +181,8 @@ export const EventsPage = () => {
                                 isGuest={isGuest} 
                                 isExpired={true} 
                                 onOpenDetails={(e) => setSelectedEventModal(e)}
+                                onApprove={handleApproveEvent} 
+                                onDelete={handleDeleteEvent} // PROPERLY PASSED HERE
                             />
                         ))}
                     </main>
@@ -154,7 +202,7 @@ export const EventsPage = () => {
                         
                         <div className="modal-body-content">
                             <div className="modal-info-grid">
-                                <div><strong>תאריך:</strong> <span className="standard-numbers">{new Date(selectedEventModal.date).toLocaleDateString('he-IL')}</span></div>
+                                <div><strong>תאריך:</strong> <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span></div>
                                 <div><strong>שעות:</strong> <span className="standard-numbers" dir="ltr">{selectedEventModal.time}</span></div>
                                 <div><strong>מיקום:</strong> {selectedEventModal.location}</div>
                                 <div><strong>משתתפים:</strong> <span className="standard-numbers">{selectedEventModal.capacity}</span> מקומות</div>
@@ -184,7 +232,7 @@ export const EventsPage = () => {
                                 )}
                             </div>
 
-                            {/* Payment Section rendering in modal */}
+                            {/* Payment Section */}
                             {selectedEventModal.paymentMethod && selectedEventModal.paymentMethod !== 'none' && (
                                 <div className="modal-payment-section">
                                     <h4>פרטי תשלום והרשמה</h4>

@@ -13,7 +13,8 @@ import './design/event-page-design.css';
 import LoginPage from './pages/login-page';
 import { EventsPage } from './pages/event-page';
 import HomePage from './pages/home-page';
-import AddEventPage from './pages/add-event-page'; 
+import AddEventPage from './pages/add-event-page';
+import { EditEventPage } from './pages/edit-event-page'; 
 
 /**
  * ProtectedRoute Guard Component
@@ -59,6 +60,14 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <AddEventPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/edit-event/:id" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <EditEventPage />
                 </MainLayout>
               </ProtectedRoute>
             } />
