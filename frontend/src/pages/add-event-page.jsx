@@ -12,7 +12,7 @@ export const AddEventPage = () => {
 
     if (userRole !== 'coordinator' && userRole !== 'admin') {
         return (
-            <div dir="rtl" className="error-screen">
+            <div dir="rtl" className="error-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
                 <h2>שגיאת הרשאה</h2>
                 <p>אין לך גישה לעמוד זה.</p>
                 <button onClick={() => navigate('/')} className="btn-primary pill-btn">חזרה לדף הבית</button>
@@ -26,7 +26,7 @@ export const AddEventPage = () => {
                 <h1>{isAdmin ? 'פרסום אירוע חדש' : 'בקשה לפרסום אירוע'}</h1>
                 <p>מלאו את הפרטים מטה כדי להוסיף פעילות חדשה למערכת</p>
             </div>
-            <EventForm onSuccess={() => navigate('/events')} onCancel={() => navigate(-1)} />
+            <EventForm onSuccess={() => navigate('/events')} onCancel={() => navigate('/events')} />
         </div>
     );
 };

@@ -85,6 +85,18 @@ export const EventsPage = () => {
         }
     };
 
+    // THIS IS THE MISSING DELETE FUNCTION
+    const handleDeleteEvent = async (eventId) => {
+        if (window.confirm("האם אתה בטוח שברצונך למחוק אירוע זה?")) {
+            try {
+                await eventService.updateEvent(eventId, { status: 'deleted' });
+            } catch (error) {
+                console.error("Failed to delete event:", error);
+                alert("שגיאה במחיקת האירוע.");
+            }
+        }
+    };
+
     // Filter to hide 'ממתינים לאישור' tab from guests or regular employers
     const visibleFilters = FILTER_CATEGORIES.filter(cat => {
         if (cat === 'ממתינים לאישור') return (isAdmin || userRole === 'coordinator');
@@ -144,6 +156,7 @@ export const EventsPage = () => {
                             isGuest={isGuest} 
                             onOpenDetails={(e) => setSelectedEventModal(e)} 
                             onApprove={handleApproveEvent}
+                            onDelete={handleDeleteEvent} // ADDED HERE JUST IN CASE
                         />
                     ))
                 ) : (
@@ -169,6 +182,7 @@ export const EventsPage = () => {
                                 isExpired={true} 
                                 onOpenDetails={(e) => setSelectedEventModal(e)}
                                 onApprove={handleApproveEvent} 
+                                onDelete={handleDeleteEvent} // PROPERLY PASSED HERE
                             />
                         ))}
                     </main>

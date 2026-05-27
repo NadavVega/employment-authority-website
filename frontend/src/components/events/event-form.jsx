@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/auth-context';
 import { eventService } from '../../services/interfaces/event-services'; 
-import '../../design/event-form.css'; 
+
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from '../../services/firebase/config'; 
+
+import '../../design/event-page-design.css'; 
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,7 +22,6 @@ const markerIcon = new L.Icon({
 const JERUSALEM_COORDS = { lat: 31.7683, lng: 35.2137 };
 const ISRAELI_PREFIXES = ['050', '051', '052', '053', '054', '055', '058', '059', '02', '03', '04', '08', '09', '072', '073', '077'];
 
-// Helper to parse phone strings back to array of objects
 const parsePhoneString = (phoneStr) => {
     if (!phoneStr) return [{ prefix: '050', number: '' }];
     return phoneStr.split(', ').map(p => {
@@ -30,24 +33,26 @@ const parsePhoneString = (phoneStr) => {
 export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel }) => {
     const { currentUser, userRole, isAdmin } = useAuth();
     
-    // Safety check - should be handled by parent route, but good for defense
     if (userRole !== 'coordinator' && userRole !== 'admin') return null;
 
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
     
-    // Modals & Popups
     const [isMapExpanded, setIsMapExpanded] = useState(false);
     const [showPriceWarning, setShowPriceWarning] = useState(false);
     const [priceWarningAccepted, setPriceWarningAccepted] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    // Map State
     const [pendingMapPosition, setPendingMapPosition] = useState(JERUSALEM_COORDS);
     const [pendingLocationText, setPendingLocationText] = useState('');
     const [isSearching, setIsSearching] = useState(false); 
 
-    // Form Data State
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('idle'); 
+
+    const [isCapacityUnlimited, setIsCapacityUnlimited] = useState(false);
+
     const [formData, setFormData] = useState({
         title: '', type: '', date: '', startTime: '', endTime: '', location: '', capacity: '', description: '',
         isAccessible: false, accessibilityContactName: '',
@@ -60,16 +65,15 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Populate data if in edit mode
     useEffect(() => {
         if (isEditMode && initialData) {
             setFormData({
                 ...initialData,
-                // Ensure date is formatted correctly for the input type="date"
                 date: initialData.date?.toDate ? initialData.date.toDate().toISOString().split('T')[0] : (initialData.date || ''),
                 startTime: initialData.time ? initialData.time.split('-')[0] : '',
                 endTime: initialData.time ? initialData.time.split('-')[1] : '',
             });
+            setIsCapacityUnlimited(!initialData.capacity || initialData.capacity === 'ללא הגבלה');
             setCoordinatorPhones(parsePhoneString(initialData.coordinatorPhone));
             if (initialData.isAccessible) {
                 setAccessibilityPhones(parsePhoneString(initialData.accessibilityContactPhone));
@@ -77,9 +81,41 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         }
     }, [isEditMode, initialData]);
 
-    // ==========================================
-    // VALIDATIONS & HANDLERS
-    // ==========================================
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('נא להעלות קובץ תמונה בלבד');
+            return;
+        }
+
+        const uniqueFileName = `${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, `event_images/${uniqueFileName}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        setIsUploading(true);
+        setUploadStatus('uploading');
+
+        uploadTask.on('state_changed', 
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            }, 
+            (error) => {
+                console.error("Upload Error:", error);
+                setUploadStatus('error');
+                setIsUploading(false);
+            }, 
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                setFormData(prev => ({ ...prev, photoUrl: downloadURL }));
+                setUploadStatus('success');
+                setIsUploading(false);
+                setUploadProgress(0);
+            }
+        );
+    };
 
     const calculateTimeDifference = (start, end) => {
         if (!start || !end) return 0;
@@ -114,20 +150,18 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         let newErrors = {};
         const nameRegex = /^[a-zA-Zא-ת\s]+$/;
         const phoneRegex = /^\d{7}$/;
-        const urlRegex = /^https?:\/\/.+/;
 
-        ['title', 'type', 'date', 'startTime', 'endTime', 'location', 'capacity', 'description'].forEach(field => {
+        ['title', 'type', 'date', 'startTime', 'endTime', 'location', 'description'].forEach(field => {
             if (!formData[field]) newErrors[field] = 'שדה זה הוא חובה';
         });
+
+        if (!isCapacityUnlimited && !formData.capacity) {
+            newErrors.capacity = 'שדה זה הוא חובה (או סמן "ללא הגבלה")';
+        }
 
         if (formData.startTime && formData.endTime) {
             const diff = calculateTimeDifference(formData.startTime, formData.endTime);
             if (diff < 30) newErrors.endTime = 'האירוע חייב להיות לפחות 30 דקות';
-        }
-
-        if (formData.capacity) {
-            const cap = Number(formData.capacity);
-            if (cap < 1 || cap > 1000) newErrors.capacity = 'כמות חייבת להיות בין 1 ל-1000';
         }
 
         const seenPhones = new Set();
@@ -149,12 +183,6 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
 
         if (formData.paymentMethod !== 'none') {
             if (!formData.price || Number(formData.price) < 0) newErrors.price = 'יש להזין מחיר תקין';
-            if (formData.paymentMethod === 'link' && !urlRegex.test(formData.paymentDetails)) {
-                newErrors.paymentDetails = 'יש להזין קישור תקין (מתחיל ב-http)';
-            }
-            if (formData.paymentMethod === 'bit' && !/^\d{10}$/.test(formData.paymentDetails)) {
-                newErrors.paymentDetails = 'יש להזין מספר טלפון תקין בן 10 ספרות (ללא מקפים)';
-            }
             if (formData.paymentMethod === 'other' && !formData.paymentDetails) {
                 newErrors.paymentDetails = 'שדה זה הוא חובה';
             }
@@ -166,7 +194,16 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validateForm()) return; 
+        
+        if (!validateForm()) {
+            alert('שגיאה: ישנם שדות חסרים או לא תקינים. אנא בדוק את ההערות באדום בטופס.');
+            return; 
+        }
+
+        if (isUploading) {
+            alert('אנא המתן לסיום העלאת התמונה');
+            return;
+        }
 
         setIsLoading(true); 
 
@@ -176,12 +213,12 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
 
             const formattedData = { 
                 ...formData, 
+                capacity: isCapacityUnlimited ? '' : formData.capacity,
                 time: `${formData.startTime}-${formData.endTime}`, 
                 coordinatorPhone: combinedCoordPhones,
                 accessibilityContactPhone: combinedAccPhones
             };
 
-            // If edited by a coordinator (not admin), force status back to pending
             if (isEditMode && !isAdmin) {
                 formattedData.status = 'pending';
             }
@@ -203,13 +240,20 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     };
 
     const handleDelete = async () => {
+        // Protect against null initialData 
+        if (!initialData || !initialData.id) {
+            alert("Error: Cannot delete an event that hasn't fully loaded.");
+            setShowDeleteConfirm(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
-            // Soft delete: keep the record but change status to 'deleted'
             await eventService.updateEvent(initialData.id, { status: 'deleted' });
             alert('האירוע נמחק בהצלחה.');
-            if (onSuccess) onSuccess();
+            if (onSuccess) onSuccess(); // Triggers the navigation back to /events
         } catch (error) {
+            console.error("Failed to delete event:", error);
             setErrors({ global: error.message });
         } finally {
             setIsLoading(false);
@@ -217,14 +261,9 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         }
     };
 
-    // ==========================================
-    // MAP LOGIC
-    // ==========================================
     const fetchAddress = async (lat, lng) => {
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-                headers: { 'Accept-Language': 'he' }
-            });
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=he`);
             const data = await response.json();
             if (data && data.display_name) {
                 const shortAddress = data.display_name.split(',').slice(0, 3).join(',');
@@ -239,11 +278,8 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         if (!pendingLocationText) return;
         setIsSearching(true);
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pendingLocationText)}&limit=1`, {
-                headers: { 'Accept-Language': 'he' }
-            });
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pendingLocationText)}&limit=1&accept-language=he`);
             const data = await response.json();
-            
             if (data && data.length > 0) {
                 const lat = parseFloat(data[0].lat);
                 const lng = parseFloat(data[0].lon);
@@ -277,9 +313,6 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     const closeMapAttempt = () => { setIsMapExpanded(false); };
     const confirmMapSelection = () => { setFormData(prev => ({ ...prev, location: pendingLocationText })); setIsMapExpanded(false); };
 
-    // ==========================================
-    // RENDER HELPERS
-    // ==========================================
     const renderPhoneInputs = (phoneArray, setPhoneArray, errorPrefix) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {phoneArray.map((phone, index) => (
@@ -318,19 +351,22 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         </div>
     );
 
-    // ==========================================
-    // MAIN RENDER
-    // ==========================================
     return (
-        <div className="event-form-container form-contrast-wrapper" dir="rtl">
+        <div className="event-form-container form-contrast-wrapper" dir="rtl" style={{ position: 'relative' }}>
+            
+            {isLoading && (
+                <div className="loading-overlay-full">
+                    <div className="spinner"></div>
+                    <p>שומר נתונים בשרת, אנא המתן...</p>
+                </div>
+            )}
+
             {errors.global && <div className="error-alert">{errors.global}</div>}
 
             <form onSubmit={handleSubmit} className="event-form" noValidate>
                 
-                {/* --- START OF TWO COLUMN LAYOUT --- */}
                 <div className="form-columns-container">
                     
-                    {/* RIGHT COLUMN (First in RTL): Basic Event Details */}
                     <div className="form-column">
                         <h4 className="section-title">פרטי האירוע</h4>
                         
@@ -347,14 +383,20 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                                     <option value="" disabled hidden>בחר סוג אירוע</option>
                                     <option value="הכשרה">הכשרה</option>
                                     <option value="יום קריירה">יום קריירה</option>
-                                    <option value="ירידת עבודה">ירידת עבודה</option>
+                                    <option value="ירידת תעסוקה">ירידת תעסוקה</option>
                                     <option value="סדנה">סדנה</option>
                                 </select>
                                 {errors.type && <span className="error-text">{errors.type}</span>}
                             </div>
+
                             <div className="form-group" style={{ flex: 1 }}>
-                                <label>כמות משתתפים</label>
-                                <input type="number" dir="ltr" max="1000" min="1" value={formData.capacity} onChange={(e) => setFormData({...formData, capacity: e.target.value.replace(/\D/g, '')})} className={`input-standard standard-numbers ${errors.capacity ? 'error-border' : ''}`} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label style={{ margin: 0 }}>כמות משתתפים</label>
+                                    <label className="radio-label" style={{ fontSize: '12px', margin: 0 }}>
+                                        <input type="checkbox" checked={isCapacityUnlimited} onChange={(e) => { setIsCapacityUnlimited(e.target.checked); setFormData({...formData, capacity: ''}); }} /> ללא הגבלה
+                                    </label>
+                                </div>
+                                <input type="number" dir="ltr" max="1000" min="1" disabled={isCapacityUnlimited} value={formData.capacity} onChange={(e) => setFormData({...formData, capacity: e.target.value.replace(/\D/g, '')})} className={`input-standard standard-numbers ${errors.capacity ? 'error-border' : ''}`} style={{ backgroundColor: isCapacityUnlimited ? '#f1f5f9' : '#fff' }} />
                                 {errors.capacity && <span className="error-text">{errors.capacity}</span>}
                             </div>
                         </div>
@@ -365,14 +407,30 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                                 <input type="date" min={todayStr} value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className={`input-standard standard-numbers ${errors.date ? 'error-border' : ''}`} />
                                 {errors.date && <span className="error-text">{errors.date}</span>}
                             </div>
+                            
                             <div className="form-group" style={{ flex: 1 }}>
                                 <label>התחלה</label>
-                                <input type="time" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} className={`input-standard standard-numbers ${errors.startTime ? 'error-border' : ''}`} />
+                                <input 
+                                    type="time" 
+                                    step="900" 
+                                    value={formData.startTime} 
+                                    onChange={(e) => setFormData({...formData, startTime: e.target.value})} 
+                                    className={`input-standard standard-numbers ${errors.startTime ? 'error-border' : ''}`}
+                                    dir="ltr"
+                                />
                                 {errors.startTime && <span className="error-text">{errors.startTime}</span>}
                             </div>
+                            
                             <div className="form-group" style={{ flex: 1 }}>
                                 <label>סיום</label>
-                                <input type="time" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} className={`input-standard standard-numbers ${errors.endTime ? 'error-border' : ''}`} />
+                                <input 
+                                    type="time" 
+                                    step="900" 
+                                    value={formData.endTime} 
+                                    onChange={(e) => setFormData({...formData, endTime: e.target.value})} 
+                                    className={`input-standard standard-numbers ${errors.endTime ? 'error-border' : ''}`}
+                                    dir="ltr"
+                                />  
                                 {errors.endTime && <span className="error-text">{errors.endTime}</span>}
                             </div>
                         </div>
@@ -380,8 +438,8 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                         <div className="form-group">
                             <label>מיקום</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <input type="text" readOnly value={formData.location} placeholder="לחץ לבחירת מיקום..." className={`input-standard ${errors.location ? 'error-border' : ''}`} onClick={openMap} style={{ cursor: 'pointer', flex: 1 }} />
-                                <button type="button" onClick={openMap} className="btn-secondary pill-btn">🗺️ פתח מפה</button>
+                                <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="הכנס כתובת או בחר במפה..." className={`input-standard ${errors.location ? 'error-border' : ''}`} style={{ flex: 1 }} />
+                                <button type="button" onClick={openMap} className="btn-secondary pill-btn" style={{ whiteSpace: 'nowrap' }}>🗺️ פתח מפה</button>
                             </div>
                             {errors.location && <span className="error-text">{errors.location}</span>}
                         </div>
@@ -398,7 +456,6 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                         </div>
                     </div>
 
-                    {/* LEFT COLUMN: Accessibility, Payment, Media */}
                     <div className="form-column">
                         
                         <h4 className="section-title">נגישות</h4>
@@ -470,43 +527,91 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                                             setFormData({...formData, paymentDetails: val});
                                         }} 
                                         className={`input-standard ${formData.paymentMethod !== 'other' ? 'standard-numbers' : ''} ${errors.paymentDetails ? 'error-border' : ''}`} 
-                                        placeholder={formData.paymentMethod === 'link' ? "https://..." : formData.paymentMethod === 'bit' ? "0501234567" : "פרט כיצד לשלם..."}
                                     />
                                     {errors.paymentDetails && <span className="error-text">{errors.paymentDetails}</span>}
                                 </div>
                             </div>
                         )}
 
-                        <h4 className="section-title" style={{ marginTop: '32px' }}>מדיה</h4>
-                        <div style={{ display: 'flex', gap: '15px' }}>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label>קישור לתמונה</label>
-                                <input type="url" value={formData.photoUrl} onChange={(e) => setFormData({...formData, photoUrl: e.target.value})} className="input-standard" placeholder="https://..." />
-                            </div>
+                        <h4 className="section-title" style={{ marginTop: '32px' }}>תמונת אירוע</h4>
+                        <div className="form-group">
+                            
+                            {!formData.photoUrl ? (
+                                <div className="file-upload-container">
+                                    <input 
+                                        type="file" 
+                                        id="event-image-upload"
+                                        accept="image/*" 
+                                        className="file-upload-input" 
+                                        onChange={handleImageUpload}
+                                        disabled={isUploading}
+                                    />
+                                    <div className="upload-placeholder">
+                                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                        </svg>
+                                        <p style={{ margin: 0 }}>גרור תמונה לכאן או לחץ לבחירה</p>
+                                    </div>
+                                    
+                                    {isUploading && (
+                                        <div className="upload-progress-bar">
+                                            <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="image-preview">
+                                    <img src={formData.photoUrl} alt="Event preview" />
+                                    <button 
+                                        type="button" 
+                                        className="btn-remove-image" 
+                                        onClick={() => { 
+                                            setFormData(prev => ({ ...prev, photoUrl: '' })); 
+                                            setUploadStatus('idle'); 
+                                            const fileInput = document.getElementById('event-image-upload');
+                                            if(fileInput) fileInput.value = '';
+                                        }}
+                                        title="הסר תמונה"
+                                    >
+                                        ✖
+                                    </button>
+                                </div>
+                            )}
+
+                            {uploadStatus === 'success' && (
+                                <div style={{ color: '#10b981', fontSize: '13px', fontWeight: 'bold', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>✓</span> תמונה הועלתה בהצלחה
+                                </div>
+                            )}
+                            {uploadStatus === 'error' && (
+                                <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: 'bold', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>✖</span> שגיאה בהעלאת התמונה
+                                </div>
+                            )}
+
                         </div>
 
                     </div>
                 </div>
-                {/* --- END OF TWO COLUMN LAYOUT --- */}
 
-                {/* Form Actions Footer */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', borderTop: '1px solid var(--color-border)', paddingTop: '20px' }}>
                     {isEditMode ? (
-                        <button type="button" onClick={() => setShowDeleteConfirm(true)} className="btn-cancel pill-btn btn-danger" disabled={isLoading}>🗑️ מחיקת אירוע</button>
+                        <button type="button" onClick={() => setShowDeleteConfirm(true)} className="btn-cancel pill-btn btn-danger" disabled={isLoading || isUploading}>🗑️ מחיקת אירוע</button>
                     ) : <div></div>}
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button type="button" onClick={onCancel} className="btn-cancel pill-btn" disabled={isLoading}>ביטול</button>
-                        <button type="submit" className="btn-primary pill-btn" disabled={isLoading}>{isEditMode ? 'שמירת שינויים' : 'שמירה ופרסום'}</button>
+                        <button type="button" onClick={onCancel} className="btn-cancel pill-btn" disabled={isLoading || isUploading}>ביטול</button>
+                        <button type="submit" className="btn-primary pill-btn" disabled={isLoading || isUploading}>{isEditMode ? 'שמירת שינויים' : 'שמירה ופרסום'}</button>
                     </div>
                 </div>
             </form>
 
-            {/* DELETE CONFIRMATION MODAL */}
             {showDeleteConfirm && (
                 <div className="validation-dialog-overlay">
                     <div className="validation-dialog-box">
                         <h4>האם אתה בטוח?</h4>
-                        <p>פעולה זו תסיר את האירוע ולא יהיה ניתן לשחזר אותו (מחיקה רכה).</p>
+                        <p>פעולה זו תסיר את האירוע ולא יהיה ניתן לשחזר אותו.</p>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
                             <button className="btn-cancel pill-btn" onClick={() => setShowDeleteConfirm(false)}>ביטול</button>
                             <button className="btn-primary pill-btn btn-danger" style={{color: 'white', background: '#ef4444', border: 'none'}} onClick={handleDelete} disabled={isLoading}>כן, מחק</button>
@@ -515,7 +620,6 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                 </div>
             )}
 
-            {/* MAP MODAL */}
             {isMapExpanded && (
                 <div className="event-modal-overlay">
                     <div className="event-modal-content map-modal-custom">

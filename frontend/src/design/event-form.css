@@ -31,3 +31,97 @@
 .error-border { border-color: #ef4444 !important; }
 .error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; }
 .radio-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--color-primary-dark); }
+
+/* --- FILE UPLOAD STYLING --- */
+.file-upload-container {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    text-align: center;
+    background: #f8fafc;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.file-upload-container:hover {
+    border-color: var(--color-primary);
+    background: rgba(0, 59, 139, 0.02);
+}
+
+.file-upload-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-placeholder {
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+.upload-placeholder svg {
+    width: 32px;
+    height: 32px;
+    stroke: var(--color-primary);
+    margin-bottom: 8px;
+}
+
+.upload-progress-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.upload-progress-fill {
+    height: 100%;
+    background: var(--color-gold);
+    transition: width 0.3s ease;
+}
+
+.image-preview {
+    margin-top: 16px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    position: relative;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    display: block;
+}
+
+.btn-remove-image {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.loading-overlay-full {
+    position: absolute; inset: 0; background: rgba(255, 255, 255, 0.8);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 1000; font-weight: bold; color: var(--color-primary-dark);
+}
+.spinner {
+    border: 4px solid #f3f3f3; border-top: 4px solid var(--color-primary);
+    border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

@@ -1,7 +1,7 @@
 .event-card {
     border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
     display: flex; flex-direction: column;
-    height: 290px; /* FIX: Reduced total height for smaller display */
+    height: 290px; 
     position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
@@ -14,6 +14,8 @@
 
 .badge-free { background-color: #facc15; color: #000; font-weight: 800; font-size: 14px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px dashed #000; }
 .status-badge-pending { background: #f59e0b; color: white; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.badge-accessibility { background: #003b8b; border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
 .edit-pencil-btn-new { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 11; }
 .edit-pencil-btn-new:hover { background: var(--color-primary); transform: scale(1.1); }
 .edit-pencil-btn-new svg { width: 16px; height: 16px; stroke: white; }
@@ -28,12 +30,13 @@
 .overlay-btn { border: 1px solid #facc15; color: #facc15; background: transparent; border-radius: 20px; padding: 6px 16px; font-size: 13px; font-weight: bold; align-self: center; cursor: pointer; transition: background 0.2s; margin-top: 10px;}
 .overlay-btn:hover { background: rgba(250, 204, 21, 0.1); }
 
-/* Bottom Section */
+/* Bottom Section - Updated for Issue #6 */
 .event-card-bottom {
-    background: var(--color-primary-dark); color: white; padding: 12px; 
-    display: flex; align-items: center; height: 75px; z-index: 6;
+    background: var(--color-primary-dark); color: white; 
+    display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+    padding: 12px 16px; height: auto; z-index: 6;
 }
-.bottom-date-area { border-left: 1px solid rgba(255,255,255,0.3); padding-left: 12px; min-width: 60px; text-align: center; }
-.bottom-date-big { font-size: 22px; font-weight: 800; line-height: 1; }
-.bottom-title-area { flex: 1; padding-right: 12px; text-align: right; }
-.bottom-title { font-size: 14px; font-weight: bold; margin: 0; line-height: 1.2; }
+.bottom-date-area { border-left: none; padding-left: 0; min-width: auto; text-align: right; }
+.bottom-date-big { font-size: 16px; font-weight: bold; line-height: 1.2; margin: 0; }
+.bottom-title-area { flex: 1; text-align: right; border-right: 2px solid rgba(255,255,255,0.3); padding-right: 12px; }
+.bottom-title { font-size: 16px; font-weight: bold; margin: 0; line-height: 1.2; }
