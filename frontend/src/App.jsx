@@ -4,6 +4,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import theme from './utils/theme';
 import { AuthProvider, useAuth } from './context/auth-context';
 import MainLayout from './components/layout/main-layout';
+import DirectoryPage from './pages/directory-page';
+import EmployerProfilePage from './pages/employer-profile-page';
 
 //import design files
 import './design/global-theme.css';
@@ -59,6 +61,22 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <AddEventPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/directory" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <DirectoryPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/directory/:employerId" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <EmployerProfilePage />
                 </MainLayout>
               </ProtectedRoute>
             } />
