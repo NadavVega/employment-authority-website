@@ -1,72 +1,109 @@
 import React from 'react';
+import { useAuth } from '../../context/auth-context';
+import { useNavigate } from 'react-router-dom';
+import '../../design/event-card.css';
 
-const formatDateBadge = (dateValue) => {
-    if (!dateValue) return { day: '-', month: '-' };
-    if (dateValue.day && dateValue.month) return dateValue;
-    
-    try {
-        const dateObj = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
-        if (isNaN(dateObj)) return { day: '-', month: '-' };
-        const day = dateObj.getDate().toString();
-        const month = dateObj.toLocaleString('he-IL', { month: 'short' }); 
-        return { day, month };
-    } catch (error) {
-        return { day: '-', month: '-' };
+const formatShortAddress = (address) => {
+    if (!address) return 'מקוון';
+    const parts = address.split(',');
+    let shortAddress = parts[0].trim();
+    if (/^\d+$/.test(shortAddress) && parts.length > 1) {
+        shortAddress = `${parts[1].trim()} ${shortAddress}`;
     }
+    return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, onOpenDetails }) => {
-    const displayDate = formatDateBadge(event.date);
+export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove, onDelete }) => {
+    const { currentUser, isAdmin } = useAuth();
+    const navigate = useNavigate();
+
+    const isCreator = event.createdBy === currentUser?.uid;
+    const canEdit = isAdmin || isCreator;
+    const isPending = event.status === 'pending';
+
+    const handleEditClick = (e) => {
+        e.stopPropagation();
+        navigate(`/edit-event/${event.id}`);
+    };
+
+    const dateObj = event.date?.toDate ? event.date.toDate() : new Date(event.date);
+    const dayMonth = isNaN(dateObj) ? '--' : `${dateObj.getDate().toString().padStart(2, '0')}.${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+    const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
+
+    const cardImage = event.photoUrl || 'https://via.placeholder.com/300x200?text=No+Image';
+    const shortLocation = formatShortAddress(event.location);
 
     return (
         <div className={`event-card ${isExpired ? 'event-card-expired' : ''}`} onClick={() => onOpenDetails(event)}>
-            <div className="event-card-header">
-                <div className="event-date-badge">
-                    <span className="event-date-day standard-numbers">{displayDate.day}</span>
-                    <span className="event-date-mon">{displayDate.month}</span>
+            
+            <div className="event-card-image-area" style={{ backgroundImage: `url(${cardImage})` }}>
+                <div className="card-badges-container">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {event.paymentMethod === 'none' && <div className="badge-free">חינם</div>}
+                        {isPending && !isAdmin && isCreator && <span className="status-badge-pending">מחכה לאישור</span>}
+                        {isPending && isAdmin && (
+                            <button className="btn-approve pill-btn" onClick={(e) => { e.stopPropagation(); onApprove(event.id); }} style={{ padding: '4px 8px', fontSize: '11px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                                אשר אירוע
+                            </button>
+                        )}
+                        {/* Accessibility Icon */}
+                        {event.isAccessible && (
+                            <div className="badge-accessibility" title="אירוע נגיש" style={{ background: '#003b8b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="4" r="2"></circle>
+                                    <polyline points="12 7 12 11 16 15"></polyline>
+                                    <path d="M8 21.5a5.5 5.5 0 1 0 7-3.5"></path>
+                                    <path d="M12 11L9.5 8.5"></path>
+                                </svg>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Delete button for Expired, Edit button for Active */}
+                    {canEdit && (
+                        isExpired ? (
+                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: '#ef4444' }} title="מחיקת אירוע">
+                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        ) : (
+                            <button className="edit-pencil-btn-new" onClick={handleEditClick} title="עריכת אירוע">
+                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                </svg>
+                            </button>
+                        )
+                    )}
                 </div>
-                <div className="event-card-type">{event.type || 'כללי'}</div>
+
+                <div className="event-card-overlay">
+                    <div className="overlay-meta-grid">
+                        <div className="overlay-meta-item">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            <span dir="ltr" className="standard-numbers">{event.time || 'טרם נקבע'}</span>
+                        </div>
+                        <div className="overlay-meta-item">
+                            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <span className="standard-numbers">{fullDate}</span>
+                        </div>
+                        <div className="overlay-meta-item">
+                            <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <span>{shortLocation}</span>
+                        </div>
+                    </div>
+                    <div className="overlay-desc">{event.description}</div>
+                    <button className="overlay-btn" onClick={(e) => { e.stopPropagation(); onOpenDetails(event); }}>לכל הפרטים &gt;</button>
+                </div>
             </div>
 
-            <div className="event-card-body">
-                <h3 className="event-title">{event.title}</h3>
-
-                <div className="event-meta">
-                    <div className="event-meta-item">
-                        <svg className="meta-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        <span className="standard-numbers" dir="ltr">{event.time || 'טרם נקבע'}</span>
-                    </div>
-                    <div className="event-meta-item">
-                        <svg className="meta-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                        <span>{event.location || 'מרחב מקוון'}</span>
-                    </div>
-                    <div className="event-meta-item">
-                        <svg className="meta-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-                        <span className="standard-numbers">{event.capacity || 'ללא הגבלה'}</span>
-                    </div>
+            <div className="event-card-bottom">
+                <div className="bottom-date-area standard-numbers">
+                    <p className="bottom-date-big">{dayMonth}</p>
                 </div>
-
-                <p className="event-desc">{event.description}</p>
-
-                <div className="event-card-actions">
-                    <button 
-                        className="btn-secondary pill-btn" 
-                        onClick={(e) => { e.stopPropagation(); onOpenDetails(event); }}
-                    >
-                        פרטי אירוע
-                    </button>
-                    {!isGuest && (
-                        <button 
-                            className="btn-primary pill-btn" 
-                            disabled={isExpired}
-                            onClick={(e) => { 
-                                e.stopPropagation(); 
-                                console.log("Register for", event.id); 
-                            }}
-                        >
-                            הרשמה לאירוע
-                        </button>
-                    )}
+                <div className="bottom-title-area">
+                    <p className="bottom-title">{event.title}</p>
                 </div>
             </div>
         </div>

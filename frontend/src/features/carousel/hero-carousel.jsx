@@ -1,117 +1,70 @@
 import React, { useState } from 'react';
 import { Box, Typography, Paper, Button } from '@mui/material';
 
-// Mock data specifically for the carousel slides
-const CAROUSEL_SLIDES = [
-    {
-        id: 1,
-        title: 'אירוע השבוע: כנס מעסיקים - מרכז העיר',
-        subtitle: 'הצטרפו אלינו לכנס השנתי הגדול של מעסיקי ירושלים. בתוכנית: נטוורקינג ועדכונים על מענקי תעסוקה.',
-        image: 'https://via.placeholder.com/800x400/1565c0/ffffff?text=Employers+Conference'
-    },
-    {
-        id: 2,
-        title: 'הכשרות מקצועיות למגזר הטכנולוגי',
-        subtitle: 'פותחים מחזור חדש של הכשרות במימון מלא עבור חברות הייטק בהר חוצבים.',
-        image: 'https://via.placeholder.com/800x400/2e7d32/ffffff?text=Tech+Training'
-    },
-    {
-        id: 3,
-        title: 'עדכון נהלי בטיחות - חורף 2026',
-        subtitle: 'כל מה שמעסיקים צריכים לדעת על היערכות לחורף הקרוב במרחבי עבודה משותפים.',
-        image: 'https://via.placeholder.com/800x400/d32f2f/ffffff?text=Winter+Safety'
-    }
-];
-
-/**
- * HeroCarousel - Manages a sliding image gallery for main announcements.
- * Follows SRP by solely handling the state and rendering of the slider.
- */
-const HeroCarousel = () => {
+const HeroCarousel = ({ events }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Handlers for navigating slides
-    const handleNext = () => {
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % CAROUSEL_SLIDES.length);
-    };
+    if (!events || events.length === 0) {
+        return (
+            <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc', borderRadius: 2 }}>
+                <Typography fontWeight="300" sx={{ color: '#64748b' }}>אין אירועים קרובים להצגה.</Typography>
+            </Box>
+        );
+    }
 
-    const handlePrev = () => {
-        setCurrentIndex((prevIndex) => (prevIndex === 0 ? CAROUSEL_SLIDES.length - 1 : prevIndex - 1));
-    };
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % events.length);
+    const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? events.length - 1 : prev - 1));
 
-    const handleDotClick = (index) => {
-        setCurrentIndex(index);
-    };
-
-    const currentSlide = CAROUSEL_SLIDES[currentIndex];
+    const currentSlide = events[currentIndex];
+    const slideImage = currentSlide.photoUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000';
 
     return (
         <Paper 
-            elevation={3} 
+            elevation={0} 
             sx={{ 
-                position: 'relative', 
-                height: '400px', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'flex-end',
-                overflow: 'hidden',
-                borderRadius: 2,
-                backgroundImage: `url(${currentSlide.image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+                position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', 
+                justifyContent: 'flex-end', overflow: 'hidden', borderRadius: 2,
+                backgroundImage: `url(${slideImage})`, backgroundSize: 'cover', backgroundPosition: 'center',
                 transition: 'background-image 0.5s ease-in-out'
             }}
         >
-            {/* Left/Right Navigation Arrows */}
             <Button 
                 onClick={handleNext} 
-                sx={{ position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', minWidth: '40px', height: '40px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
+                sx={{ position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', minWidth: '36px', height: '36px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
             >
-                {/* Visual Left Arrow (Navigates Forward in RTL) */}
-                &lt;
+                &gt;
             </Button>
             
             <Button 
                 onClick={handlePrev} 
-                sx={{ position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', minWidth: '40px', height: '40px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
+                sx={{ position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', minWidth: '36px', height: '36px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
             >
-                {/* Visual Right Arrow (Navigates Backward in RTL) */}
-                &gt;
+                &lt;
             </Button>
 
-            {/* Text Overlay matching the official brand style */}
+            {/* Thinner, edge-to-edge banner */}
             <Box 
                 sx={{ 
-                    bgcolor: 'rgba(0, 51, 102, 0.85)', // Deep blue transparent overlay
-                    color: 'white', 
-                    p: 3, 
-                    width: '100%',
-                    borderBottom: '4px solid',
-                    borderColor: 'secondary.main',
-                    position: 'relative',
-                    zIndex: 5
+                    bgcolor: 'rgba(0, 59, 139, 0.90)', width: '100%',
+                    py: 1.5, px: 2, // Drastically reduced padding to save vertical space
+                    borderBottom: '4px solid #facc15', position: 'relative', zIndex: 5
                 }}
             >
-                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                <Typography variant="subtitle1" fontWeight="700" noWrap sx={{ color: '#ffffff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)', lineHeight: 1.2 }}>
                     {currentSlide.title}
                 </Typography>
-                <Typography variant="body1">
-                    {currentSlide.subtitle}
+                <Typography variant="caption" fontWeight="300" noWrap sx={{ display: 'block', mt: 0.5, color: '#ffffff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                    {currentSlide.date} | {currentSlide.location}
                 </Typography>
                 
-                {/* Navigation Dots */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 1 }}>
-                    {CAROUSEL_SLIDES.map((_, index) => (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, gap: 1 }}>
+                    {events.map((_, index) => (
                         <Box 
-                            key={index}
-                            onClick={() => handleDotClick(index)}
+                            key={index} onClick={() => setCurrentIndex(index)}
                             sx={{ 
-                                width: '12px', 
-                                height: '12px', 
-                                borderRadius: '50%', 
-                                bgcolor: index === currentIndex ? 'secondary.main' : 'rgba(255,255,255,0.5)',
-                                cursor: 'pointer',
-                                transition: '0.3s'
+                                width: '8px', height: '8px', borderRadius: '50%', 
+                                bgcolor: index === currentIndex ? '#facc15' : 'rgba(255,255,255,0.4)',
+                                cursor: 'pointer', transition: '0.3s'
                             }}
                         />
                     ))}

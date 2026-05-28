@@ -15,7 +15,8 @@ import './design/event-page-design.css';
 import LoginPage from './pages/login-page';
 import { EventsPage } from './pages/event-page';
 import HomePage from './pages/home-page';
-import AddEventPage from './pages/add-event-page'; 
+import AddEventPage from './pages/add-event-page';
+import { EditEventPage } from './pages/edit-event-page'; 
 
 /**
  * ProtectedRoute Guard Component
@@ -65,6 +66,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Merged: Directory routes from the feature branch */}
             <Route path="/directory" element={
               <ProtectedRoute>
                 <MainLayout>
@@ -73,6 +75,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Merged: Employer Profile route from the feature branch */}
             <Route path="/directory/:employerId" element={
               <ProtectedRoute>
                 <MainLayout>
@@ -80,6 +83,16 @@ function App() {
                 </MainLayout>
               </ProtectedRoute>
             } />
+
+            {/* Merged: Edit Event route from the main branch */}
+            <Route path="/edit-event/:id" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <EditEventPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            
           </Routes>
         </Router>
       </AuthProvider>
