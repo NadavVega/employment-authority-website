@@ -14,7 +14,6 @@ import jerusalemLogo from '../../assets/images/logo-new2.svg';
  * and reveals it smoothly when scrolling up.
  */
 function HideOnScroll({ children }) {
-    // trigger becomes true when the user scrolls down
     const trigger = useScrollTrigger();
 
     return (
@@ -39,32 +38,57 @@ const MainLayout = ({ children }) => {
             
             {/* The Smart Header Wrapper */}
             <HideOnScroll>
-                {/* position="sticky" keeps it at the top of the viewport when visible */}
                 <AppBar position="sticky" elevation={3} sx={{ top: 0, zIndex: 1100 }}>
                     
                     {/* Top Utility Bar (Dark Mode) */}
                     <Box sx={{ 
-                        bgcolor: '#1a1a1a', color: 'white', px: { xs: 2, md: 5 }, 
-                        py: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+                        bgcolor: '#1a1a1a',
+                        color: 'white',
+                        px: { xs: 2, md: 5 }, 
+                        py: 0.5,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center' 
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                             <Typography variant="caption">עיריית ירושלים</Typography>
-                             <Typography variant="caption">|</Typography>
-                             <Typography variant="caption">רשות התעסוקה</Typography>
+                            <Typography variant="caption">עיריית ירושלים</Typography>
+                            <Typography variant="caption">|</Typography>
+                            <Typography variant="caption">רשות התעסוקה</Typography>
                         </Box>
+
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                             {/* Search Bar */}
-                             <Box sx={{ bgcolor: 'white', borderRadius: 1, px: 1, display: 'flex', alignItems: 'center', height: '28px' }}>
-                                 <InputBase placeholder="חיפוש..." sx={{ fontSize: '0.8rem', color: 'black' }} />
-                             </Box>
+                            {/* Search Bar */}
+                            <Box sx={{
+                                bgcolor: 'white',
+                                borderRadius: 1,
+                                px: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                height: '28px'
+                            }}>
+                                <InputBase
+                                    placeholder="חיפוש..."
+                                    sx={{ fontSize: '0.8rem', color: 'black' }}
+                                />
+                            </Box>
                              
-                             {/* Auth Buttons */}
-                             {!isAuthenticated ? (
-                                <Button variant="contained" color="secondary" size="small" sx={{ fontWeight: 'bold', color: 'black' }}>
+                            {/* Auth Buttons */}
+                            {!isAuthenticated ? (
+                                <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    size="small"
+                                    sx={{ fontWeight: 'bold', color: 'black' }}
+                                    onClick={() => navigate('/')}
+                                >
                                     אזור אישי / כניסה
                                 </Button>
                             ) : (
-                                <Button variant="outlined" color="inherit" size="small">
+                                <Button
+                                    variant="outlined"
+                                    color="inherit"
+                                    size="small"
+                                >
                                     התנתק
                                 </Button>
                             )}
@@ -72,11 +96,17 @@ const MainLayout = ({ children }) => {
                     </Box>
 
                     {/* Main Navigation Bar (Primary Color) */}
-                    <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, md: 5 }, bgcolor: 'primary.main' }}>
+                    <Toolbar sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        px: { xs: 2, md: 5 },
+                        bgcolor: 'primary.main'
+                    }}>
                         
                         {/* Logo Section */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <img 
+                            <img 
                                 src={jerusalemLogo} 
                                 alt="Jerusalem Municipality Logo" 
                                 style={{ height: '75px', cursor: 'pointer' }}
@@ -88,31 +118,69 @@ const MainLayout = ({ children }) => {
                         {/* Links Section */}
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             {isAdmin && (
-                                <Button color="secondary" sx={{ fontWeight: 'bold' }}>
+                                <Button
+                                    color="secondary"
+                                    sx={{ fontWeight: 'bold' }}
+                                >
                                     ניהול בוט
                                 </Button>
                             )}
+
                             {isAuthenticated && (
-                                <Button color="inherit" sx={{ fontWeight: 'bold' }}>אלפון מעסיקים</Button>
+                                <Button
+                                    color="inherit"
+                                    sx={{ fontWeight: 'bold' }}
+                                    onClick={() => navigate('/directory')}
+                                >
+                                    אלפון מעסיקים
+                                </Button>
                             )}
-                             <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/events')}>אירועים</Button>
-                            <Button color="inherit" sx={{ fontWeight: 'bold' }} onClick={() => navigate('/home')}>דף הבית</Button>
+
+                            <Button
+                                color="inherit"
+                                sx={{ fontWeight: 'bold' }}
+                                onClick={() => navigate('/events')}
+                            >
+                                אירועים
+                            </Button>
+
+                            <Button
+                                color="inherit"
+                                sx={{ fontWeight: 'bold' }}
+                                onClick={() => navigate('/home')}
+                            >
+                                דף הבית
+                            </Button>
                         </Box>
                     </Toolbar>
                 </AppBar>
             </HideOnScroll>
 
-            {/* Main Content Area 
-              Changed from Container to Box to allow 100% full-bleed pages (like the Hero image).
-              Internal pages are now responsible for their own margins/padding.
-            */}
-            <Box component="main" sx={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box
+                component="main"
+                sx={{
+                    flex: 1,
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
+            >
                 {children}
             </Box>
 
             <DemoRoleSwitcher />
 
-            <Box component="footer" sx={{ py: 3, textAlign: 'center', bgcolor: 'primary.dark', color: 'white', borderTop: '4px solid', borderColor: 'secondary.main' }}>
+            <Box
+                component="footer"
+                sx={{
+                    py: 3,
+                    textAlign: 'center',
+                    bgcolor: 'primary.dark',
+                    color: 'white',
+                    borderTop: '4px solid',
+                    borderColor: 'secondary.main'
+                }}
+            >
                 <Typography variant="body2">
                     © {new Date().getFullYear()} עיריית ירושלים - רשות התעסוקה
                 </Typography>

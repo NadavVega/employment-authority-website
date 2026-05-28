@@ -3,3 +3,6 @@
 *.log
 test_bot_output.log
 lib/
+functions/data/
+backend/privateKey.json
+tore package-lock.json git restore package-lock.json

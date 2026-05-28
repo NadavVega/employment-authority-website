@@ -4,6 +4,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import theme from './utils/theme';
 import { AuthProvider, useAuth } from './context/auth-context';
 import MainLayout from './components/layout/main-layout';
+import DirectoryPage from './pages/directory-page';
+import EmployerProfilePage from './pages/employer-profile-page';
 
 //import design files
 import './design/global-theme.css';
@@ -64,6 +66,25 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Merged: Directory routes from the feature branch */}
+            <Route path="/directory" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <DirectoryPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Merged: Employer Profile route from the feature branch */}
+            <Route path="/directory/:employerId" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <EmployerProfilePage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Merged: Edit Event route from the main branch */}
             <Route path="/edit-event/:id" element={
               <ProtectedRoute>
                 <MainLayout>
@@ -71,6 +92,7 @@ function App() {
                 </MainLayout>
               </ProtectedRoute>
             } />
+            
           </Routes>
         </Router>
       </AuthProvider>
