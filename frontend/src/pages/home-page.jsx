@@ -4,28 +4,25 @@ import { useAuth } from '../context/auth-context';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 
-import EventCalendar from '../features/calendar/event-calendar'; 
+import EventCalendar from '../features/calendar/home-page-calendar'; 
 import HeroCarousel from '../features/carousel/hero-carousel';
 import MediaCarousel from '../features/carousel/media-carousel'; 
 
-// --- Custom Component for Prettier Window Titles ---
 const SectionTitle = ({ title, icon }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '2px solid #e2e8f0', position: 'relative' }}>
         <Box sx={{ color: '#003b8b', display: 'flex', alignItems: 'center' }}>{icon}</Box>
         <Typography variant="h5" fontWeight="700" sx={{ color: '#003b8b', m: 0 }}>
             {title}
         </Typography>
-        {/* Accent Gold Underline */}
         <Box sx={{ position: 'absolute', bottom: '-2px', right: 0, width: '40px', height: '2px', bgcolor: '#facc15' }} />
     </Box>
 );
 
 const HomePage = () => {
-    const { isAuthenticated, currentUser, isGuest } = useAuth();
+    const { isAuthenticated, currentUser } = useAuth();
     const [articles, setArticles] = useState([]);
     const [events, setEvents] = useState([]);
 
-    // Fetch Articles (Aligns with UC8 preparation)
     useEffect(() => {
         const q = query(collection(db, 'articles'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -35,7 +32,6 @@ const HomePage = () => {
         return () => unsubscribe();
     }, []);
 
-    // Fetch Published Events (Upcoming)
     useEffect(() => {
         const q = query(collection(db, 'events'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -66,12 +62,6 @@ const HomePage = () => {
         >
             <Container maxWidth="xl" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 
-                <Box sx={{ mb: 2, textAlign: 'right', flexShrink: 0 }}>
-                    <Typography variant="h5" fontWeight="300" sx={{ color: '#003b8b' }}> 
-                        {isAuthenticated ? `שלום, ${currentUser?.displayName || 'משתמש'}` : 'לוח בקרה אישי'}
-                    </Typography>
-                </Box>
-
                 {/* DUAL COLUMN FLEXBOX LAYOUT */}
                 <Box 
                     sx={{ 
@@ -84,9 +74,21 @@ const HomePage = () => {
                     }}
                 >
                     
-                    {/* LEFT COLUMN: Articles (Top), Media Carousel (Bottom) - Equal Sizes */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 3 }}>
+                    {/* LEFT COLUMN: Stacked Components */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 3, minWidth: '350px' }}>
                         
+                        {/* 1. Upcoming Events */}
+                        <Paper elevation={0} sx={{ p: 3, borderRadius: 4, direction: 'rtl', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+                            <SectionTitle 
+                                title="אירועים בשבוע הקרוב" 
+                                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>} 
+                            />
+                            <Box sx={{ overflow: 'hidden', borderRadius: 3 }}>
+                                <HeroCarousel events={events} />
+                            </Box>
+                        </Paper>
+
+                        {/* 2. Articles */}
                         <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 4, direction: 'rtl', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                             <SectionTitle 
                                 title="כתבות ועדכוני רשת" 
@@ -115,34 +117,19 @@ const HomePage = () => {
                             </Box>
                         </Paper>
 
-                        {/* EXACT REPLACEMENT: Media Carousel taking the space of the old image box */}
-                        <MediaCarousel />
+                        {/* 3. Media Carousel */}
+                        <Box sx={{ flexShrink: 0 }}>
+                            <MediaCarousel />
+                        </Box>
 
                     </Box>
 
-                    {/* RIGHT COLUMN: Calendar (Tall), Events (Short) */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1.6, gap: 3 }}>
-                        
-                        <Paper elevation={0} sx={{ flex: 2.5, p: 3, pb: 0, borderRadius: 4, direction: 'rtl', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                            <SectionTitle 
-                                title="לוח אירועים" 
-                                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>} 
-                            />
-                            <Box sx={{ flexGrow: 1, minHeight: 0 }}>
-                                <EventCalendar events={events} isGuest={isGuest} />
-                            </Box>
+                    {/* RIGHT COLUMN: Dedicated Calendar */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 2.2 }}>
+                        <Paper elevation={0} sx={{ flex: 1, borderRadius: 4, direction: 'rtl', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            {/* Passed userName prop here */}
+                            <EventCalendar events={events} userName={isAuthenticated ? currentUser?.displayName : 'אורח'} />
                         </Paper>
-
-                        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 4, direction: 'rtl', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                            <SectionTitle 
-                                title="אירועים בשבוע הקרוב" 
-                                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>} 
-                            />
-                            <Box sx={{ flexGrow: 1, overflow: 'hidden', borderRadius: 3 }}>
-                                <HeroCarousel events={events} />
-                            </Box>
-                        </Paper>
-
                     </Box>
 
                 </Box>
