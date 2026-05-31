@@ -124,7 +124,7 @@ const EventCalendar = ({ events, userName }) => {
                 
                 {/* RIGHT: User Greeting */}
                 <Box sx={{ minWidth: '150px' }}>
-                    <Typography variant="h5" fontWeight="700" sx={{ color: '#003b8b' }}>
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#000000' }}>
                         שלום, {userName}
                     </Typography>
                 </Box>
