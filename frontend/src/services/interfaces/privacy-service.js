@@ -4,6 +4,8 @@ import {
   query,
   where,
   getDocs,
+  doc,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -122,5 +124,97 @@ export const privacyService = {
     }
 
     return "none";
+  },
+
+  /**
+   * Fetches all pending privacy requests.
+   * This is intended for admin review.
+   *
+   * @returns {Promise<Array>} Pending privacy requests.
+   */
+  async getPendingPrivacyRequests() {
+    const pendingRequestsQuery = query(
+      collection(db, "privacy_requests"),
+      where("status", "==", "pending")
+    );
+
+    const snapshot = await getDocs(pendingRequestsQuery);
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+
+      return {
+        id: docSnap.id,
+        requesterEmail: data.requesterEmail || "",
+        targetEmail: data.targetEmail || "",
+        status: data.status || "pending",
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+        reviewedAt: data.reviewedAt || null,
+        reviewedBy: data.reviewedBy || null,
+      };
+    });
+  },
+
+  /**
+   * Approves a pending privacy request.
+   *
+   * @param {string} requestId - Firestore document id.
+   * @param {Object} currentUser - Current logged-in admin/employer user.
+   * @returns {Promise<Object>} Result.
+   */
+  async approvePrivacyRequest(requestId, currentUser) {
+    if (!requestId) {
+      throw new Error("Request id is missing.");
+    }
+
+    if (!currentUser?.email) {
+      throw new Error("User must be logged in to approve a request.");
+    }
+
+    const requestRef = doc(db, "privacy_requests", requestId);
+
+    await updateDoc(requestRef, {
+      status: "approved",
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.email,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      status: "approved",
+      message: "Privacy request approved successfully.",
+    };
+  },
+
+  /**
+   * Rejects a pending privacy request.
+   *
+   * @param {string} requestId - Firestore document id.
+   * @param {Object} currentUser - Current logged-in admin/employer user.
+   * @returns {Promise<Object>} Result.
+   */
+  async rejectPrivacyRequest(requestId, currentUser) {
+    if (!requestId) {
+      throw new Error("Request id is missing.");
+    }
+
+    if (!currentUser?.email) {
+      throw new Error("User must be logged in to reject a request.");
+    }
+
+    const requestRef = doc(db, "privacy_requests", requestId);
+
+    await updateDoc(requestRef, {
+      status: "rejected",
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.email,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      status: "rejected",
+      message: "Privacy request rejected successfully.",
+    };
   },
 };

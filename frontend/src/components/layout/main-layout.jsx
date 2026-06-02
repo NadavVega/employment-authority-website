@@ -126,6 +126,16 @@ const MainLayout = ({ children }) => {
                                 </Button>
                             )}
 
+                            {isAdmin && (
+                                <Button
+                                    color="secondary"
+                                    sx={{ fontWeight: 'bold' }}
+                                    onClick={() => navigate('/privacy-requests')}
+                                >
+                                    בקשות גישה
+                                </Button>
+                            )}
+
                             {isAuthenticated && (
                                 <Button
                                     color="inherit"
