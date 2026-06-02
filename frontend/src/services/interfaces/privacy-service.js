@@ -34,64 +34,47 @@ export const privacyService = {
       throw new Error("Target employer email is missing.");
     }
 
-    const requesterEmail = currentUser.email.toLowerCase();
-    const targetEmail = targetEmployer.email.toLowerCase();
+    // Important:
+    // requesterEmail must match request.auth.token.email exactly in Firestore Rules.
+    const requesterEmail = currentUser.email;
+    const targetEmail = targetEmployer.email;
 
-    console.log("Creating privacy request with:", {
+    const existingRequestQuery = query(
+      collection(db, "privacy_requests"),
+      where("requesterEmail", "==", requesterEmail),
+      where("targetEmail", "==", targetEmail),
+      where("status", "==", "pending")
+    );
+
+    const existingSnapshot = await getDocs(existingRequestQuery);
+
+    if (!existingSnapshot.empty) {
+      return {
+        status: "already_pending",
+        message: "Access request already exists.",
+      };
+    }
+
+    const requestData = {
       requesterEmail,
       targetEmail,
       status: "pending",
-    });
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      reviewedAt: null,
+      reviewedBy: null,
+    };
 
-    try {
-      console.log("Checking for existing pending request...");
+    const docRef = await addDoc(
+      collection(db, "privacy_requests"),
+      requestData
+    );
 
-      const existingRequestQuery = query(
-        collection(db, "privacy_requests"),
-        where("requesterEmail", "==", requesterEmail),
-        where("targetEmail", "==", targetEmail),
-        where("status", "==", "pending")
-      );
-
-      const existingSnapshot = await getDocs(existingRequestQuery);
-
-      console.log("Existing pending requests count:", existingSnapshot.size);
-
-      if (!existingSnapshot.empty) {
-        return {
-          status: "already_pending",
-          message: "Access request already exists.",
-        };
-      }
-
-      const requestData = {
-        requesterEmail,
-        targetEmail,
-        status: "pending",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        reviewedAt: null,
-        reviewedBy: null,
-      };
-
-      console.log("About to add privacy request document:", requestData);
-
-      const docRef = await addDoc(
-        collection(db, "privacy_requests"),
-        requestData
-      );
-
-      console.log("Privacy request created successfully:", docRef.id);
-
-      return {
-        id: docRef.id,
-        status: "pending",
-        message: "Access request sent successfully.",
-      };
-    } catch (error) {
-      console.error("privacyService.requestContactAccess failed:", error);
-      throw error;
-    }
+    return {
+      id: docRef.id,
+      status: "pending",
+      message: "Access request sent successfully.",
+    };
   },
 
   /**
@@ -109,8 +92,8 @@ export const privacyService = {
       return "none";
     }
 
-    const requesterEmail = currentUser.email.toLowerCase();
-    const targetEmail = targetEmployer.email.toLowerCase();
+    const requesterEmail = currentUser.email;
+    const targetEmail = targetEmployer.email;
 
     const accessQuery = query(
       collection(db, "privacy_requests"),
