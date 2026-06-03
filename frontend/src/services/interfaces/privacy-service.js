@@ -4,8 +4,11 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
+  setDoc,
+  arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -127,6 +130,42 @@ export const privacyService = {
   },
 
   /**
+   * Fetches private contact details for an employer.
+   * Firestore Rules decide whether the current user is allowed to read it.
+   *
+   * @param {Object} currentUser - Current logged-in user.
+   * @param {Object} targetEmployer - Employer profile.
+   * @returns {Promise<Object|null>} Private contact details or null.
+   */
+  async getPrivateContactDetails(currentUser, targetEmployer) {
+    if (!currentUser?.email || !targetEmployer?.email) {
+      return null;
+    }
+
+    const privateInfoRef = doc(
+      db,
+      "users",
+      targetEmployer.email,
+      "private_info",
+      "details"
+    );
+
+    const privateInfoSnap = await getDoc(privateInfoRef);
+
+    if (!privateInfoSnap.exists()) {
+      return null;
+    }
+
+    const data = privateInfoSnap.data();
+
+    return {
+      phone: data.phone || "",
+      directEmail: data.directEmail || "",
+      approvedViewers: data.approved_viewers || [],
+    };
+  },
+
+  /**
    * Fetches all pending privacy requests.
    * This is intended for admin review.
    *
@@ -158,21 +197,39 @@ export const privacyService = {
 
   /**
    * Approves a pending privacy request.
+   * In addition to changing the request status, the requester is added
+   * to the target employer's approved_viewers list.
    *
-   * @param {string} requestId - Firestore document id.
+   * @param {Object} request - Privacy request object.
    * @param {Object} currentUser - Current logged-in admin/employer user.
    * @returns {Promise<Object>} Result.
    */
-  async approvePrivacyRequest(requestId, currentUser) {
-    if (!requestId) {
+  async approvePrivacyRequest(request, currentUser) {
+    if (!request?.id) {
       throw new Error("Request id is missing.");
+    }
+
+    if (!request?.requesterEmail) {
+      throw new Error("Requester email is missing.");
+    }
+
+    if (!request?.targetEmail) {
+      throw new Error("Target employer email is missing.");
     }
 
     if (!currentUser?.email) {
       throw new Error("User must be logged in to approve a request.");
     }
 
-    const requestRef = doc(db, "privacy_requests", requestId);
+    const requestRef = doc(db, "privacy_requests", request.id);
+
+    const privateInfoRef = doc(
+      db,
+      "users",
+      request.targetEmail,
+      "private_info",
+      "details"
+    );
 
     await updateDoc(requestRef, {
       status: "approved",
@@ -180,6 +237,15 @@ export const privacyService = {
       reviewedBy: currentUser.email,
       updatedAt: serverTimestamp(),
     });
+
+    await setDoc(
+      privateInfoRef,
+      {
+        approved_viewers: arrayUnion(request.requesterEmail),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     return {
       status: "approved",
@@ -190,12 +256,12 @@ export const privacyService = {
   /**
    * Rejects a pending privacy request.
    *
-   * @param {string} requestId - Firestore document id.
+   * @param {Object} request - Privacy request object.
    * @param {Object} currentUser - Current logged-in admin/employer user.
    * @returns {Promise<Object>} Result.
    */
-  async rejectPrivacyRequest(requestId, currentUser) {
-    if (!requestId) {
+  async rejectPrivacyRequest(request, currentUser) {
+    if (!request?.id) {
       throw new Error("Request id is missing.");
     }
 
@@ -203,7 +269,7 @@ export const privacyService = {
       throw new Error("User must be logged in to reject a request.");
     }
 
-    const requestRef = doc(db, "privacy_requests", requestId);
+    const requestRef = doc(db, "privacy_requests", request.id);
 
     await updateDoc(requestRef, {
       status: "rejected",

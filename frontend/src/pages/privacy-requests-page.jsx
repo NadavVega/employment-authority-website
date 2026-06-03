@@ -46,11 +46,18 @@ const PrivacyRequestsPage = () => {
   }, []);
 
   const handleApprove = async (requestId) => {
+    const request = requests.find((item) => item.id === requestId);
+
+    if (!request) {
+      setMessage("הבקשה לא נמצאה.");
+      return;
+    }
+
     setActionLoadingId(requestId);
     setMessage("");
 
     try {
-      await privacyService.approvePrivacyRequest(requestId, currentUser);
+      await privacyService.approvePrivacyRequest(request, currentUser);
       setMessage("הבקשה אושרה בהצלחה.");
       await loadRequests();
     } catch (error) {
@@ -62,11 +69,18 @@ const PrivacyRequestsPage = () => {
   };
 
   const handleReject = async (requestId) => {
+    const request = requests.find((item) => item.id === requestId);
+
+    if (!request) {
+      setMessage("הבקשה לא נמצאה.");
+      return;
+    }
+
     setActionLoadingId(requestId);
     setMessage("");
 
     try {
-      await privacyService.rejectPrivacyRequest(requestId, currentUser);
+      await privacyService.rejectPrivacyRequest(request, currentUser);
       setMessage("הבקשה נדחתה בהצלחה.");
       await loadRequests();
     } catch (error) {
@@ -219,9 +233,11 @@ const PrivacyRequestsPage = () => {
                     borderRadius: "999px",
                     background: "#0f7b35",
                     color: "white",
-                    cursor: "pointer",
+                    cursor:
+                      actionLoadingId === request.id ? "not-allowed" : "pointer",
                     fontWeight: "bold",
                     fontFamily: "inherit",
+                    opacity: actionLoadingId === request.id ? 0.7 : 1,
                   }}
                 >
                   {actionLoadingId === request.id ? "מאשר..." : "אשר"}
@@ -236,9 +252,11 @@ const PrivacyRequestsPage = () => {
                     borderRadius: "999px",
                     background: "#b00020",
                     color: "white",
-                    cursor: "pointer",
+                    cursor:
+                      actionLoadingId === request.id ? "not-allowed" : "pointer",
                     fontWeight: "bold",
                     fontFamily: "inherit",
+                    opacity: actionLoadingId === request.id ? 0.7 : 1,
                   }}
                 >
                   {actionLoadingId === request.id ? "דוחה..." : "דחה"}
