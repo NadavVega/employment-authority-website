@@ -14,8 +14,20 @@ const EmployerProfilePage = () => {
   const [requestLoading, setRequestLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const canRequestAccess = userRole === "coordinator" || userRole === "admin";
-  const hasApprovedAccess = accessStatus === "approved" || userRole === "admin";
+  const isAdmin = userRole === "admin";
+  const isCoordinator = userRole === "coordinator";
+
+  // Only coordinators need to request access.
+  // Admin has full access by role and should not see request/access-status UI.
+  const canRequestAccess = isCoordinator;
+  const hasApprovedAccess = accessStatus === "approved" || isAdmin;
+
+  const displayRole = (role) => {
+    if (role === "employer") return "מעסיק";
+    if (role === "coordinator") return "רכז";
+    if (role === "admin") return "מנהלת";
+    return role || "לא צוין";
+  };
 
   useEffect(() => {
     const loadEmployerProfile = async () => {
@@ -31,7 +43,7 @@ const EmployerProfilePage = () => {
 
         setEmployer(employerData);
 
-        if (currentUser) {
+        if (currentUser && !isAdmin) {
           const status = await privacyService.getContactAccessStatus(
             currentUser,
             employerData
@@ -48,16 +60,9 @@ const EmployerProfilePage = () => {
     };
 
     loadEmployerProfile();
-  }, [employerId, currentUser]);
+  }, [employerId, currentUser, isAdmin]);
 
   const handleRequestAccess = async () => {
-    console.log("Request Access clicked");
-    console.log("currentUser:", currentUser);
-    console.log("currentUser.email:", currentUser?.email);
-    console.log("userRole:", userRole);
-    console.log("employer:", employer);
-    console.log("employer.email:", employer?.email);
-
     setRequestLoading(true);
     setMessage("");
 
@@ -66,8 +71,6 @@ const EmployerProfilePage = () => {
         currentUser,
         employer
       );
-
-      console.log("Request access result:", result);
 
       setAccessStatus("pending");
       setMessage(result.message || "Access request sent successfully.");
@@ -97,7 +100,14 @@ const EmployerProfilePage = () => {
   }
 
   return (
-    <div dir="rtl" style={{ padding: "40px", maxWidth: "900px", margin: "0 auto" }}>
+    <div
+      dir="rtl"
+      style={{
+        padding: "40px",
+        maxWidth: "900px",
+        margin: "0 auto",
+      }}
+    >
       <h1>פרופיל מעסיק</h1>
 
       <div
@@ -117,7 +127,7 @@ const EmployerProfilePage = () => {
         </p>
 
         <p>
-          <strong>תפקיד:</strong> {employer.role || "לא צוין"}
+          <strong>תפקיד:</strong> {displayRole(employer.role)}
         </p>
 
         <p>
@@ -164,9 +174,11 @@ const EmployerProfilePage = () => {
           </>
         )}
 
-        <p>
-          <strong>סטטוס גישה:</strong> {accessStatus}
-        </p>
+        {!isAdmin && (
+          <p>
+            <strong>סטטוס גישה:</strong> {accessStatus}
+          </p>
+        )}
 
         {canRequestAccess && accessStatus === "none" && (
           <button
@@ -186,13 +198,13 @@ const EmployerProfilePage = () => {
           </button>
         )}
 
-        {accessStatus === "pending" && (
+        {!isAdmin && accessStatus === "pending" && (
           <p style={{ marginTop: "16px", color: "#b26a00" }}>
             בקשת הגישה נשלחה וממתינה לאישור המעסיק.
           </p>
         )}
 
-        {accessStatus === "rejected" && (
+        {!isAdmin && accessStatus === "rejected" && (
           <p style={{ marginTop: "16px", color: "#b00020" }}>
             בקשת הגישה נדחתה.
           </p>
@@ -200,7 +212,7 @@ const EmployerProfilePage = () => {
 
         {!canRequestAccess && !hasApprovedAccess && (
           <p style={{ marginTop: "16px", color: "#777" }}>
-            רק Coordinator יכול לבקש גישה לפרטי קשר פרטיים.
+            רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
           </p>
         )}
 
