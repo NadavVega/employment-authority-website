@@ -3,7 +3,10 @@ const fs = require("fs");
 const path = require("path");
 
 const serviceAccountPath = path.join(__dirname, "../../privateKey.json");
-const employersFilePath = path.join(__dirname, "../data/employers_users_import.json");
+const employersFilePath = path.join(
+  __dirname,
+  "../data/employers_users_import.json"
+);
 
 if (!fs.existsSync(serviceAccountPath)) {
   console.error("Missing Firebase private key file:");
@@ -27,10 +30,17 @@ const db = admin.firestore();
 
 const employers = JSON.parse(fs.readFileSync(employersFilePath, "utf8"));
 
+const getFirstValue = (...values) => {
+  return values.find(
+    (value) => value !== undefined && value !== null && String(value).trim() !== ""
+  ) || "";
+};
+
 async function importEmployers() {
   console.log(`Starting import of ${employers.length} employers...`);
 
   let importedCount = 0;
+  let privateInfoCount = 0;
   let skippedCount = 0;
 
   for (const employer of employers) {
@@ -43,6 +53,23 @@ async function importEmployers() {
     }
 
     const normalizedEmail = documentId.toLowerCase().trim();
+
+    const phone = getFirstValue(
+      employer.phone,
+      employer.mobile,
+      employer.privateInfo?.phone,
+      employer.privateInfo?.mobile,
+      employer.profile?.phone,
+      employer.profile?.mobile
+    );
+
+    const directEmail = getFirstValue(
+      employer.directEmail,
+      employer.privateInfo?.directEmail,
+      employer.privateInfo?.email,
+      employer.email,
+      normalizedEmail
+    );
 
     const userDoc = {
       email: normalizedEmail,
@@ -59,10 +86,32 @@ async function importEmployers() {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
+    const privateInfoDoc = {
+      phone,
+      directEmail,
+      approved_viewers: employer.privateInfo?.approved_viewers || [],
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
     try {
-      await db.collection("users").doc(normalizedEmail).set(userDoc, { merge: true });
+      await db.collection("users").doc(normalizedEmail).set(userDoc, {
+        merge: true,
+      });
+
+      await db
+        .collection("users")
+        .doc(normalizedEmail)
+        .collection("private_info")
+        .doc("details")
+        .set(privateInfoDoc, { merge: true });
+
       console.log(`Imported: ${normalizedEmail}`);
       importedCount++;
+
+      if (phone || directEmail) {
+        privateInfoCount++;
+      }
     } catch (error) {
       console.error(`Failed to import ${normalizedEmail}:`, error.message);
       skippedCount++;
@@ -70,7 +119,8 @@ async function importEmployers() {
   }
 
   console.log("Import finished.");
-  console.log(`Imported: ${importedCount}`);
+  console.log(`Imported users: ${importedCount}`);
+  console.log(`Imported private info docs: ${privateInfoCount}`);
   console.log(`Skipped/failed: ${skippedCount}`);
 }
 
