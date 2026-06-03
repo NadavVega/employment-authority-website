@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { EventCard } from '../components/events/event-card';
 
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -22,9 +22,39 @@ export const EventsPage = () => {
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
-    
+    const location = useLocation();
+
+    // State to hold all events fetched from Firestore
     const [realEvents, setRealEvents] = useState([]);
     const [selectedEventModal, setSelectedEventModal] = useState(null);
+
+    // Registration state
+    const [registeredEventIds, setRegisteredEventIds] = useState([]);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [bitPaymentDetails, setBitPaymentDetails] = useState(null); // Controls the Bit popup
+
+    // Listen for calendar redirects and open the modal automatically
+    useEffect(() => {
+        if (location.state?.openEventId && realEvents.length > 0) {
+            const targetEvent = realEvents.find(e => e.id === location.state.openEventId);
+            if (targetEvent) {
+                setSelectedEventModal(targetEvent);
+                // Clear the state so it doesn't re-open on every page refresh
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [location.state, realEvents]);
+
+    // Fetch registered event IDs for the current user (if employer)
+    useEffect(() => {
+        if (currentUser && userRole === 'employer') {
+            const fetchRegistrations = async () => {
+                const ids = await eventService.getUserRegisteredEventIds(currentUser.uid);
+                setRegisteredEventIds(ids);
+            };
+            fetchRegistrations();
+        }
+    }, [currentUser, userRole]);
 
     useEffect(() => {
         const eventsRef = collection(db, 'events');
@@ -97,6 +127,44 @@ export const EventsPage = () => {
         }
     };
 
+    // This function is called when the user clicks the "הרשמה לאירוע" button in the modal
+    const handleRegisterClick = async (event) => {
+        setIsRegistering(true);
+        try {
+            // Call the safe backend transaction
+            await eventService.registerToEvent(event.id, {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName,
+                email: currentUser.email,
+                // If you have phone/company in currentUser, pass them here too
+            }, event.paymentMethod);
+
+            // Add to local state immediately for snappy UI (Checkmark appears instantly)
+            setRegisteredEventIds(prev => [...prev, event.id]);
+
+            // Handle the Routing based on payment method
+            if (event.paymentMethod === 'link') {
+                window.open(event.paymentDetails, '_blank');
+                alert("נרשמת בהצלחה! הועברת לעמוד התשלום.");
+            } else if (event.paymentMethod === 'bit') {
+                // Open the Bit UI modal
+                setBitPaymentDetails(event.paymentDetails);
+            } else {
+                alert("נרשמת לאירוע בהצלחה!");
+            }
+            
+            // Close the main event modal
+            setSelectedEventModal(null);
+
+        } catch (error) {
+            if (error.message === 'EVENT_FULL') alert("מצטערים, האירוע כבר מלא.");
+            else if (error.message === 'ALREADY_REGISTERED') alert("אתה כבר רשום לאירוע זה.");
+            else alert("שגיאה בהרשמה. אנא נסה שוב.");
+        } finally {
+            setIsRegistering(false);
+        }
+    };
+
     // Filter to hide 'ממתינים לאישור' tab from guests or regular employers
     const visibleFilters = FILTER_CATEGORIES.filter(cat => {
         if (cat === 'ממתינים לאישור') return (isAdmin || userRole === 'coordinator');
@@ -154,6 +222,7 @@ export const EventsPage = () => {
                             key={event.id} 
                             event={event} 
                             isGuest={isGuest} 
+                            isRegistered={registeredEventIds.includes(event.id)}
                             onOpenDetails={(e) => setSelectedEventModal(e)} 
                             onApprove={handleApproveEvent}
                             onDelete={handleDeleteEvent} // ADDED HERE JUST IN CASE
@@ -205,7 +274,14 @@ export const EventsPage = () => {
                                 <div><strong>תאריך:</strong> <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span></div>
                                 <div><strong>שעות:</strong> <span className="standard-numbers" dir="ltr">{selectedEventModal.time}</span></div>
                                 <div><strong>מיקום:</strong> {selectedEventModal.location}</div>
-                                <div><strong>משתתפים:</strong> <span className="standard-numbers">{selectedEventModal.capacity}</span> מקומות</div>
+                                <div>
+                                    <strong>משתתפים:</strong>{' '}
+                                    {(!selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה') ? (
+                                        <span>ללא הגבלה</span>
+                                    ) : (
+                                        <><span className="standard-numbers">{selectedEventModal.capacity}</span> מקומות</>
+                                    )}
+                                </div>
                             </div>
                             
                             <hr className="modal-divider"/>
@@ -251,10 +327,59 @@ export const EventsPage = () => {
 
                         <div className="modal-footer">
                             <button className="btn-cancel pill-btn" onClick={() => setSelectedEventModal(null)}>סגירה</button>
-                            {!isGuest && !selectedEventModal.isExpired && (
-                                <button className="btn-primary pill-btn">הרשמה לאירוע</button>
+                            {/* --- DYNAMIC REGISTRATION BUTTON --- */}
+                            {!isGuest && !selectedEventModal.isExpired && userRole === 'employer' && (
+                                (() => {
+                                    const isRegistered = registeredEventIds.includes(selectedEventModal.id);
+                                    // Parse to integers just to be safe
+                                    const isUnlimited = !selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה';
+                                    const capacity = parseInt(selectedEventModal.capacity) || 0;
+                                    const registeredCount = parseInt(selectedEventModal.registeredCount) || 0;
+                                    const isFull = !isUnlimited && (registeredCount >= capacity);
+
+                                    if (isRegistered) {
+                                        return <button className="btn-primary pill-btn" style={{ backgroundColor: '#10b981', border: 'none', cursor: 'default' }} disabled>רשום לאירוע ✓</button>;
+                                    }
+                                    if (isFull) {
+                                        return <button className="btn-primary pill-btn" style={{ backgroundColor: '#94a3b8', border: 'none', cursor: 'not-allowed' }} disabled>האירוע מלא</button>;
+                                    }
+                                    return (
+                                        <button 
+                                            className="btn-primary pill-btn" 
+                                            onClick={() => handleRegisterClick(selectedEventModal)}
+                                            disabled={isRegistering}
+                                        >
+                                            {isRegistering ? 'רושם...' : 'הרשמה לאירוע'}
+                                        </button>
+                                    );
+                                })()
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== NEW: BIT PAYMENT MODAL ===== */}
+            {bitPaymentDetails && (
+                <div className="validation-dialog-overlay" onClick={() => setBitPaymentDetails(null)}>
+                    <div className="validation-dialog-box" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: '32px' }}>
+                        <h3 style={{ color: '#003b8b', marginBottom: '8px' }}>תשלום באמצעות Bit</h3>
+                        <p style={{ marginBottom: '24px', color: '#64748b' }}>נרשמת לאירוע בהצלחה! להשלמת התהליך, אנא העבר את התשלום למספר הבא:</p>
+                        
+                        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px', color: '#0f172a', marginBottom: '24px' }}>
+                            <span className="standard-numbers" dir="ltr">{bitPaymentDetails}</span>
+                        </div>
+
+                        {/* Deep link to open the Bit app on mobile */}
+                        <a 
+                            href={`https://bitpay.co.il/app/`} 
+                            target="_blank" rel="noreferrer"
+                            style={{ display: 'block', background: '#00e6aa', color: 'white', padding: '12px', borderRadius: '99px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '12px' }}
+                        >
+                            פתיחת אפליקציית Bit
+                        </a>
+
+                        <button className="btn-cancel pill-btn" onClick={() => setBitPaymentDetails(null)}>סגור</button>
                     </div>
                 </div>
             )}

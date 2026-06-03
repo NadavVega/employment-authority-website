@@ -13,7 +13,7 @@ const formatShortAddress = (address) => {
     return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove, onDelete }) => {
+export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -46,6 +46,18 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                                 אשר אירוע
                             </button>
                         )}
+                        {/* NEW: ALREADY REGISTERED CHECKMARK */}
+                        {isRegistered && (
+                        <div style={{
+                            background: '#10b981', color: 'white', padding: '4px 12px',
+                            borderRadius: '99px', fontSize: '12px', fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            רשום
+                        </div>
+                    )}
                         {/* Accessibility Icon */}
                         {event.isAccessible && (
                             <div className="badge-accessibility" title="אירוע נגיש" style={{ background: '#003b8b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>

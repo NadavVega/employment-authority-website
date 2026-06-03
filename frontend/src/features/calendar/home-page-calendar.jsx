@@ -68,7 +68,7 @@ const EventCalendar = ({ events, userName }) => {
                                             size="medium" 
                                             variant="contained" 
                                             sx={{ borderRadius: '99px', bgcolor: '#003b8b', color: '#fff', width: '100%', fontWeight: '700', boxShadow: 'none', '&:hover': { bgcolor: '#002863' } }}
-                                            onClick={(e) => { e.stopPropagation(); navigate('/events'); }}
+                                            onClick={(e) => { e.stopPropagation(); navigate('/events', { state: { openEventId: event.id } }); }}
                                         >
                                             לכל הפרטים
                                         </Button>
