@@ -89,8 +89,15 @@ const SideNavigation = ({ isOpen, onClose }) => {
                     </IconButton>
                 </Box>
 
-                <List sx={{ pt: 0, flexGrow: 1 }}>
-                    
+                <List sx={{ 
+                    pt: 0, 
+                    flexGrow: 1, 
+                    overflowY: 'auto',
+                    // Custom slim scrollbar for dark mode
+                    '&::-webkit-scrollbar': { width: '4px' },
+                    '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '4px' }
+                }}>
+                                    
                     {/* Home Group */}
                     <ListItem disablePadding sx={{ display: 'block', mb: 1 }}>
                         <ListItemButton onClick={() => handleMenuToggle('home')} sx={getDrawerItemStyle('/home-group')}>

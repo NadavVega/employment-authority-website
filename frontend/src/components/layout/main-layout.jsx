@@ -38,31 +38,11 @@ const MainLayout = ({ children }) => {
             {/* ================= HEADER ================= */}
             <HideOnScroll>
                 <AppBar position="sticky" elevation={3} sx={{ top: 0, zIndex: 1100 }}>
-                    <Box sx={{ bgcolor: '#1a1a1a', color: 'white', px: { xs: 2, md: 5 }, py: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="caption">עיריית ירושלים</Typography>
-                            <Typography variant="caption">|</Typography>
-                            <Typography variant="caption">רשות התעסוקה</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, direction: 'ltr' }}>
-                            <Box sx={{ bgcolor: 'white', borderRadius: 1, px: 1, display: 'flex', alignItems: 'center', height: '28px', direction: 'rtl' }}>
-                                <InputBase placeholder="חיפוש..." sx={{ fontSize: '0.8rem', color: 'black' }} />
-                            </Box>
-                            {!isAuthenticated ? (
-                                <Button variant="contained" color="secondary" size="small" sx={{ fontWeight: 'bold', color: 'black' }} onClick={() => navigate('/')}>
-                                    אזור אישי / כניסה
-                                </Button>
-                            ) : (
-                                <Button variant="outlined" color="inherit" size="small">התנתק</Button>
-                            )}
-                        </Box>
-                    </Box>
-
                     <Toolbar sx={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         px: { xs: 2, md: 5 }, py: 1,
                         background: 'linear-gradient(90deg, #001a40 0%, #003b8b 100%)',
-                        borderBottom: '3px solid #facc15' 
+                        borderBottom: '4px solid #ffbc04' 
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <IconButton color="inherit" onClick={() => setIsDrawerOpen(true)} sx={{ ml: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
