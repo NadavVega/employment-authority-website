@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Paper, Container, Card, CardContent, Divider } from '@mui/material';
+import { Typography, Box, Paper, Card, CardContent, Divider } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
@@ -8,7 +8,10 @@ import EventCalendar from '../features/calendar/home-page-calendar';
 import HeroCarousel from '../features/carousel/hero-carousel';
 import MediaCarousel from '../features/carousel/media-carousel';
 
-// Importing images and logos 
+// Importing CSS directly from event-page for 100% hero alignment
+import '../design/event-page.css'; 
+
+// Importing images
 import EmploymentLogo from '../assets/images/employment-logo.png';
 import cityView from '../assets/images/city-view.png';
 
@@ -56,51 +59,23 @@ const HomePage = () => {
         <Box sx={{ bgcolor: '#f4f7fa', minHeight: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl', pb: 6 }}>
             
             {/* =========================================
-                DARK ELEGANT HERO BANNER (Matches Events Page)
+                HERO BANNER - Fixed with global CSS classes
                 ========================================= */}
-            <Box 
-                sx={{
-                    position: 'relative',
-                    height: '230px', 
-                    backgroundColor: '#001a40', 
-                    backgroundImage: `url('${cityView}')`, 
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center 70%',
-                    borderBottom: '4px solid #facc15', 
-                    display: 'flex',
-                    alignItems: 'center',
-                    mb: 0, // Removed the heavy negative margin that was squeezing the layout
-                    direction: 'rtl'
-                }}
-            >
-                {/* Dark Gradient Overlay */}
-                <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to left, rgb(4, 9, 26) 0%, rgba(0,24,64,0.5) 60%, transparent 100%)', zIndex: 2 }} />
-                
-                <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 3, display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 4 }}>
-                    
-                    <img 
-                        src={EmploymentLogo}
-                        alt="רשות התעסוקה" 
-                        style={{ height: '155px', objectFit: 'contain' }} 
-                    />
-
-                    <Box sx={{ textAlign: 'right' }}>
-                        <Typography component="h1" sx={{ fontSize: '36px', fontWeight: 800, color: '#ffffff', m: 0, mb: 1, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                            מרכז המידע למעסיקים
-                        </Typography>
-                        <Typography component="p" sx={{ fontSize: '16px', opacity: 0.9, color: '#ffffff', m: 0, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                            הרשות העירונית לתעסוקה ירושלים
-                        </Typography>
-                    </Box>
-
-                </Container>
-            </Box>
+            <header className="site-hero" style={{ backgroundImage: `url('${cityView}')`, marginBottom: 0 }}>
+                <div className="hero-overlay"></div>
+                <div className="hero-content">
+                    <img src={EmploymentLogo} alt="רשות התעסוקה ירושלים" className="hero-logo" />
+                    <div className="hero-text">
+                        <h1 className="hero-title">מרכז המידע למעסיקים</h1>
+                        <p className="hero-subtitle">הרשות העירונית לתעסוקה ירושלים</p>
+                    </div>
+                </div>
+            </header>
 
             {/* =========================================
-                MAIN CONTENT CONTAINER
+                MAIN CONTENT CONTAINER (Design Option A)
                 ========================================= */}
-            {/* Removed the Container maxWidth to allow the content to stretch further, matching the Event Page's wider borders */}
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', px: 0, pt: 4 }}>
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', px: { xs: 2, lg: 6 }, pt: 5 }}>
                 
                 <Paper 
                     elevation={0} 
@@ -109,24 +84,21 @@ const HomePage = () => {
                         flexDirection: { xs: 'column', lg: 'row' },
                         direction: 'ltr', 
                         bgcolor: '#ffffff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 0,
+                        borderRadius: 4, // Soft rounded corners
                         overflow: 'hidden',
-                        boxShadow: '0 10px 40px rgba(0, 24, 64, 0.04)',
+                        boxShadow: '0 10px 40px rgba(0, 30, 80, 0.06)', // Soft floating shadow
+                        border: 'none', // Removed harsh borders
                         alignItems: 'stretch',
                         minHeight: '650px' 
                     }}
                 >
-                    
                     {/* --- LEFT COLUMN: Stacked Components --- */}
                     <Box sx={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
                         flex: 1, 
                         minWidth: '350px',
-                        borderRight: { xs: 'none', lg: '1px solid #e2e8f0' }, 
-                        borderLeft: { xs: 'none', lg: '1px solid #e2e8f0' },
-                        borderBottom: { xs: '1px solid #e2e8f0', lg: 'none' },
+                        borderRight: { xs: 'none', lg: '1px solid #f1f5f9' }, // Very subtle internal divider
                         p: 4,
                         direction: 'rtl' 
                     }}>
@@ -136,7 +108,7 @@ const HomePage = () => {
                                 title="אירועים בשבוע הקרוב" 
                                 icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>} 
                             />
-                            <Box sx={{ overflow: 'hidden', borderRadius: 3, flexGrow: 1 }}>
+                            <Box sx={{ overflow: 'hidden', borderRadius: 3, flexGrow: 1, boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
                                 <HeroCarousel events={events} />
                             </Box>
                         </Box>
@@ -150,14 +122,14 @@ const HomePage = () => {
                             />
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, overflowY: 'auto', pr: 1 }}>
                                 {articles.length > 0 ? articles.map(article => (
-                                    <Card key={article.id} elevation={0} sx={{ borderRight: '4px solid #facc15', bgcolor: '#f8fafc', flexShrink: 0, transition: '0.2s', '&:hover': { bgcolor: '#f1f5f9', transform: 'translateX(-4px)' } }}> 
-                                        <CardContent sx={{ p: '12px !important' }}>
+                                    <Card key={article.id} elevation={0} sx={{ borderRight: '4px solid #facc15', bgcolor: '#f8fafc', borderRadius: 2, flexShrink: 0, transition: '0.2s', '&:hover': { bgcolor: '#f1f5f9', transform: 'translateX(-4px)' } }}> 
+                                        <CardContent sx={{ p: '16px !important' }}>
                                             <Typography variant="caption" fontWeight="700" sx={{ color: '#003b8b', display: 'block', mb: 0.5 }}>
                                                 {article.sourceName}
                                             </Typography>
                                             <Typography 
                                                 variant="body1" 
-                                                fontWeight="300" 
+                                                fontWeight="500" 
                                                 sx={{ color: '#0f172a', lineHeight: 1.3, cursor: 'pointer' }}
                                                 onClick={() => window.open(article.url, '_blank')}
                                             >
@@ -174,29 +146,43 @@ const HomePage = () => {
                     </Box>
 
                     {/* --- RIGHT COLUMN: Dedicated Calendar --- */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 2.2, direction: 'rtl', bgcolor: '#f8fafc' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 2.2, direction: 'rtl', bgcolor: '#ffffff' }}>
                         <EventCalendar events={events} userName={isAuthenticated ? currentUser?.displayName : 'אורח'} />
                     </Box>
 
                 </Paper>
 
                 {/* =========================================
-                    FULL WIDTH BOTTOM CAROUSEL
+                    FULL WIDTH BOTTOM CAROUSEL (Enlarged & Fixed)
                     ========================================= */}
-                <Box sx={{ mt: 5, direction: 'rtl' }}>
+                <Box sx={{ mt: 6, direction: 'rtl' }}>
                     <SectionTitle 
                         title="גלריית אירועי תעסוקה" 
                         icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>} 
                     />
-                    <Paper elevation={0} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px rgba(0, 24, 64, 0.04)', p: 1, bgcolor: '#ffffff' }}>
-                        <MediaCarousel 
-                            photos={[
-                                '/assets/images/event-placeholder-1.jpg', 
-                                '/assets/images/event-placeholder-2.jpg',
-                                '/assets/images/event-placeholder-3.jpg',
-                                '/assets/images/event-placeholder-4.jpg'
-                            ]} 
-                        />
+                    <Paper 
+                        elevation={0} 
+                        sx={{ 
+                            borderRadius: 4, 
+                            overflow: 'hidden', 
+                            boxShadow: '0 10px 40px rgba(0, 30, 80, 0.06)', 
+                            p: 2, 
+                            bgcolor: '#ffffff',
+                            height: '450px', // Explicit fixed height instead of minHeight
+                            display: 'flex', // Flexbox ensures inner content stretches
+                            flexDirection: 'column'
+                        }}
+                    >
+                        <Box sx={{ flexGrow: 1, width: '100%', height: '100%', '& > div': { height: '100%' } }}>
+                            <MediaCarousel 
+                                photos={[
+                                    '/assets/images/event-placeholder-1.jpg', 
+                                    '/assets/images/event-placeholder-2.jpg',
+                                    '/assets/images/event-placeholder-3.jpg',
+                                    '/assets/images/event-placeholder-4.jpg'
+                                ]} 
+                            />
+                        </Box>
                     </Paper>
                 </Box>
 
