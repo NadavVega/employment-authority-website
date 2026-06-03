@@ -54,15 +54,12 @@ const MainLayout = ({ children }) => {
                             {/* Admin Only Buttons */}
                             {isAdmin && (
                                 <>
-                                    <Button sx={{ ...navBtnStyle, bgcolor: 'secondary.main', color: '#000000', '&:hover': { bgcolor: 'secondary.light', transform: 'translateY(-2px)' } }}>
-                                        ניהול בוט
-                                    </Button>
                                     <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
                                         ניהול תוכן
                                     </Button>
                                 </>
                             )}
-                        </Box> {/ 
+                        </Box>
               
                         {/* === LOGOS BOX === */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, height: '60px' }}>
