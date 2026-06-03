@@ -9,16 +9,37 @@ const EmployerProfilePage = () => {
   const { currentUser, userRole } = useAuth();
 
   const [employer, setEmployer] = useState(null);
+  const [privateDetails, setPrivateDetails] = useState(null);
   const [accessStatus, setAccessStatus] = useState("none");
   const [loading, setLoading] = useState(true);
   const [requestLoading, setRequestLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const canRequestAccess = userRole === "coordinator" || userRole === "admin";
-  const hasApprovedAccess = accessStatus === "approved" || userRole === "admin";
+  const isAdmin = userRole === "admin";
+  const isCoordinator = userRole === "coordinator";
+
+  // Only coordinators need to request access.
+  // Admin has full access by role and should not see request/access-status UI.
+  const canRequestAccess = isCoordinator;
+  const hasApprovedAccess = accessStatus === "approved" || isAdmin;
+
+  const displayRole = (role) => {
+    if (role === "employer") return "מעסיק";
+    if (role === "coordinator") return "רכז";
+    if (role === "admin") return "מנהלת";
+    return role || "לא צוין";
+  };
+
+  const isVisibleValue = (value) => {
+    return value && value !== "לא צוין" && String(value).trim() !== "";
+  };
 
   useEffect(() => {
     const loadEmployerProfile = async () => {
+      setLoading(true);
+      setMessage("");
+      setPrivateDetails(null);
+
       try {
         const employerData = await directoryService.getDirectoryContactById(
           employerId
@@ -31,13 +52,35 @@ const EmployerProfilePage = () => {
 
         setEmployer(employerData);
 
-        if (currentUser) {
-          const status = await privacyService.getContactAccessStatus(
+        let status = "none";
+
+        if (currentUser && !isAdmin) {
+          status = await privacyService.getContactAccessStatus(
             currentUser,
             employerData
           );
 
           setAccessStatus(status);
+        }
+
+        const shouldLoadPrivateDetails = isAdmin || status === "approved";
+
+        if (currentUser && shouldLoadPrivateDetails) {
+          try {
+            const details = await privacyService.getPrivateContactDetails(
+              currentUser,
+              employerData
+            );
+
+            setPrivateDetails(details);
+          } catch (privateDetailsError) {
+            console.error(
+              "Failed to load private contact details:",
+              privateDetailsError
+            );
+
+            setPrivateDetails(null);
+          }
         }
       } catch (error) {
         console.error("Failed to load employer profile:", error);
@@ -48,16 +91,9 @@ const EmployerProfilePage = () => {
     };
 
     loadEmployerProfile();
-  }, [employerId, currentUser]);
+  }, [employerId, currentUser, isAdmin]);
 
   const handleRequestAccess = async () => {
-    console.log("Request Access clicked");
-    console.log("currentUser:", currentUser);
-    console.log("currentUser.email:", currentUser?.email);
-    console.log("userRole:", userRole);
-    console.log("employer:", employer);
-    console.log("employer.email:", employer?.email);
-
     setRequestLoading(true);
     setMessage("");
 
@@ -66,8 +102,6 @@ const EmployerProfilePage = () => {
         currentUser,
         employer
       );
-
-      console.log("Request access result:", result);
 
       setAccessStatus("pending");
       setMessage(result.message || "Access request sent successfully.");
@@ -81,7 +115,13 @@ const EmployerProfilePage = () => {
 
   if (loading) {
     return (
-      <div dir="rtl" style={{ padding: "40px" }}>
+      <div
+        dir="rtl"
+        style={{
+          padding: "40px",
+          fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
+        }}
+      >
         טוען פרופיל מעסיק...
       </div>
     );
@@ -89,7 +129,13 @@ const EmployerProfilePage = () => {
 
   if (!employer) {
     return (
-      <div dir="rtl" style={{ padding: "40px" }}>
+      <div
+        dir="rtl"
+        style={{
+          padding: "40px",
+          fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
+        }}
+      >
         <h1>פרופיל לא נמצא</h1>
         <p>{message}</p>
       </div>
@@ -97,7 +143,15 @@ const EmployerProfilePage = () => {
   }
 
   return (
-    <div dir="rtl" style={{ padding: "40px", maxWidth: "900px", margin: "0 auto" }}>
+    <div
+      dir="rtl"
+      style={{
+        padding: "40px",
+        maxWidth: "900px",
+        margin: "0 auto",
+        fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
+      }}
+    >
       <h1>פרופיל מעסיק</h1>
 
       <div
@@ -110,25 +164,35 @@ const EmployerProfilePage = () => {
           boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
         }}
       >
-        <h2>{employer.organization}</h2>
+        {isVisibleValue(employer.organization) && (
+          <h2>{employer.organization}</h2>
+        )}
 
-        <p>
-          <strong>שם איש קשר:</strong> {employer.name || "לא צוין"}
-        </p>
+        {isVisibleValue(employer.name) && (
+          <p>
+            <strong>שם איש קשר:</strong> {employer.name}
+          </p>
+        )}
 
-        <p>
-          <strong>תפקיד:</strong> {employer.role || "לא צוין"}
-        </p>
+        {isVisibleValue(employer.role) && (
+          <p>
+            <strong>תפקיד:</strong> {displayRole(employer.role)}
+          </p>
+        )}
 
-        <p>
-          <strong>תחום:</strong> {employer.field || "לא צוין"}
-        </p>
+        {isVisibleValue(employer.field) && (
+          <p>
+            <strong>תחום:</strong> {employer.field}
+          </p>
+        )}
 
-        <p>
-          <strong>כתובת:</strong> {employer.address || "לא צוין"}
-        </p>
+        {isVisibleValue(employer.address) && (
+          <p>
+            <strong>כתובת:</strong> {employer.address}
+          </p>
+        )}
 
-        {employer.notes && (
+        {isVisibleValue(employer.notes) && (
           <p>
             <strong>הערות:</strong> {employer.notes}
           </p>
@@ -140,13 +204,24 @@ const EmployerProfilePage = () => {
 
         {hasApprovedAccess ? (
           <>
-            <p>
-              <strong>אימייל:</strong> {employer.email || "לא צוין"}
-            </p>
+            {isVisibleValue(privateDetails?.directEmail) && (
+              <p>
+                <strong>אימייל:</strong> {privateDetails.directEmail}
+              </p>
+            )}
 
-            <p>
-              <strong>טלפון:</strong> {employer.phone || "לא צוין"}
-            </p>
+            {isVisibleValue(privateDetails?.phone) && (
+              <p>
+                <strong>טלפון:</strong> {privateDetails.phone}
+              </p>
+            )}
+
+            {!isVisibleValue(privateDetails?.directEmail) &&
+              !isVisibleValue(privateDetails?.phone) && (
+                <p style={{ color: "#666" }}>
+                  אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
+                </p>
+              )}
           </>
         ) : (
           <>
@@ -164,9 +239,11 @@ const EmployerProfilePage = () => {
           </>
         )}
 
-        <p>
-          <strong>סטטוס גישה:</strong> {accessStatus}
-        </p>
+        {!isAdmin && (
+          <p>
+            <strong>סטטוס גישה:</strong> {accessStatus}
+          </p>
+        )}
 
         {canRequestAccess && accessStatus === "none" && (
           <button
@@ -179,20 +256,22 @@ const EmployerProfilePage = () => {
               borderRadius: "999px",
               background: "#1976d2",
               color: "white",
-              cursor: "pointer",
+              cursor: requestLoading ? "not-allowed" : "pointer",
+              opacity: requestLoading ? 0.7 : 1,
+              fontFamily: "inherit",
             }}
           >
             {requestLoading ? "שולח בקשה..." : "Request Access"}
           </button>
         )}
 
-        {accessStatus === "pending" && (
+        {!isAdmin && accessStatus === "pending" && (
           <p style={{ marginTop: "16px", color: "#b26a00" }}>
             בקשת הגישה נשלחה וממתינה לאישור המעסיק.
           </p>
         )}
 
-        {accessStatus === "rejected" && (
+        {!isAdmin && accessStatus === "rejected" && (
           <p style={{ marginTop: "16px", color: "#b00020" }}>
             בקשת הגישה נדחתה.
           </p>
@@ -200,7 +279,7 @@ const EmployerProfilePage = () => {
 
         {!canRequestAccess && !hasApprovedAccess && (
           <p style={{ marginTop: "16px", color: "#777" }}>
-            רק Coordinator יכול לבקש גישה לפרטי קשר פרטיים.
+            רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
           </p>
         )}
 

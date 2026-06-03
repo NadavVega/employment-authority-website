@@ -4,6 +4,11 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  setDoc,
+  arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -34,64 +39,47 @@ export const privacyService = {
       throw new Error("Target employer email is missing.");
     }
 
-    const requesterEmail = currentUser.email.toLowerCase();
-    const targetEmail = targetEmployer.email.toLowerCase();
+    // Important:
+    // requesterEmail must match request.auth.token.email exactly in Firestore Rules.
+    const requesterEmail = currentUser.email;
+    const targetEmail = targetEmployer.email;
 
-    console.log("Creating privacy request with:", {
+    const existingRequestQuery = query(
+      collection(db, "privacy_requests"),
+      where("requesterEmail", "==", requesterEmail),
+      where("targetEmail", "==", targetEmail),
+      where("status", "==", "pending")
+    );
+
+    const existingSnapshot = await getDocs(existingRequestQuery);
+
+    if (!existingSnapshot.empty) {
+      return {
+        status: "already_pending",
+        message: "Access request already exists.",
+      };
+    }
+
+    const requestData = {
       requesterEmail,
       targetEmail,
       status: "pending",
-    });
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      reviewedAt: null,
+      reviewedBy: null,
+    };
 
-    try {
-      console.log("Checking for existing pending request...");
+    const docRef = await addDoc(
+      collection(db, "privacy_requests"),
+      requestData
+    );
 
-      const existingRequestQuery = query(
-        collection(db, "privacy_requests"),
-        where("requesterEmail", "==", requesterEmail),
-        where("targetEmail", "==", targetEmail),
-        where("status", "==", "pending")
-      );
-
-      const existingSnapshot = await getDocs(existingRequestQuery);
-
-      console.log("Existing pending requests count:", existingSnapshot.size);
-
-      if (!existingSnapshot.empty) {
-        return {
-          status: "already_pending",
-          message: "Access request already exists.",
-        };
-      }
-
-      const requestData = {
-        requesterEmail,
-        targetEmail,
-        status: "pending",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        reviewedAt: null,
-        reviewedBy: null,
-      };
-
-      console.log("About to add privacy request document:", requestData);
-
-      const docRef = await addDoc(
-        collection(db, "privacy_requests"),
-        requestData
-      );
-
-      console.log("Privacy request created successfully:", docRef.id);
-
-      return {
-        id: docRef.id,
-        status: "pending",
-        message: "Access request sent successfully.",
-      };
-    } catch (error) {
-      console.error("privacyService.requestContactAccess failed:", error);
-      throw error;
-    }
+    return {
+      id: docRef.id,
+      status: "pending",
+      message: "Access request sent successfully.",
+    };
   },
 
   /**
@@ -109,8 +97,8 @@ export const privacyService = {
       return "none";
     }
 
-    const requesterEmail = currentUser.email.toLowerCase();
-    const targetEmail = targetEmployer.email.toLowerCase();
+    const requesterEmail = currentUser.email;
+    const targetEmail = targetEmployer.email;
 
     const accessQuery = query(
       collection(db, "privacy_requests"),
@@ -139,5 +127,160 @@ export const privacyService = {
     }
 
     return "none";
+  },
+
+  /**
+   * Fetches private contact details for an employer.
+   * Firestore Rules decide whether the current user is allowed to read it.
+   *
+   * @param {Object} currentUser - Current logged-in user.
+   * @param {Object} targetEmployer - Employer profile.
+   * @returns {Promise<Object|null>} Private contact details or null.
+   */
+  async getPrivateContactDetails(currentUser, targetEmployer) {
+    if (!currentUser?.email || !targetEmployer?.email) {
+      return null;
+    }
+
+    const privateInfoRef = doc(
+      db,
+      "users",
+      targetEmployer.email,
+      "private_info",
+      "details"
+    );
+
+    const privateInfoSnap = await getDoc(privateInfoRef);
+
+    if (!privateInfoSnap.exists()) {
+      return null;
+    }
+
+    const data = privateInfoSnap.data();
+
+    return {
+      phone: data.phone || "",
+      directEmail: data.directEmail || "",
+      approvedViewers: data.approved_viewers || [],
+    };
+  },
+
+  /**
+   * Fetches all pending privacy requests.
+   * This is intended for admin review.
+   *
+   * @returns {Promise<Array>} Pending privacy requests.
+   */
+  async getPendingPrivacyRequests() {
+    const pendingRequestsQuery = query(
+      collection(db, "privacy_requests"),
+      where("status", "==", "pending")
+    );
+
+    const snapshot = await getDocs(pendingRequestsQuery);
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+
+      return {
+        id: docSnap.id,
+        requesterEmail: data.requesterEmail || "",
+        targetEmail: data.targetEmail || "",
+        status: data.status || "pending",
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+        reviewedAt: data.reviewedAt || null,
+        reviewedBy: data.reviewedBy || null,
+      };
+    });
+  },
+
+  /**
+   * Approves a pending privacy request.
+   * In addition to changing the request status, the requester is added
+   * to the target employer's approved_viewers list.
+   *
+   * @param {Object} request - Privacy request object.
+   * @param {Object} currentUser - Current logged-in admin/employer user.
+   * @returns {Promise<Object>} Result.
+   */
+  async approvePrivacyRequest(request, currentUser) {
+    if (!request?.id) {
+      throw new Error("Request id is missing.");
+    }
+
+    if (!request?.requesterEmail) {
+      throw new Error("Requester email is missing.");
+    }
+
+    if (!request?.targetEmail) {
+      throw new Error("Target employer email is missing.");
+    }
+
+    if (!currentUser?.email) {
+      throw new Error("User must be logged in to approve a request.");
+    }
+
+    const requestRef = doc(db, "privacy_requests", request.id);
+
+    const privateInfoRef = doc(
+      db,
+      "users",
+      request.targetEmail,
+      "private_info",
+      "details"
+    );
+
+    await updateDoc(requestRef, {
+      status: "approved",
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.email,
+      updatedAt: serverTimestamp(),
+    });
+
+    await setDoc(
+      privateInfoRef,
+      {
+        approved_viewers: arrayUnion(request.requesterEmail),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return {
+      status: "approved",
+      message: "Privacy request approved successfully.",
+    };
+  },
+
+  /**
+   * Rejects a pending privacy request.
+   *
+   * @param {Object} request - Privacy request object.
+   * @param {Object} currentUser - Current logged-in admin/employer user.
+   * @returns {Promise<Object>} Result.
+   */
+  async rejectPrivacyRequest(request, currentUser) {
+    if (!request?.id) {
+      throw new Error("Request id is missing.");
+    }
+
+    if (!currentUser?.email) {
+      throw new Error("User must be logged in to reject a request.");
+    }
+
+    const requestRef = doc(db, "privacy_requests", request.id);
+
+    await updateDoc(requestRef, {
+      status: "rejected",
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.email,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      status: "rejected",
+      message: "Privacy request rejected successfully.",
+    };
   },
 };
