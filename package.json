@@ -1,19 +1,13 @@
 {
   "name": "employment-authority",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend/functions"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend/functions\"",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:backend": "npm run dev --workspace=backend/functions"
+    "dev": "npm run dev:frontend",
+    "dev:all": "run-p dev:frontend dev:backend",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend/functions && npm run dev"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
-  },
-  "dependencies": {
-    "react-calendar": "^6.0.1"
+    "npm-run-all2": "^7.0.2"
   }
 }

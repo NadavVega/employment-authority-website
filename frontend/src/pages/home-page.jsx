@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Box, Paper, Container, Card, CardContent } from '@mui/material';
 import { useAuth } from '../context/auth-context';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 
 import EventCalendar from '../features/calendar/event-calendar'; 
@@ -27,7 +27,7 @@ const HomePage = () => {
 
     // Fetch Articles (Aligns with UC8 preparation)
     useEffect(() => {
-        const q = query(collection(db, 'articles'));
+        const q = query(collection(db, 'articles'), where('status', '==', 'approved'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setArticles(fetchedArticles);

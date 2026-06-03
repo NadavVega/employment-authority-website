@@ -118,12 +118,21 @@ const MainLayout = ({ children }) => {
                         {/* Links Section */}
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             {isAdmin && (
-                                <Button
-                                    color="secondary"
-                                    sx={{ fontWeight: 'bold' }}
-                                >
-                                    ניהול בוט
-                                </Button>
+                                <>
+                                    <Button
+                                        color="secondary"
+                                        sx={{ fontWeight: 'bold', mr: 1 }}
+                                        onClick={() => navigate('/content-management')}
+                                    >
+                                        ניהול תוכן
+                                    </Button>
+                                    <Button
+                                        color="secondary"
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        ניהול בוט
+                                    </Button>
+                                </>
                             )}
 
                             {isAuthenticated && (
