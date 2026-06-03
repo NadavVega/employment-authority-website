@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc } from 'firebase/firestore';
 import { db } from './firebase/config';
 import { IArticle } from '../interfaces/IArticle';
 
@@ -41,6 +41,18 @@ export class ArticleService {
         await updateDoc(articleRef, {
             status: 'rejected',
             approvedBy: managerIdentifier
+        });
+    }
+
+    /**
+     * Publish a new article manually
+     */
+    static async publishArticle(data: Partial<IArticle>, managerIdentifier: string): Promise<void> {
+        await addDoc(collection(db, ARTICLES_COLLECTION), {
+            ...data,
+            status: 'approved',
+            approvedBy: managerIdentifier,
+            publishedAt: Timestamp.now()
         });
     }
 }

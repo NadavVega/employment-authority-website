@@ -71,8 +71,20 @@ const MainLayout = ({ children }) => {
                             <Button sx={navBtnStyle} onClick={() => navigate('/home')}>דף הבית</Button>
                             <Button sx={navBtnStyle} onClick={() => navigate('/events')}>אירועים</Button>
                             {isAuthenticated && <Button sx={navBtnStyle} onClick={() => navigate('/directory')}>אלפון מעסיקים</Button>}
-                            {isAdmin && <Button sx={{ ...navBtnStyle, bgcolor: 'secondary.main', color: '#000000', '&:hover': { bgcolor: 'secondary.light', transform: 'translateY(-2px)' } }}>ניהול בוט</Button>}
-                        </Box>
+                            {/* Admin Only Buttons */}
+                            {isAdmin && (
+                                <>
+                                    <Button sx={{ ...navBtnStyle, bgcolor: 'secondary.main', color: '#000000', '&:hover': { bgcolor: 'secondary.light', transform: 'translateY(-2px)' } }}>
+                                        ניהול בוט
+                                    </Button>
+                                    <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
+                                        ניהול תוכן
+                                    </Button>
+                                </>
+                            )}
+                        </Box> {/ 
+              
+                        {/* === LOGOS BOX === */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, height: '60px' }}>
                             <Box sx={{ bgcolor: '#ffffff', p: 0.5, borderRadius: 1, display: 'flex', alignItems: 'center', height: '50px' }}>
                                 <img src={jerusalemColorLogo} alt="Jerusalem Color Logo" style={{ height: '100%', objectFit: 'contain' }} />
