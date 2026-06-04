@@ -81,7 +81,7 @@ export const EventsPage = () => {
         if (event.status === 'deleted') return;
 
         // Permissions Check
-        if (event.status === 'pending') {
+        if (event.status === 'pending_approval') {
             if (!isAdmin && event.createdBy !== currentUser?.uid) return;
         } else if (event.status !== 'published') {
             return;
@@ -96,14 +96,17 @@ export const EventsPage = () => {
     });
 
     const filterFunction = (event) => {
-        const isPendingFilter = activeFilter === 'ממתינים לאישור';
-        if (isPendingFilter) {
-            return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
-        }
-        
-        const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
-        const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
-        return matchesFilter && matchesSearch;
+    const isPendingFilter = activeFilter === 'ממתינים לאישור';
+    if (isPendingFilter) {
+        return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
+    }
+    
+    // Hide pending events from all other tabs
+    if (event.status === 'pending') return false; 
+
+    const matchesFilter = activeFilter === 'הכל' || event.type === activeFilter;
+    const matchesSearch = event.title?.includes(searchQuery) || event.description?.includes(searchQuery);
+    return matchesFilter && matchesSearch;
     };
 
     const handleApproveEvent = async (eventId) => {

@@ -111,27 +111,27 @@ const EventCalendar = ({ events, userName }) => {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                p: 3, 
-                pb: 4,
+                p: 2, 
+                pb: 1.5,
                 flexWrap: 'wrap', 
-                gap: 2, 
+                gap: 1, 
                 direction: 'rtl',
                 bgcolor: '#ffffff', // Pure white to pop out
-                boxShadow: '0 10px 30px rgba(0,0,0,0.04)', // The Neumorphic drop shadow
+                boxShadow: '0 4px 15px rgba(0,0,0,0.03)', // The Neumorphic drop shadow
                 zIndex: 10,
                 position: 'relative'
             }}>
                 
                 {/* RIGHT: User Greeting */}
-                <Box sx={{ minWidth: '150px' }}>
-                    <Typography variant="h5" fontWeight="700" sx={{ color: '#000000' }}>
+                <Box sx={{ minWidth: '120px' }}>
+                    <Typography variant="h6" fontWeight="700" sx={{ color: '#000000', fontSize: '1.1rem' }}>
                         שלום, {userName}
                     </Typography>
                 </Box>
 
                 {/* CENTER: Month/Year Title stacked ABOVE Toggles */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                    <Typography variant="h5" fontWeight="700" sx={{ color: '#0f172a' }}>
+                    <Typography variant="h6" fontWeight="700" sx={{ color: '#0f172a', fontSize: '1.1rem' }}>
                         {viewMode === 'year' 
                             ? activeDate.getFullYear() 
                             : activeDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
@@ -150,9 +150,10 @@ const EventCalendar = ({ events, userName }) => {
                                     onClick={() => setViewMode(view.value)}
                                     sx={{ 
                                         borderRadius: '99px', 
-                                        px: 2.5, 
-                                        py: 0.5, 
+                                        px: 1.5, 
+                                        py: 0.25, 
                                         minWidth: 'auto',
+                                        fontSize: '0.85rem',
                                         textTransform: 'capitalize',
                                         fontWeight: viewMode === view.value ? '700' : '500',
                                         color: viewMode === view.value ? '#003b8b' : '#64748b',
@@ -179,7 +180,7 @@ const EventCalendar = ({ events, userName }) => {
                         sx={{ 
                             cursor: 'pointer', 
                             textAlign: 'center', 
-                            p: '6px 16px', 
+                            p: '4px 12px', 
                             borderRadius: '12px', 
                             bgcolor: '#f8fafc',
                             border: '1px solid #f1f5f9',

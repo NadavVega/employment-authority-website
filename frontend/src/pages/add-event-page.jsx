@@ -23,7 +23,8 @@ export const AddEventPage = () => {
     return (
         <div className="flat-page-wrapper" dir="rtl">
             <div className="flat-header">
-                <h1>{isAdmin ? 'פרסום אירוע חדש' : 'בקשה לפרסום אירוע'}</h1>
+                {/* CHANGED: Always show "Publish New Event" */}
+                <h1>פרסום אירוע חדש</h1>
                 <p>מלאו את הפרטים מטה כדי להוסיף פעילות חדשה למערכת</p>
             </div>
             <EventForm onSuccess={() => navigate('/events')} onCancel={() => navigate('/events')} />

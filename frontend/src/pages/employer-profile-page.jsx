@@ -4,6 +4,9 @@ import { useAuth } from "../context/auth-context";
 import { directoryService } from "../services/interfaces/directory-service";
 import { privacyService } from "../services/interfaces/privacy-service";
 
+// Design files
+import '../design/global-theme.css';
+
 const EmployerProfilePage = () => {
   const { employerId } = useParams();
   const { currentUser, userRole } = useAuth();

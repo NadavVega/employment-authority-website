@@ -10,7 +10,6 @@ import PrivacyRequestsPage from './pages/privacy-requests-page';
 
 //import design files
 import './design/global-theme.css';
-import './design/event-page-design.css';
 
 // Importing page components
 import LoginPage from './pages/login-page';

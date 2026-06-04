@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 export const eventService = {
     async createEvent(eventDetails, currentUser, userRole) {
         try {
-            const eventStatus = userRole === 'admin' ? 'published' : 'pending_approval';
+            const eventStatus = 'published';
 
             const payload = {
                 title: eventDetails.title,
