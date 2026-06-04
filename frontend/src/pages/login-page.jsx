@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/auth-context';
 import { loginUser } from '../services/firebase/auth-service';
 
 /**
@@ -10,19 +9,9 @@ import { loginUser } from '../services/firebase/auth-service';
  */
 const LoginPage = () => {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
 
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    /**
-     * Handles navigation safely only when the global auth state updates.
-     */
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/home');
-        }
-    }, [isAuthenticated, navigate]);
 
     /**
      * Real Firebase demo login.
