@@ -41,8 +41,8 @@ const MainLayout = ({ children }) => {
                     <Toolbar sx={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         px: { xs: 2, md: 5 }, py: 1,
-                        background: 'linear-gradient(90deg, #001a40 0%, #003b8b 100%)',
-                        borderBottom: '4px solid #ffbc04' 
+                        background: 'linear-gradient(90deg, var(--color-primary-darker) 0%, var(--color-primary) 100%)',
+                        borderBottom: '4px solid var(--color-gold)' 
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <IconButton color="inherit" onClick={() => setIsDrawerOpen(true)} sx={{ ml: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
@@ -63,7 +63,7 @@ const MainLayout = ({ children }) => {
               
                         {/* === LOGOS BOX === */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, height: '60px' }}>
-                            <Box sx={{ bgcolor: '#ffffff', p: 0.5, borderRadius: 1, display: 'flex', alignItems: 'center', height: '50px' }}>
+                            <Box sx={{ bgcolor: 'var(--color-surface)', p: 0.5, borderRadius: 1, display: 'flex', alignItems: 'center', height: '50px' }}>
                                 <img src={jerusalemColorLogo} alt="Jerusalem Color Logo" style={{ height: '100%', objectFit: 'contain' }} />
                             </Box>
                             <Box sx={{ width: '2px', height: '40px', bgcolor: 'rgba(255,255,255,0.3)' }} />

@@ -5,7 +5,7 @@ import { eventService } from '../../services/interfaces/event-services';
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from '../../services/firebase/config'; 
 
-import '../../design/event-page-design.css'; 
+import '../../design/event-page.css'; 
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -208,32 +208,42 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         setIsLoading(true); 
 
         try {
+            // 1. Define combined phones FIRST to avoid ReferenceErrors
             const combinedCoordPhones = coordinatorPhones.map(p => `${p.prefix}-${p.number}`).join(', ');
             const combinedAccPhones = formData.isAccessible ? accessibilityPhones.map(p => `${p.prefix}-${p.number}`).join(', ') : '';
 
+            // 2. Build ONE clean formattedData object
             const formattedData = { 
                 ...formData, 
                 capacity: isCapacityUnlimited ? '' : formData.capacity,
                 time: `${formData.startTime}-${formData.endTime}`, 
                 coordinatorPhone: combinedCoordPhones,
-                accessibilityContactPhone: combinedAccPhones
+                accessibilityContactPhone: combinedAccPhones,
+                createdBy: currentUser.uid
             };
 
-            if (isEditMode && !isAdmin) {
-                formattedData.status = 'pending';
-            }
+            // 3. Force status to 'published' for everyone (Admins & Coordinators)
+            formattedData.status = 'published';
 
-            if (isEditMode) {
-                await eventService.updateEvent(initialData.id, formattedData);
-                alert(isAdmin ? 'האירוע עודכן בהצלחה!' : 'האירוע עודכן ונשלח מחדש לאישור מנהל.');
-            } else {
-                const result = await eventService.createEvent(formattedData, currentUser, userRole);
-                alert(result.status === 'published' ? 'האירוע פורסם בהצלחה!' : 'האירוע נשלח לאישור מנהל.');
-            }
+            // 4. Create a 20-second Timeout Promise
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 20000)
+            );
+
+            // 5. Create the Database Operation Promise
+            const dbOperation = isEditMode
+                ? eventService.updateEvent(initialData.id, formattedData)
+                : eventService.createEvent(formattedData, currentUser, userRole);
+
+            // 6. Race the Database operation against the Timeout
+            await Promise.race([dbOperation, timeoutPromise]);
+
+            // 7. Success Alert - No more "sent to manager" messaging
+            alert('האירוע נשמר ופורסם בהצלחה!');
             if (onSuccess) onSuccess();
-
         } catch (error) {
-            setErrors({ global: error.message });
+            console.error("Submit Error:", error);
+            setErrors({ global: 'שגיאה בשמירת האירוע: ' + error.message });
         } finally {
             setIsLoading(false);
         }
@@ -436,10 +446,34 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                         </div>
 
                         <div className="form-group">
-                            <label>מיקום</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <label style={{ margin: 0 }}>מיקום</label>
+                                <label className="radio-label" style={{ fontSize: '12px', margin: 0 }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.isOnline} 
+                                        onChange={(e) => setFormData({...formData, isOnline: e.target.checked})} 
+                                    /> אירוע מקוון (Zoom / Teams)
+                                </label>
+                            </div>
+                            
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="הכנס כתובת או בחר במפה..." className={`input-standard ${errors.location ? 'error-border' : ''}`} style={{ flex: 1 }} />
-                                <button type="button" onClick={openMap} className="btn-secondary pill-btn" style={{ whiteSpace: 'nowrap' }}>🗺️ פתח מפה</button>
+                                <input 
+                                    type="text" 
+                                    value={formData.location} 
+                                    onChange={(e) => setFormData({...formData, location: e.target.value})} 
+                                    placeholder={formData.isOnline ? "הכנס קישור לזום/פגישה או כתוב 'מקוון'..." : "הכנס כתובת או בחר במפה..."} 
+                                    className={`input-standard ${errors.location ? 'error-border' : ''}`} 
+                                    style={{ 
+                                        flex: 1, 
+                                        direction: formData.isOnline && formData.location.startsWith('http') ? 'ltr' : 'rtl' 
+                                    }} 
+                                />
+                                {!formData.isOnline && (
+                                    <button type="button" onClick={openMap} className="btn-secondary pill-btn" style={{ whiteSpace: 'nowrap' }}>
+                                        🗺️ פתח מפה
+                                    </button>
+                                )}
                             </div>
                             {errors.location && <span className="error-text">{errors.location}</span>}
                         </div>
