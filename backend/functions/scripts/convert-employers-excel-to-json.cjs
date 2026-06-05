@@ -20,10 +20,41 @@ const worksheet = workbook.Sheets[firstSheetName];
 
 const rows = XLSX.utils.sheet_to_json(worksheet, {
   defval: "",
+  raw: false,
 });
 
 const normalizeValue = (value) => String(value || "").trim();
+
 const normalizeEmail = (value) => normalizeValue(value).toLowerCase();
+
+const normalizePhone = (value) => {
+  const raw = normalizeValue(value);
+
+  if (!raw) {
+    return "";
+  }
+
+  let phone = raw
+    .replace(/[^\d+]/g, "")
+    .replace(/^\+972/, "0")
+    .replace(/^972/, "0");
+
+  if (!phone) {
+    return "";
+  }
+
+  if (phone.startsWith("0")) {
+    return phone;
+  }
+
+  // Israeli mobile/landline numbers often become 9 digits after Excel removes the leading zero.
+  // Example: 545671342 -> 0545671342
+  if (phone.length === 9) {
+    return `0${phone}`;
+  }
+
+  return phone;
+};
 
 const getFirstValue = (row, possibleColumnNames) => {
   for (const columnName of possibleColumnNames) {
@@ -73,10 +104,12 @@ rows.forEach((row, index) => {
     "תפקיד בחברה",
   ]);
 
-  const phone = getFirstValue(row, [
+  const rawPhone = getFirstValue(row, [
     "מספר טלפון (נייד) של איש\\ת הקשר",
     "מספר טלפון (נייד) של איש/ת הקשר",
   ]);
+
+  const phone = normalizePhone(rawPhone);
 
   const email = normalizeEmail(
     getFirstValue(row, [

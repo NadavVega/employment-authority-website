@@ -13,13 +13,743 @@ const displayRole = (role) => {
   return role || "";
 };
 
+const FIELD_GROUPS = {
+  "הייטק וטכנולוגיה": [
+    "תוכנה",
+    "סייבר",
+    "IT ומחשוב",
+    "דיגיטל",
+    "אלקטרוניקה",
+  ],
+  "בריאות וביומד": [
+    "בריאות",
+    "רפואה",
+    "ביומד",
+    "פארמה",
+    "סיעוד",
+  ],
+  "חינוך ואקדמיה": [
+    "חינוך",
+    "אקדמיה",
+    "סטודנטים",
+    "הכשרות",
+  ],
+  "עמותות וחברה": [
+    "עמותות",
+    "קהילה",
+    "שירותים חברתיים",
+    "שילוב אוכלוסיות",
+  ],
+  "ממשל ושירות ציבורי": [
+    "עירייה",
+    "ממשלתי",
+    "שירות ציבורי",
+    "רשות",
+  ],
+  "פיננסים, ביטוח ומיסוי": [
+    "ביטוח",
+    "מיסוי",
+    "ראיית חשבון",
+    "בנקאות",
+    "פיננסים",
+  ],
+  "מסחר וקמעונאות": [
+    "קמעונאות",
+    "מסחר",
+    "רשתות",
+    "חנויות",
+    "מוצרי נייר",
+  ],
+  "שירותים, ייעוץ ומכירות": [
+    "שיווק",
+    "מכירות",
+    "שירות לקוחות",
+    "ייעוץ",
+    "שירותים עסקיים",
+  ],
+  "אירוח, מזון ותיירות": [
+    "מסעדנות",
+    "מזון",
+    "משקאות",
+    "מלונאות",
+    "תיירות",
+  ],
+  "תעשייה וייצור": [
+    "ייצור",
+    "מפעלים",
+    "ייצור מסננים",
+    "תעשייה",
+  ],
+  "עיצוב, אופנה ואדריכלות": [
+    "אופנה",
+    "איפור וטיפוח",
+    "עיצוב מוצר",
+    "אדריכלות ועיצוב",
+    "קוסמטיקה",
+  ],
+  "אבטחה, ניקיון והסעדה": [
+    "אבטחה",
+    "שמירה",
+    "ניקיון",
+    "הסעדה",
+  ],
+  "השמה ומשאבי אנוש": [
+    "השמה",
+    "גיוס",
+    "משאבי אנוש",
+    "תעסוקה",
+  ],
+  "סיוע תעסוקתי ושירותים קהילתיים": [
+    "מבקשי עבודה",
+    "עולים ותושבים חוזרים",
+    "קליטת מפונים",
+    "קידום תהליכים",
+  ],
+  "אחר": ["לא מסווג"],
+};
+
+const getFieldClassification = (field) => {
+  const normalizedField = String(field || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalizedField) {
+    return {
+      mainCategory: "אחר",
+      subCategory: "לא מסווג",
+    };
+  }
+
+  if (
+    normalizedField.includes("tech") ||
+    normalizedField.includes("software") ||
+    normalizedField.includes("תוכנה")
+  ) {
+    return {
+      mainCategory: "הייטק וטכנולוגיה",
+      subCategory: "תוכנה",
+    };
+  }
+
+  if (
+    normalizedField.includes("cyber") ||
+    normalizedField.includes("סייבר")
+  ) {
+    return {
+      mainCategory: "הייטק וטכנולוגיה",
+      subCategory: "סייבר",
+    };
+  }
+
+  if (
+    normalizedField.includes("it") ||
+    normalizedField.includes("מחשוב")
+  ) {
+    return {
+      mainCategory: "הייטק וטכנולוגיה",
+      subCategory: "IT ומחשוב",
+    };
+  }
+
+  if (
+    normalizedField.includes("דיגיטל") ||
+    normalizedField.includes("digital")
+  ) {
+    return {
+      mainCategory: "הייטק וטכנולוגיה",
+      subCategory: "דיגיטל",
+    };
+  }
+
+  if (
+    normalizedField.includes("אלקטרוניקה") ||
+    normalizedField.includes("electronics")
+  ) {
+    return {
+      mainCategory: "הייטק וטכנולוגיה",
+      subCategory: "אלקטרוניקה",
+    };
+  }
+
+  if (
+    normalizedField.includes("biomed") ||
+    normalizedField.includes("ביומד")
+  ) {
+    return {
+      mainCategory: "בריאות וביומד",
+      subCategory: "ביומד",
+    };
+  }
+
+  if (
+    normalizedField.includes("health") ||
+    normalizedField.includes("בריאות")
+  ) {
+    return {
+      mainCategory: "בריאות וביומד",
+      subCategory: "בריאות",
+    };
+  }
+
+  if (
+    normalizedField.includes("medical") ||
+    normalizedField.includes("רפוא") ||
+    normalizedField.includes("רפואה")
+  ) {
+    return {
+      mainCategory: "בריאות וביומד",
+      subCategory: "רפואה",
+    };
+  }
+
+  if (
+    normalizedField.includes("pharma") ||
+    normalizedField.includes("פארמה")
+  ) {
+    return {
+      mainCategory: "בריאות וביומד",
+      subCategory: "פארמה",
+    };
+  }
+
+  if (normalizedField.includes("סיעוד")) {
+    return {
+      mainCategory: "בריאות וביומד",
+      subCategory: "סיעוד",
+    };
+  }
+
+  if (
+    normalizedField.includes("education") ||
+    normalizedField.includes("חינוך")
+  ) {
+    return {
+      mainCategory: "חינוך ואקדמיה",
+      subCategory: "חינוך",
+    };
+  }
+
+  if (
+    normalizedField.includes("academy") ||
+    normalizedField.includes("academic") ||
+    normalizedField.includes("אקדמ")
+  ) {
+    return {
+      mainCategory: "חינוך ואקדמיה",
+      subCategory: "אקדמיה",
+    };
+  }
+
+  if (
+    normalizedField.includes("student") ||
+    normalizedField.includes("סטודנט")
+  ) {
+    return {
+      mainCategory: "חינוך ואקדמיה",
+      subCategory: "סטודנטים",
+    };
+  }
+
+  if (
+    normalizedField.includes("הכשרה") ||
+    normalizedField.includes("לימוד")
+  ) {
+    return {
+      mainCategory: "חינוך ואקדמיה",
+      subCategory: "הכשרות",
+    };
+  }
+
+  if (
+    normalizedField.includes("ngo") ||
+    normalizedField.includes("עמות")
+  ) {
+    return {
+      mainCategory: "עמותות וחברה",
+      subCategory: "עמותות",
+    };
+  }
+
+  if (
+    normalizedField.includes("community") ||
+    normalizedField.includes("קהיל")
+  ) {
+    return {
+      mainCategory: "עמותות וחברה",
+      subCategory: "קהילה",
+    };
+  }
+
+  if (
+    normalizedField.includes("social") ||
+    normalizedField.includes("חברתי") ||
+    normalizedField.includes("חברה")
+  ) {
+    return {
+      mainCategory: "עמותות וחברה",
+      subCategory: "שירותים חברתיים",
+    };
+  }
+
+  if (
+    normalizedField.includes("שילוב") ||
+    normalizedField.includes("אנשים עם מוגבלות")
+  ) {
+    return {
+      mainCategory: "עמותות וחברה",
+      subCategory: "שילוב אוכלוסיות",
+    };
+  }
+
+  if (
+    normalizedField.includes("municipality") ||
+    normalizedField.includes("עירייה")
+  ) {
+    return {
+      mainCategory: "ממשל ושירות ציבורי",
+      subCategory: "עירייה",
+    };
+  }
+
+  if (
+    normalizedField.includes("government") ||
+    normalizedField.includes("ממשל")
+  ) {
+    return {
+      mainCategory: "ממשל ושירות ציבורי",
+      subCategory: "ממשלתי",
+    };
+  }
+
+  if (
+    normalizedField.includes("public") ||
+    normalizedField.includes("ציבור")
+  ) {
+    return {
+      mainCategory: "ממשל ושירות ציבורי",
+      subCategory: "שירות ציבורי",
+    };
+  }
+
+  if (normalizedField.includes("רשות")) {
+    return {
+      mainCategory: "ממשל ושירות ציבורי",
+      subCategory: "רשות",
+    };
+  }
+
+  if (
+    normalizedField.includes("insurance") ||
+    normalizedField.includes("ביטוח") ||
+    normalizedField.includes("מנורה")
+  ) {
+    return {
+      mainCategory: "פיננסים, ביטוח ומיסוי",
+      subCategory: "ביטוח",
+    };
+  }
+
+  if (
+    normalizedField.includes("tax") ||
+    normalizedField.includes("מיסוי") ||
+    normalizedField === "מס" ||
+    normalizedField.includes(" מס ")
+  ) {
+    return {
+      mainCategory: "פיננסים, ביטוח ומיסוי",
+      subCategory: "מיסוי",
+    };
+  }
+
+  if (
+    normalizedField.includes("ראיית חשבון") ||
+    normalizedField.includes("חשבונ")
+  ) {
+    return {
+      mainCategory: "פיננסים, ביטוח ומיסוי",
+      subCategory: "ראיית חשבון",
+    };
+  }
+
+  if (
+    normalizedField.includes("bank") ||
+    normalizedField.includes("בנק")
+  ) {
+    return {
+      mainCategory: "פיננסים, ביטוח ומיסוי",
+      subCategory: "בנקאות",
+    };
+  }
+
+  if (
+    normalizedField.includes("finance") ||
+    normalizedField.includes("פיננס")
+  ) {
+    return {
+      mainCategory: "פיננסים, ביטוח ומיסוי",
+      subCategory: "פיננסים",
+    };
+  }
+
+  if (
+    normalizedField.includes("retail") ||
+    normalizedField.includes("קמעונ")
+  ) {
+    return {
+      mainCategory: "מסחר וקמעונאות",
+      subCategory: "קמעונאות",
+    };
+  }
+
+  if (
+    normalizedField.includes("commerce") ||
+    normalizedField.includes("trade") ||
+    normalizedField.includes("מסחר")
+  ) {
+    return {
+      mainCategory: "מסחר וקמעונאות",
+      subCategory: "מסחר",
+    };
+  }
+
+  if (
+    normalizedField.includes("רשת") ||
+    normalizedField.includes("רשתות")
+  ) {
+    return {
+      mainCategory: "מסחר וקמעונאות",
+      subCategory: "רשתות",
+    };
+  }
+
+  if (
+    normalizedField.includes("store") ||
+    normalizedField.includes("shop") ||
+    normalizedField.includes("חנות") ||
+    normalizedField.includes("חנויות")
+  ) {
+    return {
+      mainCategory: "מסחר וקמעונאות",
+      subCategory: "חנויות",
+    };
+  }
+
+  if (normalizedField.includes("מוצרי נייר")) {
+    return {
+      mainCategory: "מסחר וקמעונאות",
+      subCategory: "מוצרי נייר",
+    };
+  }
+
+  if (
+    normalizedField.includes("marketing") ||
+    normalizedField.includes("שיווק")
+  ) {
+    return {
+      mainCategory: "שירותים, ייעוץ ומכירות",
+      subCategory: "שיווק",
+    };
+  }
+
+  if (
+    normalizedField.includes("sales") ||
+    normalizedField.includes("מכירות")
+  ) {
+    return {
+      mainCategory: "שירותים, ייעוץ ומכירות",
+      subCategory: "מכירות",
+    };
+  }
+
+  if (
+    normalizedField.includes("service") ||
+    normalizedField.includes("שירות לקוחות") ||
+    normalizedField.includes("לקוחות")
+  ) {
+    return {
+      mainCategory: "שירותים, ייעוץ ומכירות",
+      subCategory: "שירות לקוחות",
+    };
+  }
+
+  if (
+    normalizedField.includes("consulting") ||
+    normalizedField.includes("ייעוץ") ||
+    normalizedField.includes("יעוץ")
+  ) {
+    return {
+      mainCategory: "שירותים, ייעוץ ומכירות",
+      subCategory: "ייעוץ",
+    };
+  }
+
+  if (
+    normalizedField.includes("business") ||
+    normalizedField.includes("עסק")
+  ) {
+    return {
+      mainCategory: "שירותים, ייעוץ ומכירות",
+      subCategory: "שירותים עסקיים",
+    };
+  }
+
+  if (
+    normalizedField.includes("restaurant") ||
+    normalizedField.includes("מסעד") ||
+    normalizedField.includes("אמריקן דיינר")
+  ) {
+    return {
+      mainCategory: "אירוח, מזון ותיירות",
+      subCategory: "מסעדנות",
+    };
+  }
+
+  if (
+    normalizedField.includes("food") ||
+    normalizedField.includes("מזון")
+  ) {
+    return {
+      mainCategory: "אירוח, מזון ותיירות",
+      subCategory: "מזון",
+    };
+  }
+
+  if (normalizedField.includes("משקאות")) {
+    return {
+      mainCategory: "אירוח, מזון ותיירות",
+      subCategory: "משקאות",
+    };
+  }
+
+  if (
+    normalizedField.includes("hotel") ||
+    normalizedField.includes("hospitality") ||
+    normalizedField.includes("מלונ")
+  ) {
+    return {
+      mainCategory: "אירוח, מזון ותיירות",
+      subCategory: "מלונאות",
+    };
+  }
+
+  if (
+    normalizedField.includes("tourism") ||
+    normalizedField.includes("תיירות")
+  ) {
+    return {
+      mainCategory: "אירוח, מזון ותיירות",
+      subCategory: "תיירות",
+    };
+  }
+
+  if (
+    normalizedField.includes("manufacturing") ||
+    normalizedField.includes("production") ||
+    normalizedField.includes("ייצור")
+  ) {
+    return {
+      mainCategory: "תעשייה וייצור",
+      subCategory: "ייצור",
+    };
+  }
+
+  if (
+    normalizedField.includes("factory") ||
+    normalizedField.includes("מפעל")
+  ) {
+    return {
+      mainCategory: "תעשייה וייצור",
+      subCategory: "מפעלים",
+    };
+  }
+
+  if (
+    normalizedField.includes("filter") ||
+    normalizedField.includes("מסננים")
+  ) {
+    return {
+      mainCategory: "תעשייה וייצור",
+      subCategory: "ייצור מסננים",
+    };
+  }
+
+  if (
+    normalizedField.includes("industry") ||
+    normalizedField.includes("industrial") ||
+    normalizedField.includes("תעש")
+  ) {
+    return {
+      mainCategory: "תעשייה וייצור",
+      subCategory: "תעשייה",
+    };
+  }
+
+  if (
+    normalizedField.includes("fashion") ||
+    normalizedField.includes("אופנה")
+  ) {
+    return {
+      mainCategory: "עיצוב, אופנה ואדריכלות",
+      subCategory: "אופנה",
+    };
+  }
+
+  if (
+    normalizedField.includes("makeup") ||
+    normalizedField.includes("beauty") ||
+    normalizedField.includes("איפור") ||
+    normalizedField.includes("יופי") ||
+    normalizedField.includes("טיפוח") ||
+    normalizedField.includes("קוסמטיקה")
+  ) {
+    return {
+      mainCategory: "עיצוב, אופנה ואדריכלות",
+      subCategory: "איפור וטיפוח",
+    };
+  }
+
+  if (normalizedField.includes("עיצוב מוצר")) {
+    return {
+      mainCategory: "עיצוב, אופנה ואדריכלות",
+      subCategory: "עיצוב מוצר",
+    };
+  }
+
+  if (
+    normalizedField.includes("architecture") ||
+    normalizedField.includes("אדריכלות") ||
+    normalizedField.includes("עיצוב")
+  ) {
+    return {
+      mainCategory: "עיצוב, אופנה ואדריכלות",
+      subCategory: "אדריכלות ועיצוב",
+    };
+  }
+
+  if (
+    normalizedField.includes("security") ||
+    normalizedField.includes("אבטחה")
+  ) {
+    return {
+      mainCategory: "אבטחה, ניקיון והסעדה",
+      subCategory: "אבטחה",
+    };
+  }
+
+  if (
+    normalizedField.includes("שומר") ||
+    normalizedField.includes("שמירה")
+  ) {
+    return {
+      mainCategory: "אבטחה, ניקיון והסעדה",
+      subCategory: "שמירה",
+    };
+  }
+
+  if (
+    normalizedField.includes("ניקיון") ||
+    normalizedField.includes("נקיון")
+  ) {
+    return {
+      mainCategory: "אבטחה, ניקיון והסעדה",
+      subCategory: "ניקיון",
+    };
+  }
+
+  if (normalizedField.includes("הסעדה")) {
+    return {
+      mainCategory: "אבטחה, ניקיון והסעדה",
+      subCategory: "הסעדה",
+    };
+  }
+
+  if (
+    normalizedField.includes("השמה") ||
+    normalizedField.includes("השמות")
+  ) {
+    return {
+      mainCategory: "השמה ומשאבי אנוש",
+      subCategory: "השמה",
+    };
+  }
+
+  if (
+    normalizedField.includes("גיוס") ||
+    normalizedField.includes("גיוסים")
+  ) {
+    return {
+      mainCategory: "השמה ומשאבי אנוש",
+      subCategory: "גיוס",
+    };
+  }
+
+  if (
+    normalizedField.includes("hr") ||
+    normalizedField.includes("משאבי אנוש") ||
+    normalizedField.includes("כוח אדם") ||
+    normalizedField.includes("כח אדם")
+  ) {
+    return {
+      mainCategory: "השמה ומשאבי אנוש",
+      subCategory: "משאבי אנוש",
+    };
+  }
+
+  if (normalizedField.includes("תעסוקה")) {
+    return {
+      mainCategory: "השמה ומשאבי אנוש",
+      subCategory: "תעסוקה",
+    };
+  }
+
+  if (
+    normalizedField.includes("מבקשי עבודה") ||
+    normalizedField.includes("קריירה")
+  ) {
+    return {
+      mainCategory: "סיוע תעסוקתי ושירותים קהילתיים",
+      subCategory: "מבקשי עבודה",
+    };
+  }
+
+  if (
+    normalizedField.includes("עולים") ||
+    normalizedField.includes("תושבים חוזרים")
+  ) {
+    return {
+      mainCategory: "סיוע תעסוקתי ושירותים קהילתיים",
+      subCategory: "עולים ותושבים חוזרים",
+    };
+  }
+
+  if (normalizedField.includes("קליטת מפונים")) {
+    return {
+      mainCategory: "סיוע תעסוקתי ושירותים קהילתיים",
+      subCategory: "קליטת מפונים",
+    };
+  }
+
+  if (normalizedField.includes("קידום תהליכים")) {
+    return {
+      mainCategory: "סיוע תעסוקתי ושירותים קהילתיים",
+      subCategory: "קידום תהליכים",
+    };
+  }
+
+  return {
+    mainCategory: "אחר",
+    subCategory: "לא מסווג",
+  };
+};
+
 const DirectoryPage = () => {
   const navigate = useNavigate();
 
   const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [fieldFilter, setFieldFilter] = useState("all");
+  const [mainFieldFilter, setMainFieldFilter] = useState("all");
+  const [subFieldFilter, setSubFieldFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -39,16 +769,47 @@ const DirectoryPage = () => {
     loadContacts();
   }, []);
 
-  const availableFields = useMemo(() => {
-    const fields = contacts
-      .map((contact) => contact.field)
+  const availableMainCategories = useMemo(() => {
+    const categoriesInUse = contacts
+      .map((contact) => getFieldClassification(contact.field).mainCategory)
       .filter(isVisibleValue);
 
-    return [...new Set(fields)].sort();
+    const uniqueCategories = [...new Set(categoriesInUse)];
+
+    return Object.keys(FIELD_GROUPS).filter((category) =>
+      uniqueCategories.includes(category)
+    );
   }, [contacts]);
+
+  const availableSubCategories = useMemo(() => {
+    const subCategoriesInUse = contacts
+      .map((contact) => getFieldClassification(contact.field))
+      .filter(({ mainCategory }) => {
+        return mainFieldFilter === "all" || mainCategory === mainFieldFilter;
+      })
+      .map(({ subCategory }) => subCategory)
+      .filter(isVisibleValue);
+
+    return [...new Set(subCategoriesInUse)].sort();
+  }, [contacts, mainFieldFilter]);
+
+  useEffect(() => {
+    if (
+      subFieldFilter !== "all" &&
+      !availableSubCategories.includes(subFieldFilter)
+    ) {
+      setSubFieldFilter("all");
+    }
+  }, [availableSubCategories, subFieldFilter]);
+
+  const handleMainFieldChange = (value) => {
+    setMainFieldFilter(value);
+    setSubFieldFilter("all");
+  };
 
   const filteredContacts = contacts.filter((contact) => {
     const searchText = searchQuery.toLowerCase().trim();
+    const { mainCategory, subCategory } = getFieldClassification(contact.field);
 
     const matchesSearch =
       !searchText ||
@@ -57,13 +818,19 @@ const DirectoryPage = () => {
       contact.role?.toLowerCase().includes(searchText) ||
       displayRole(contact.role).toLowerCase().includes(searchText) ||
       contact.field?.toLowerCase().includes(searchText) ||
+      mainCategory.toLowerCase().includes(searchText) ||
+      subCategory.toLowerCase().includes(searchText) ||
       contact.address?.toLowerCase().includes(searchText);
 
     const matchesRole = roleFilter === "all" || contact.role === roleFilter;
 
-    const matchesField = fieldFilter === "all" || contact.field === fieldFilter;
+    const matchesMainField =
+      mainFieldFilter === "all" || mainCategory === mainFieldFilter;
 
-    return matchesSearch && matchesRole && matchesField;
+    const matchesSubField =
+      subFieldFilter === "all" || subCategory === subFieldFilter;
+
+    return matchesSearch && matchesRole && matchesMainField && matchesSubField;
   });
 
   if (loading) {
@@ -118,11 +885,11 @@ const DirectoryPage = () => {
         style={{
           display: "grid",
           gridTemplateColumns:
-            "minmax(260px, 2fr) minmax(160px, 1fr) minmax(180px, 1fr)",
+            "minmax(260px, 2fr) minmax(150px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr)",
           gap: "14px",
           alignItems: "center",
           margin: "0 auto 28px auto",
-          maxWidth: "950px",
+          maxWidth: "1180px",
         }}
       >
         <input
@@ -161,14 +928,14 @@ const DirectoryPage = () => {
             fontFamily: "inherit",
           }}
         >
-          <option value="all">כל הסוגים</option>
+          <option value="all">כל התפקידים</option>
           <option value="employer">מעסיקים</option>
           <option value="coordinator">רכזים</option>
         </select>
 
         <select
-          value={fieldFilter}
-          onChange={(e) => setFieldFilter(e.target.value)}
+          value={mainFieldFilter}
+          onChange={(e) => handleMainFieldChange(e.target.value)}
           style={{
             width: "100%",
             padding: "14px 16px",
@@ -183,9 +950,33 @@ const DirectoryPage = () => {
           }}
         >
           <option value="all">כל התחומים</option>
-          {availableFields.map((field) => (
-            <option key={field} value={field}>
-              {field}
+          {availableMainCategories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={subFieldFilter}
+          onChange={(e) => setSubFieldFilter(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "14px 16px",
+            border: "2px solid #d6dce5",
+            borderRadius: "12px",
+            fontSize: "15px",
+            background: "#ffffff",
+            color: "#1f2937",
+            outline: "none",
+            boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
+            fontFamily: "inherit",
+          }}
+        >
+          <option value="all">כל תתי התחומים</option>
+          {availableSubCategories.map((subCategory) => (
+            <option key={subCategory} value={subCategory}>
+              {subCategory}
             </option>
           ))}
         </select>
@@ -211,82 +1002,94 @@ const DirectoryPage = () => {
             width: "100%",
           }}
         >
-          {filteredContacts.map((contact) => (
-            <div
-              key={contact.id}
-              style={{
-                padding: "20px",
-                border: "1px solid #dde3ec",
-                borderRadius: "18px",
-                background: "#fff",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
-                minHeight: "210px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                {isVisibleValue(contact.organization) && (
-                  <h2
-                    style={{
-                      marginTop: 0,
-                      marginBottom: "14px",
-                      color: "#002b5c",
-                      fontSize: "22px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {contact.organization}
-                  </h2>
-                )}
+          {filteredContacts.map((contact) => {
+            const { mainCategory, subCategory } = getFieldClassification(
+              contact.field
+            );
 
-                {isVisibleValue(contact.name) && (
-                  <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                    <strong>שם:</strong> {contact.name}
-                  </p>
-                )}
-
-                {isVisibleValue(contact.role) && (
-                  <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                    <strong>תפקיד:</strong> {displayRole(contact.role)}
-                  </p>
-                )}
-
-                {isVisibleValue(contact.field) && (
-                  <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                    <strong>תחום:</strong> {contact.field}
-                  </p>
-                )}
-
-                {isVisibleValue(contact.address) && (
-                  <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                    <strong>כתובת:</strong> {contact.address}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={() =>
-                  navigate(`/directory/${encodeURIComponent(contact.id)}`)
-                }
+            return (
+              <div
+                key={contact.id}
                 style={{
-                  marginTop: "16px",
-                  padding: "10px 16px",
-                  border: "none",
-                  borderRadius: "999px",
-                  background: "#003f9e",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  fontSize: "15px",
-                  fontFamily: "inherit",
+                  padding: "20px",
+                  border: "1px solid #dde3ec",
+                  borderRadius: "18px",
+                  background: "#fff",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
+                  minHeight: "230px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
                 }}
               >
-                צפייה בפרופיל
-              </button>
-            </div>
-          ))}
+                <div>
+                  {isVisibleValue(contact.organization) && (
+                    <h2
+                      style={{
+                        marginTop: 0,
+                        marginBottom: "14px",
+                        color: "#002b5c",
+                        fontSize: "22px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {contact.organization}
+                    </h2>
+                  )}
+
+                  {isVisibleValue(contact.name) && (
+                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
+                      <strong>שם:</strong> {contact.name}
+                    </p>
+                  )}
+
+                  {isVisibleValue(contact.role) && (
+                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
+                      <strong>תפקיד:</strong> {displayRole(contact.role)}
+                    </p>
+                  )}
+
+                  {isVisibleValue(contact.field) && (
+                    <>
+                      <p style={{ margin: "7px 0", fontSize: "16px" }}>
+                        <strong>תחום:</strong> {mainCategory}
+                      </p>
+
+                      <p style={{ margin: "7px 0", fontSize: "16px" }}>
+                        <strong>תת־תחום:</strong> {subCategory}
+                      </p>
+                    </>
+                  )}
+
+                  {isVisibleValue(contact.address) && (
+                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
+                      <strong>כתובת:</strong> {contact.address}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() =>
+                    navigate(`/directory/${encodeURIComponent(contact.id)}`)
+                  }
+                  style={{
+                    marginTop: "16px",
+                    padding: "10px 16px",
+                    border: "none",
+                    borderRadius: "999px",
+                    background: "#003f9e",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "15px",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  צפייה בפרופיל
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
