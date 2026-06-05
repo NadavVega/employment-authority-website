@@ -5,7 +5,7 @@ import { directoryService } from "../services/interfaces/directory-service";
 import { privacyService } from "../services/interfaces/privacy-service";
 
 // Design files
-import '../design/global-theme.css';
+import "../design/global-theme.css";
 
 const EmployerProfilePage = () => {
   const { employerId } = useParams();
@@ -21,8 +21,6 @@ const EmployerProfilePage = () => {
   const isAdmin = userRole === "admin";
   const isCoordinator = userRole === "coordinator";
 
-  // Only coordinators need to request access.
-  // Admin has full access by role and should not see request/access-status UI.
   const canRequestAccess = isCoordinator;
   const hasApprovedAccess = accessStatus === "approved" || isAdmin;
 
@@ -33,8 +31,26 @@ const EmployerProfilePage = () => {
     return role || "לא צוין";
   };
 
+  const displayAccessStatus = (status) => {
+    if (status === "none") return "אין בקשה";
+    if (status === "pending") return "ממתין לאישור";
+    if (status === "approved") return "מאושר";
+    if (status === "rejected") return "נדחה";
+    return status || "לא ידוע";
+  };
+
   const isVisibleValue = (value) => {
     return value && value !== "לא צוין" && String(value).trim() !== "";
+  };
+
+  const ltrValueStyle = {
+    direction: "ltr",
+    unicodeBidi: "plaintext",
+    display: "inline-block",
+    textAlign: "left",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    maxWidth: "100%",
   };
 
   useEffect(() => {
@@ -49,7 +65,7 @@ const EmployerProfilePage = () => {
         );
 
         if (!employerData) {
-          setMessage("Employer profile not found.");
+          setMessage("פרופיל מעסיק לא נמצא.");
           return;
         }
 
@@ -87,7 +103,7 @@ const EmployerProfilePage = () => {
         }
       } catch (error) {
         console.error("Failed to load employer profile:", error);
-        setMessage("Failed to load employer profile.");
+        setMessage("טעינת פרופיל המעסיק נכשלה.");
       } finally {
         setLoading(false);
       }
@@ -107,10 +123,10 @@ const EmployerProfilePage = () => {
       );
 
       setAccessStatus("pending");
-      setMessage(result.message || "Access request sent successfully.");
+      setMessage(result.message || "בקשת הגישה נשלחה בהצלחה.");
     } catch (error) {
       console.error("Failed to request access:", error);
-      setMessage(error.message || "Failed to request access.");
+      setMessage(error.message || "שליחת בקשת הגישה נכשלה.");
     } finally {
       setRequestLoading(false);
     }
@@ -209,13 +225,19 @@ const EmployerProfilePage = () => {
           <>
             {isVisibleValue(privateDetails?.directEmail) && (
               <p>
-                <strong>אימייל:</strong> {privateDetails.directEmail}
+                <strong>אימייל:</strong>{" "}
+                <span dir="ltr" style={ltrValueStyle}>
+                  {privateDetails.directEmail}
+                </span>
               </p>
             )}
 
             {isVisibleValue(privateDetails?.phone) && (
               <p>
-                <strong>טלפון:</strong> {privateDetails.phone}
+                <strong>טלפון:</strong>{" "}
+                <span dir="ltr" style={ltrValueStyle}>
+                  {privateDetails.phone}
+                </span>
               </p>
             )}
 
@@ -244,7 +266,7 @@ const EmployerProfilePage = () => {
 
         {!isAdmin && (
           <p>
-            <strong>סטטוס גישה:</strong> {accessStatus}
+            <strong>סטטוס גישה:</strong> {displayAccessStatus(accessStatus)}
           </p>
         )}
 
@@ -264,7 +286,7 @@ const EmployerProfilePage = () => {
               fontFamily: "inherit",
             }}
           >
-            {requestLoading ? "שולח בקשה..." : "Request Access"}
+            {requestLoading ? "שולח בקשה..." : "בקשת גישה לפרטי קשר"}
           </button>
         )}
 
