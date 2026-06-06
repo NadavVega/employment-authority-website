@@ -211,15 +211,15 @@ export const EventsPage = () => {
                             {category}
                         </button>
                     ))}
-                    {(userRole === 'coordinator' || userRole === 'admin') && (
-                        <button className="btn-primary pill-btn" style={{ marginRight: 'auto' }} onClick={() => navigate('/add-event')}>
-                            + הוסף אירוע
-                        </button>
-                    )}
                     {/* NEW: Archive View Button (Manager Only) */}
                     {isAdmin && (
                         <button className="btn-secondary pill-btn" onClick={() => alert("תצוגת ארכיון תיבנה בקרוב.")}>
                             📦 תצוגת ארכיון
+                        </button>
+                    )}
+                    {(userRole === 'coordinator' || userRole === 'admin') && (
+                        <button className="btn-primary pill-btn" style={{ marginRight: 'auto' }} onClick={() => navigate('/add-event')}>
+                            + הוסף אירוע
                         </button>
                     )}
                 </div>
