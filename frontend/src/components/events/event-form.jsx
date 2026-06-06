@@ -631,9 +631,9 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', borderTop: '1px solid var(--color-border)', paddingTop: '20px' }}>
-                    {isEditMode ? (
-                        <button type="button" onClick={() => setShowDeleteConfirm(true)} className="btn-cancel pill-btn btn-danger" disabled={isLoading || isUploading}>🗑️ מחיקת אירוע</button>
-                    ) : <div></div>}
+                    {isEditMode && isAdmin ? (
+                            <button type="button" onClick={() => setShowDeleteConfirm(true)} className="btn-secondary pill-btn btn-danger" disabled={isLoading || isUploading}>📦 העבר לארכיון</button>
+                        ) : <div></div>}
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button type="button" onClick={onCancel} className="btn-cancel pill-btn" disabled={isLoading || isUploading}>ביטול</button>
                         <button type="submit" className="btn-primary pill-btn" disabled={isLoading || isUploading}>{isEditMode ? 'שמירת שינויים' : 'שמירה ופרסום'}</button>

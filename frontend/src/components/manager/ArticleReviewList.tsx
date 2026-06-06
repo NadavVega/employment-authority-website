@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IArticle } from '../../interfaces/IArticle';
+import { IArticle } from '../../interfaces/IArticle'; 
 import { ArticleService } from '../../services/ArticleService';
 import { useAuth } from '../../context/auth-context';
 
@@ -9,6 +9,8 @@ import { useAuth } from '../../context/auth-context';
  */
 export const ArticleReviewList: React.FC = () => {
     const { currentUser } = useAuth();
+    
+    // תיקון קריטי: הוספת <IArticle[]> מונעת את שגיאת ה-never
     const [articles, setArticles] = useState<IArticle[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
@@ -58,30 +60,43 @@ export const ArticleReviewList: React.FC = () => {
     };
 
     if (loading) {
-        return <div className="review-list">Loading pending articles...</div>;
+        return (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
+                טוען כתבות ממתינות לאישור...
+            </div>
+        );
     }
 
     return (
-        <div className="review-list">
-            <h2>Pending Articles for Approval</h2>
+        <div className="article-review-list">
             {articles.length === 0 ? (
-                <p>No articles pending approval.</p>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
+                    <p>אין כתבות שממתינות לאישור כרגע.</p>
+                </div>
             ) : (
                 articles.map(article => (
-                    <div key={article.id} className="article-card">
-                        <h3>{article.title}</h3>
-                        <p>Source: {article.sourceName}</p>
-                        <p>
-                            <a href={article.url} target="_blank" rel="noreferrer">
-                                Read Original Article
+                    <div key={article.id} className="article-review-card" dir="rtl">
+                        <h3 className="article-title">{article.title}</h3>
+                        
+                        <div className="article-meta">
+                            <span><strong>מקור:</strong> {article.sourceName}</span>
+                            <a href={article.url} target="_blank" rel="noreferrer" className="article-link">
+                                קרא את הכתבה המקורית
                             </a>
-                        </p>
+                        </div>
+                        
                         <div className="article-actions">
-                            <button onClick={() => article.id && handleApprove(article.id)}>
-                                Approve & Publish
+                            <button 
+                                className="btn-reject-article" 
+                                onClick={() => article.id && handleReject(article.id)}
+                            >
+                                דחה כתבה
                             </button>
-                            <button className="delete-btn" onClick={() => article.id && handleReject(article.id)}>
-                                Reject
+                            <button 
+                                className="btn-approve-article" 
+                                onClick={() => article.id && handleApprove(article.id)}
+                            >
+                                אשר ופרסם
                             </button>
                         </div>
                     </div>
@@ -90,3 +105,5 @@ export const ArticleReviewList: React.FC = () => {
         </div>
     );
 };
+
+export default ArticleReviewList;

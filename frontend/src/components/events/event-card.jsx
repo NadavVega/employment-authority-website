@@ -60,24 +60,24 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                     )}
                         {/* Accessibility Icon */}
                         {event.isAccessible && (
-                            <div className="badge-accessibility" title="אירוע נגיש" style={{ background: '#003b8b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="4" r="2"></circle>
-                                    <polyline points="12 7 12 11 16 15"></polyline>
-                                    <path d="M8 21.5a5.5 5.5 0 1 0 7-3.5"></path>
-                                    <path d="M12 11L9.5 8.5"></path>
+                            <div className="badge-accessibility" title="אירוע נגיש">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="5" r="2"></circle>
+                                    <path d="M12 7v5l2.5 2.5"></path>
+                                    <path d="M10 19a5 5 0 1 1 5-5"></path>
                                 </svg>
                             </div>
                         )}
                     </div>
                     
-                    {/* Delete button for Expired, Edit button for Active */}
+                    {/* Archive button for Expired */}
                     {canEdit && (
                         isExpired ? (
-                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: '#ef4444' }} title="מחיקת אירוע">
-                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
+                                            <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
+                                            <path d="M10 13h4"></path>
                                 </svg>
                             </button>
                         ) : (

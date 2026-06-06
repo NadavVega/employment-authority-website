@@ -6,7 +6,8 @@ const HeroCarousel = ({ events }) => {
 
     if (!events || events.length === 0) {
         return (
-            <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc', borderRadius: 2 }}>
+            /* CHANGED: Fixed height instead of 100% */
+            <Box sx={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc', borderRadius: 2 }}>
                 <Typography fontWeight="300" sx={{ color: '#64748b' }}>אין אירועים קרובים להצגה.</Typography>
             </Box>
         );
@@ -22,9 +23,16 @@ const HeroCarousel = ({ events }) => {
         <Paper 
             elevation={0} 
             sx={{ 
-                position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', 
-                justifyContent: 'flex-end', overflow: 'hidden', borderRadius: 2,
-                backgroundImage: `url(${slideImage})`, backgroundSize: 'cover', backgroundPosition: 'center',
+                position: 'relative', 
+                height: '240px', /* CHANGED: Fixed height gives the background image room to breathe */
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'flex-end', /* Pushes the blue banner to the bottom */
+                overflow: 'hidden', 
+                borderRadius: 2,
+                backgroundImage: `url(${slideImage})`, 
+                backgroundSize: 'cover', 
+                backgroundPosition: 'center',
                 transition: 'background-image 0.5s ease-in-out'
             }}
         >
@@ -46,7 +54,7 @@ const HeroCarousel = ({ events }) => {
             <Box 
                 sx={{ 
                     bgcolor: 'rgba(0, 59, 139, 0.90)', width: '100%',
-                    py: 1.5, px: 2, // Drastically reduced padding to save vertical space
+                    py: 1.5, px: 2, 
                     borderBottom: '4px solid #facc15', position: 'relative', zIndex: 5
                 }}
             >

@@ -15,10 +15,10 @@ import '../design/event-page.css';
 import employmentLogo from '../assets/images/employment-logo.png';
 import cityView from '../assets/images/city-view.png';
 
-const FILTER_CATEGORIES = ['הכל', 'ממתינים לאישור', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
+const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
 export const EventsPage = () => {
-    const { currentUser, isGuest, userRole, isAdmin } = useAuth(); 
+    const { currentUser, isGuest, userRole, isAdmin, isCoordinator } = useAuth(); 
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
@@ -100,7 +100,7 @@ export const EventsPage = () => {
     if (isPendingFilter) {
         return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
     }
-    
+
     // Hide pending events from all other tabs
     if (event.status === 'pending') return false; 
 
@@ -214,6 +214,12 @@ export const EventsPage = () => {
                             + הוסף אירוע
                         </button>
                     )}
+                    {/* NEW: Archive View Button (Manager Only) */}
+                    {isAdmin && (
+                        <button className="btn-secondary pill-btn" onClick={() => alert("תצוגת ארכיון תיבנה בקרוב.")}>
+                            📦 תצוגת ארכיון
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -239,7 +245,7 @@ export const EventsPage = () => {
             </main>
 
             {/* ===== PAST EVENTS GRID (ADMIN ONLY) ===== */}
-            {isAdmin && pastEvents.length > 0 && (
+            {(isAdmin || isCoordinator) && pastEvents.length > 0 && (
                 <div className="past-events-section">
                     <div className="section-divider">
                         <h2>אירועים שנגמרו</h2>
