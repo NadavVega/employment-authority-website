@@ -10,6 +10,7 @@ import MediaCarousel from '../features/carousel/media-carousel';
 
 import '../design/event-page.css'; 
 import EmploymentLogo from '../assets/images/employment-logo.png';
+import { resolveEventImage } from '../utils/eventImageMap';
 
 const SectionTitle = ({ title, icon }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '2px solid var(--color-border)', position: 'relative' }}>
@@ -21,35 +22,55 @@ const SectionTitle = ({ title, icon }) => (
     </Box>
 );
 
+const getEventDate = (dateValue) => {
+    return dateValue?.toDate ? dateValue.toDate() : new Date(dateValue);
+};
+
 const HomePage = () => {
     const { isAuthenticated, currentUser } = useAuth();
     const [articles, setArticles] = useState([]);
     const [events, setEvents] = useState([]);
 
     useEffect(() => {
-        const q = query(collection(db, 'articles'), where('status', '==', 'approved'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setArticles(fetchedArticles);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
         const q = query(collection(db, 'events'));
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-            
-            const fetchedEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const fetchedEvents = snapshot.docs.map(doc => {
+                const event = { id: doc.id, ...doc.data() };
+                const eventImage = resolveEventImage(event);
+
+                return {
+                    ...event,
+
+                    // Useful for components that support a custom image field
+                    imageSrc: eventImage,
+                    displayImage: eventImage,
+
+                    // Keeps older components working if they still read event.photoUrl
+                    photoUrl: eventImage || event.photoUrl || ''
+                };
+            });
+
             const upcoming = fetchedEvents
-                .filter(e => e.status === 'published' && new Date(e.date) >= now)
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-                
+                .filter(e => e.status === 'published' && getEventDate(e.date) >= now)
+                .sort((a, b) => getEventDate(a.date) - getEventDate(b.date));
+
             setEvents(upcoming);
         });
+
         return () => unsubscribe();
     }, []);
+
+    const eventGalleryPhotos = events
+    .map(event => resolveEventImage(event))
+    .filter(Boolean);
+
+    const galleryPhotos = eventGalleryPhotos.length > 0
+        ? eventGalleryPhotos
+        : ['/assets/images/event-placeholder-1.jpg', '/assets/images/event-placeholder-2.jpg'];
 
     return (
         <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
@@ -125,7 +146,7 @@ const HomePage = () => {
                     <SectionTitle title="גלריית אירועי תעסוקה" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>} />
                     <Paper elevation={0} sx={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', p: 2, bgcolor: 'var(--color-surface)', height: '800px', display: 'flex', flexDirection: 'column' }}>
                         <Box sx={{ flexGrow: 1, width: '100%', height: '100%', '& > div': { height: '100%' } }}>
-                            <MediaCarousel photos={['/assets/images/event-placeholder-1.jpg', '/assets/images/event-placeholder-2.jpg']} />
+                            <MediaCarousel photos={galleryPhotos} />
                         </Box>
                     </Paper>
                 </Box>

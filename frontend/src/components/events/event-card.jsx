@@ -3,7 +3,9 @@ import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
 import '../../pages/event-page'
+import defaultPicture  from '../../assets/images/default-event.jpg';
 import { getEventColor } from '../../utils/centerColors';
+import { resolveEventImage } from '../../utils/eventImageMap';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -32,7 +34,7 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
     const dayMonth = isNaN(dateObj) ? '--' : `${dateObj.getDate().toString().padStart(2, '0')}.${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
     const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
 
-    const cardImage = event.photoUrl || 'https://via.placeholder.com/300x200?text=No+Image';
+    const cardImage = resolveEventImage(event) || defaultPicture;
     const shortLocation = formatShortAddress(event.location);
 
     return (

@@ -14,6 +14,7 @@ import '../design/event-page.css';
 // importing images and logos 
 import employmentLogo from '../assets/images/employment-logo.png';
 import cityView from '../assets/images/city-view.png';
+import { resolveEventImage } from '../utils/eventImageMap';
 
 const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
@@ -176,6 +177,8 @@ export const EventsPage = () => {
         return true;
     });
 
+    const selectedEventImage = resolveEventImage(selectedEventModal);
+
     return (
         <div className="events-page-wrapper" dir="rtl">
             
@@ -277,7 +280,14 @@ export const EventsPage = () => {
                     <div className="full-event-modal-content" onClick={(e) => e.stopPropagation()}>
                         <button className="event-modal-close" onClick={() => setSelectedEventModal(null)}>✖</button>
                         
-                        <div className="modal-header-banner">
+                        <div
+                            className="modal-header-banner"
+                            style={selectedEventImage ? {
+                                backgroundImage: `linear-gradient(rgba(0, 48, 110, 0.72), rgba(0, 48, 110, 0.72)), url(${selectedEventImage})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                            } : undefined}
+                        >
                             <span className="event-card-type">{selectedEventModal.type}</span>
                             <h2>{selectedEventModal.title}</h2>
                         </div>

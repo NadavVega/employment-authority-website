@@ -21,10 +21,16 @@ export const EVENT_IMAGE_OPTIONS = [
 // Use this everywhere you need to show an event image (card, page, carousel)
 export const resolveEventImage = (event) => {
     if (!event) return null;
+
     if (event.image) {
         const found = EVENT_IMAGE_OPTIONS.find(o => o.value === event.image);
         if (found) return found.src;
     }
+
     if (event.photoUrl) return event.photoUrl;
+
+    // Supports old/custom-upload preview data if it exists in Firestore
+    if (event.photoPreview) return event.photoPreview;
+
     return null;
 };

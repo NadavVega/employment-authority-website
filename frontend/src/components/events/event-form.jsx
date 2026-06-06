@@ -58,7 +58,11 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     title: '', type: '', date: '', startTime: '', endTime: '', location: '', capacity: '',
     description: '', isAccessible: false, center: '', coordinatorName: '',
     accessibilityContactName: '', paymentMethod: 'none', price: '', discountDetails: '',
-    paymentDetails: '', photoUrl: '', logoUrl: '', photoPreview: null
+    paymentDetails: '',
+    image: '',
+    photoUrl: '',
+    logoUrl: '',
+    photoPreview: null
   });
 
   const [coordinatorPhones, setCoordinatorPhones] = useState([{ prefix: '050', number: '' }]);
@@ -90,12 +94,50 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
       alert('נא להעלות קובץ תמונה בלבד');
       return;
     }
+
     const reader = new FileReader();
-    reader.onload = (ev) => setFormData(prev => ({ ...prev, photoPreview: ev.target.result, photoUrl: '' }));
+
+    reader.onload = (ev) => {
+      setFormData(prev => ({
+        ...prev,
+        image: '',
+        photoPreview: ev.target.result,
+        photoUrl: ''
+      }));
+    };
+
     reader.readAsDataURL(file);
   };
 
-  const handleImageUpload = (e) => processImageFile(e.target.files[0]);
+  const handleImageUpload = (e) => {
+    processImageFile(e.target.files[0]);
+  };
+
+  const handlePredefinedImageSelect = (option) => {
+    setFormData(prev => ({
+      ...prev,
+      image: option.value,
+      photoPreview: null,
+      photoUrl: ''
+    }));
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleClearEventImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      image: '',
+      photoPreview: null,
+      photoUrl: ''
+    }));
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
@@ -330,6 +372,18 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     </div>
   );
 
+  const selectedPredefinedImage = EVENT_IMAGE_OPTIONS.find(
+    option => option.value === formData.image
+  );
+
+  const eventImagePreviewSrc =
+    formData.photoPreview ||
+    formData.photoUrl ||
+    selectedPredefinedImage?.src ||
+    '';
+
+  const hasEventImage = Boolean(eventImagePreviewSrc);
+
   // ===================== RENDER =====================
   return (
     <div className="event-form-container form-contrast-wrapper" dir="rtl" style={{ position: 'relative' }}>
@@ -531,42 +585,188 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
             )}
 
             {/* ===== IMAGE UPLOAD ===== */}
-            <h4 className="section-title" style={{ marginTop: '30px'}}>תמונת אירוע</h4>
+            <h4 className="section-title" style={{ marginTop: '30px' }}>תמונת אירוע</h4>
+
             <div className="form-group">
-              {!formData.photoPreview && !formData.photoUrl ? (
-                <label
-                  htmlFor="photo-upload-input"
+              {!hasEventImage ? (
+                <div
+                  style={{
+                    border: `2px dashed ${isDragging ? 'var(--color-primary, #1a56db)' : '#cbd5e1'}`,
+                    borderRadius: '8px',
+                    padding: '18px',
+                    backgroundColor: isDragging ? '#f0f7ff' : 'transparent',
+                    transition: 'border-color 0.2s, background-color 0.2s'
+                  }}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    justifyContent: 'center', border: `2px dashed ${isDragging ? 'var(--color-primary, #1a56db)' : '#cbd5e1'}`,
-                    borderRadius: '8px', padding: '32px 16px', cursor: 'pointer',
-                    color: '#64748b', gap: '4px', transition: 'border-color 0.2s',
-                    backgroundColor: isDragging ? '#f0f7ff' : 'transparent'
-                  }}
                 >
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <span style={{ fontSize: '14px' }}>גרור תמונה לכאן או <u>לחץ לבחירה</u></span>
-                  <input id="photo-upload-input" ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-                </label>
+                  <div style={{ marginBottom: '14px', textAlign: 'center' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--color-primary-dark, #0f2f6b)', marginBottom: '4px' }}>
+                      בחר תמונה קיימת
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                      ניתן לבחור תמונה מוכנה או להעלות תמונה משלך
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                      gap: '12px',
+                      marginBottom: '18px'
+                    }}
+                  >
+                    {EVENT_IMAGE_OPTIONS.map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handlePredefinedImageSelect(option)}
+                        style={{
+                          border: '1px solid #dbe4ef',
+                          borderRadius: '10px',
+                          background: '#fff',
+                          padding: '8px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
+                          transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 14px rgba(15, 23, 42, 0.12)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary, #1a56db)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(15, 23, 42, 0.06)';
+                          e.currentTarget.style.borderColor = '#dbe4ef';
+                        }}
+                      >
+                        <img
+                          src={option.src}
+                          alt={option.label}
+                          style={{
+                            width: '100%',
+                            height: '74px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            display: 'block',
+                            marginBottom: '7px'
+                          }}
+                        />
+                        <span
+                          style={{
+                            display: 'block',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: '#0f172a',
+                            lineHeight: 1.3
+                          }}
+                        >
+                          {option.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      margin: '8px 0 14px'
+                    }}
+                  >
+                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>או</span>
+                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                  </div>
+
+                  <label
+                    htmlFor="photo-upload-input"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '22px 16px',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      gap: '4px',
+                      backgroundColor: '#fff'
+                    }}
+                  >
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+
+                    <span style={{ fontSize: '14px' }}>
+                      גרור תמונה לכאן או <u>לחץ לבחירה</u>
+                    </span>
+
+                    <input
+                      id="photo-upload-input"
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </div>
               ) : (
                 <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
                   <img
-                    src={formData.photoPreview || formData.photoUrl}
-                    alt="תצוגה מקדימה"
-                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                    src={eventImagePreviewSrc}
+                    alt={selectedPredefinedImage?.label || 'תצוגה מקדימה'}
+                    style={{
+                      width: '100%',
+                      maxHeight: '220px',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
                   />
+
+                  {selectedPredefinedImage && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        bottom: '8px',
+                        background: 'rgba(255,255,255,0.92)',
+                        color: '#0f172a',
+                        borderRadius: '999px',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        fontWeight: 600
+                      }}
+                    >
+                      {selectedPredefinedImage.label}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     className="btn-remove-image"
-                    onClick={() => setFormData(prev => ({ ...prev, photoPreview: null, photoUrl: '' }))}
-                    style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px' }}
+                    onClick={handleClearEventImage}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
                   >
                     ✕ הסר
                   </button>
