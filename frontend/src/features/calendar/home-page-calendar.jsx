@@ -91,20 +91,30 @@ const EventCalendar = ({ events, userName }) => {
                                 const eDate = e.date?.toDate ? e.date.toDate() : new Date(e.date);
                                 return (
                                     <Box key={i} sx={{
-                                        bgcolor: getEventColor(e, i),
-                                        color: 'white',
-                                        borderRadius: '4px',
-                                        px: 1,
-                                        py: 0.5,
-                                        textAlign: 'right',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                    }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                                            {eDate.getDate()}/{eDate.getMonth() + 1} - {e.title}
-                                        </Typography>
-                                    </Box>
+                                bgcolor: '#ffffff',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                                borderRadius: '8px',
+                                p: '4px 8px',
+                                borderRight: `3px solid ${getEventColor(e, i)}`,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 6px 16px rgba(0,0,0,0.1)'
+                                }
+                            }}>
+                                <Typography variant="caption" sx={{
+                                    color: getEventColor(e, i),
+                                    fontWeight: 700,
+                                    display: 'block',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    textAlign: 'right'
+                                }}>
+                                    {e.title}
+                                </Typography>
+                            </Box>
                                 );
                             })
                         )}
@@ -138,9 +148,9 @@ const EventCalendar = ({ events, userName }) => {
 
             return (
                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', mt: 0.5, gap: 0.5, px: 0.5 }}>
-                    {dayEvents.map((event, index) => (
+                    {dayEvents.map((e, i) => (
                         <Tooltip
-                            key={index}
+                            key={i}
                             interactive
                             placement="top"
                             arrow
@@ -160,13 +170,13 @@ const EventCalendar = ({ events, userName }) => {
                             title={
                                 <Box sx={{ textAlign: 'right', direction: 'rtl' }}>
                                     <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5, color: '#003b8b' }}>
-                                        {event.title}
+                                        {e.title}
                                     </Typography>
                                     <Typography variant="body2" sx={{ mb: 0.5, color: '#475569' }}>
-                                        <strong>שעה: </strong>{event.time}
+                                        <strong>שעה: </strong>{e.time}
                                     </Typography>
                                     <Typography variant="body2" sx={{ mb: 2.5, color: '#475569' }}>
-                                        <strong>מיקום: </strong>{event.location}
+                                        <strong>מיקום: </strong>{e.location}
                                     </Typography>
                                     <Button
                                         size="medium"
@@ -182,7 +192,7 @@ const EventCalendar = ({ events, userName }) => {
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            navigate('/events', { state: { openEventId: event.id } });
+                                            navigate('/events', { state: { openEventId: e.id } });
                                         }}
                                     >
                                         לכל הפרטים
@@ -195,7 +205,7 @@ const EventCalendar = ({ events, userName }) => {
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                                 borderRadius: '8px',
                                 p: '4px 8px',
-                                borderRight: `3px solid ${getEventColor(event, index)}`,
+                                borderRight: `3px solid ${getEventColor(e, i)}`,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 '&:hover': {
@@ -204,7 +214,7 @@ const EventCalendar = ({ events, userName }) => {
                                 }
                             }}>
                                 <Typography variant="caption" sx={{
-                                    color: getEventColor(event, index),
+                                    color: getEventColor(e, i),
                                     fontWeight: 700,
                                     display: 'block',
                                     overflow: 'hidden',
@@ -212,7 +222,7 @@ const EventCalendar = ({ events, userName }) => {
                                     whiteSpace: 'nowrap',
                                     textAlign: 'right'
                                 }}>
-                                    {event.title}
+                                    {e.title}
                                 </Typography>
                             </Box>
                         </Tooltip>
