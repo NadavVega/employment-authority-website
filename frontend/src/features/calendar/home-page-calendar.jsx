@@ -238,18 +238,23 @@ const EventCalendar = ({ events, userName }) => {
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#f8fafc' }}>
 
             {/* ── HEADER ── */}
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
+           <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: '220px 1fr 300px 80px',
                 alignItems: 'center',
                 px: 2,
                 py: 1.5,
-                flexWrap: 'wrap',
                 gap: 1,
                 direction: 'rtl',
                 bgcolor: 'var(--color-surface)',
                 borderBottom: '1px solid var(--color-border)',
                 zIndex: 10,
+
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: '1fr',
+                    justifyItems: 'center',
+                    gap: 1.5
+                }
             }}>
                 <Typography variant="h6" fontWeight={700}>שלום, {userName}</Typography>
 
@@ -264,27 +269,66 @@ const EventCalendar = ({ events, userName }) => {
                 <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button onClick={handlePrev}>&lt;</Button>
 
-                    <Paper elevation={0} sx={{
-                        display: 'flex',
-                        p: 0.5,
-                        bgcolor: '#f8fafc',
-                        borderRadius: '99px',
-                        border: '1px solid #f1f5f9'
-                    }}>
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            display: 'flex',
+                            p: '4px',
+                            bgcolor: '#f8fafc',
+                            borderRadius: '99px',
+                            border: '1px solid #f1f5f9',
+                            overflow: 'hidden',
+                            gap: 0,
+                            direction: 'rtl'
+                        }}
+                    >
                         <Button
                             onClick={() => setViewMode('month')}
                             sx={{
+                                minWidth: '68px',
+                                px: 2,
+                                py: 0.8,
+                                borderRadius: '0 99px 99px 0',
                                 fontWeight: viewMode === 'month' ? '700' : '500',
-                                color: viewMode === 'month' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)'
+                                color: viewMode === 'month'
+                                    ? 'var(--color-primary-dark)'
+                                    : 'var(--color-text-muted)',
+                                bgcolor: viewMode === 'month' ? '#ffffff' : 'transparent',
+                                boxShadow: viewMode === 'month'
+                                    ? '0 2px 8px rgba(15, 23, 42, 0.06)'
+                                    : 'none',
+                                '&:hover': {
+                                    bgcolor: viewMode === 'month' ? '#ffffff' : '#eef2f7',
+                                    borderRadius: '0 99px 99px 0'
+                                }
                             }}
-                        >חודש</Button>
+                        >
+                            חודש
+                        </Button>
+
                         <Button
                             onClick={() => setViewMode('year')}
                             sx={{
+                                minWidth: '68px',
+                                px: 2,
+                                py: 0.8,
+                                borderRadius: '99px 0 0 99px',
                                 fontWeight: viewMode === 'year' ? '700' : '500',
-                                color: viewMode === 'year' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)'
+                                color: viewMode === 'year'
+                                    ? 'var(--color-primary-dark)'
+                                    : 'var(--color-text-muted)',
+                                bgcolor: viewMode === 'year' ? '#ffffff' : 'transparent',
+                                boxShadow: viewMode === 'year'
+                                    ? '0 2px 8px rgba(15, 23, 42, 0.06)'
+                                    : 'none',
+                                '&:hover': {
+                                    bgcolor: viewMode === 'year' ? '#ffffff' : '#eef2f7',
+                                    borderRadius: '99px 0 0 99px'
+                                }
                             }}
-                        >שנה</Button>
+                        >
+                            שנה
+                        </Button>
                     </Paper>
 
                     <Button onClick={handleNext}>&gt;</Button>
