@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
+import '../../pages/event-page'
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -46,7 +47,7 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                                 אשר אירוע
                             </button>
                         )}
-                        {/* NEW: ALREADY REGISTERED CHECKMARK */}
+                        {/* ALREADY REGISTERED CHECKMARK */}
                         {isRegistered && (
                         <div style={{
                             background: '#10b981', color: 'white', padding: '4px 12px',
@@ -60,11 +61,22 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                     )}
                         {/* Accessibility Icon */}
                         {event.isAccessible && (
-                            <div className="badge-accessibility" title="אירוע נגיש">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="5" r="2"></circle>
-                                    <path d="M12 7v5l2.5 2.5"></path>
-                                    <path d="M10 19a5 5 0 1 1 5-5"></path>
+                            <div className="badge-accessibility" title="נגיש לנכים">
+                                <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width={22}
+                                height={22}
+                                viewBox="0 0 100 100"
+                                fill="white"
+                                >
+                                {/* Head */}
+                                <circle cx="50" cy="12" r="10" />
+                                {/* Body + arm + seat */}
+                                <path d="M55 25 L45 25 L38 55 L62 55 L68 70 L78 66 L70 48 L52 48 L57 30 Z" />
+                                {/* Wheel */}
+                                <circle cx="42" cy="75" r="18" fill="none" stroke="white" strokeWidth="8" />
+                                {/* Small front wheel */}
+                                <circle cx="72" cy="75" r="6" />
                                 </svg>
                             </div>
                         )}

@@ -183,6 +183,14 @@ const EventCalendar = ({ events, userName }) => {
                 '& .react-calendar__tile--now': { background: 'var(--color-primary) !important', color: '#ffffff !important' }
             }}>
                 <Calendar locale="he-IL" calendarType="hebrew" view={viewMode} activeStartDate={activeDate} onActiveStartDateChange={({ activeStartDate }) => setActiveDate(activeStartDate)} onClickMonth={(value) => { setActiveDate(value); setViewMode('month'); }} tileContent={renderTileContent} />
+                    <style>{`
+                    .react-calendar__month-view__weekdays {
+                        border-bottom: none !important;
+                    }
+                    .react-calendar__month-view__weekdays__weekday abbr {
+                        text-decoration: none; /* also removes the underline on day names */
+                    }
+                    `}</style>
             </Box>
         </Box>
     );
