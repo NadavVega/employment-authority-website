@@ -3,6 +3,7 @@ import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
 import '../../pages/event-page'
+import { getEventColor } from '../../utils/centerColors';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -14,7 +15,7 @@ const formatShortAddress = (address) => {
     return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -122,7 +123,9 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                 </div>
             </div>
 
-            <div className="event-card-bottom">
+            <div 
+                className="event-card-bottom"
+                style={{ borderTop: `4px solid ${getEventColor(event, index)}` }}>
                 <div className="bottom-date-area standard-numbers">
                     <p className="bottom-date-big">{dayMonth}</p>
                 </div>

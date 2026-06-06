@@ -101,6 +101,8 @@ export const EventsPage = () => {
         return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
     }
 
+    if (event.center === 'coordinators-only' && !isAdmin && userRole !== 'coordinator') return false;
+
     // Hide pending events from all other tabs
     if (event.status === 'pending') return false; 
 
@@ -226,10 +228,11 @@ export const EventsPage = () => {
             {/* ===== ACTIVE EVENTS GRID ===== */}
             <main className="events-grid">
                 {activeEvents.filter(filterFunction).length > 0 ? (
-                    activeEvents.filter(filterFunction).map(event => (
+                    activeEvents.filter(filterFunction).map((event, index) => (
                         <EventCard 
                             key={event.id} 
                             event={event} 
+                            index={index}
                             isGuest={isGuest} 
                             isRegistered={registeredEventIds.includes(event.id)}
                             onOpenDetails={(e) => setSelectedEventModal(e)} 
@@ -252,10 +255,11 @@ export const EventsPage = () => {
                         <hr/>
                     </div>
                     <main className="events-grid">
-                        {pastEvents.filter(filterFunction).map(event => (
+                        {pastEvents.filter(filterFunction).map((event, index) => (
                             <EventCard 
                                 key={event.id} 
                                 event={event} 
+                                index={index}
                                 isGuest={isGuest} 
                                 isExpired={true} 
                                 onOpenDetails={(e) => setSelectedEventModal(e)}
@@ -368,7 +372,7 @@ export const EventsPage = () => {
                 </div>
             )}
 
-            {/* ===== NEW: BIT PAYMENT MODAL ===== */}
+            {/* ===== BIT PAYMENT MODAL ===== */}
             {bitPaymentDetails && (
                 <div className="validation-dialog-overlay" onClick={() => setBitPaymentDetails(null)}>
                     <div className="validation-dialog-box" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: '32px' }}>
