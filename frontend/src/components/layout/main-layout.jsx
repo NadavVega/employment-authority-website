@@ -13,7 +13,6 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
-import DemoRoleSwitcher from '../ui/demo-role-switcher';
 import SideNavigation from '../../features/slide-bar/slide-bar-menu';
 
 // Logos
@@ -177,8 +176,6 @@ const MainLayout = ({ children }) => {
             >
                 {children}
             </Box>
-
-            <DemoRoleSwitcher />
 
             <Box
                 component="footer"

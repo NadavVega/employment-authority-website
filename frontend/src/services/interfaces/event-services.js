@@ -33,11 +33,18 @@ const buildEmployerProfileFromFirestore = async (currentUser) => {
     }
 
     const emailDocId = getUserDocIdFromEmail(currentUser.email);
-
     const publicProfileRef = doc(db, 'users', emailDocId);
     const publicSnap = await getDoc(publicProfileRef);
 
     const publicProfile = publicSnap.exists() ? publicSnap.data() : {};
+    const profile = publicProfile.profile || {};
+
+    const fallbackName =
+        currentUser.displayName ||
+        profile.fullName ||
+        publicProfile.fullName ||
+        publicProfile.name ||
+        currentUser.email;
 
     return {
         uid: currentUser.uid,
@@ -45,25 +52,32 @@ const buildEmployerProfileFromFirestore = async (currentUser) => {
         employerName:
             cleanValue(publicProfile.name) ||
             cleanValue(publicProfile.fullName) ||
-            cleanValue(currentUser.displayName, 'ללא שם'),
+            cleanValue(profile.fullName) ||
+            fallbackName,
 
         displayName:
             cleanValue(publicProfile.name) ||
             cleanValue(publicProfile.fullName) ||
-            cleanValue(currentUser.displayName, 'ללא שם'),
+            cleanValue(profile.fullName) ||
+            fallbackName,
 
         email: cleanValue(currentUser.email),
 
         center:
             cleanValue(publicProfile.center) ||
             cleanValue(publicProfile.connectedCenter) ||
-            cleanValue(publicProfile.field),
+            cleanValue(profile.center) ||
+            cleanValue(profile.field) ||
+            '',
 
         companyName:
             cleanValue(publicProfile.companyName) ||
             cleanValue(publicProfile.organization) ||
             cleanValue(publicProfile.company) ||
-            cleanValue(publicProfile.businessName),
+            cleanValue(publicProfile.businessName) ||
+            cleanValue(profile.company) ||
+            cleanValue(profile.organization) ||
+            '',
 
         role: 'employer'
     };
