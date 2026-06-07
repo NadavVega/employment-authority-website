@@ -2,6 +2,10 @@ import React from 'react';
 import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
+import '../../pages/event-page'
+import defaultPicture  from '../../assets/images/default-event.jpg';
+import { getEventColor } from '../../utils/centerColors';
+import { resolveEventImage } from '../../utils/eventImageMap';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -13,7 +17,7 @@ const formatShortAddress = (address) => {
     return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -30,7 +34,7 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
     const dayMonth = isNaN(dateObj) ? '--' : `${dateObj.getDate().toString().padStart(2, '0')}.${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
     const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
 
-    const cardImage = event.photoUrl || 'https://via.placeholder.com/300x200?text=No+Image';
+    const cardImage = resolveEventImage(event) || defaultPicture;
     const shortLocation = formatShortAddress(event.location);
 
     return (
@@ -46,7 +50,7 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                                 אשר אירוע
                             </button>
                         )}
-                        {/* NEW: ALREADY REGISTERED CHECKMARK */}
+                        {/* ALREADY REGISTERED CHECKMARK */}
                         {isRegistered && (
                         <div style={{
                             background: '#10b981', color: 'white', padding: '4px 12px',
@@ -60,24 +64,35 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                     )}
                         {/* Accessibility Icon */}
                         {event.isAccessible && (
-                            <div className="badge-accessibility" title="אירוע נגיש" style={{ background: '#003b8b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="4" r="2"></circle>
-                                    <polyline points="12 7 12 11 16 15"></polyline>
-                                    <path d="M8 21.5a5.5 5.5 0 1 0 7-3.5"></path>
-                                    <path d="M12 11L9.5 8.5"></path>
+                            <div className="badge-accessibility" title="נגיש לנכים">
+                                <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width={22}
+                                height={22}
+                                viewBox="0 0 100 100"
+                                fill="white"
+                                >
+                                {/* Head */}
+                                <circle cx="50" cy="12" r="10" />
+                                {/* Body + arm + seat */}
+                                <path d="M55 25 L45 25 L38 55 L62 55 L68 70 L78 66 L70 48 L52 48 L57 30 Z" />
+                                {/* Wheel */}
+                                <circle cx="42" cy="75" r="18" fill="none" stroke="white" strokeWidth="8" />
+                                {/* Small front wheel */}
+                                <circle cx="72" cy="75" r="6" />
                                 </svg>
                             </div>
                         )}
                     </div>
                     
-                    {/* Delete button for Expired, Edit button for Active */}
+                    {/* Archive button for Expired */}
                     {canEdit && (
                         isExpired ? (
-                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: '#ef4444' }} title="מחיקת אירוע">
-                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
+                                            <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
+                                            <path d="M10 13h4"></path>
                                 </svg>
                             </button>
                         ) : (
@@ -110,7 +125,9 @@ export const EventCard = ({ event, isGuest, isExpired, onOpenDetails, onApprove,
                 </div>
             </div>
 
-            <div className="event-card-bottom">
+            <div 
+                className="event-card-bottom"
+                style={{ borderTop: `4px solid ${getEventColor(event, index)}` }}>
                 <div className="bottom-date-area standard-numbers">
                     <p className="bottom-date-big">{dayMonth}</p>
                 </div>

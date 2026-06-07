@@ -66,9 +66,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Simulating a Whitelist response for the demo
         const demoUser = { 
+            uid: `demo-${roleName}-uid`,
             email: `${roleName}@jerusalem.demo`,
             displayName: `Demo ${roleName.charAt(0).toUpperCase() + roleName.slice(1)}`,
-            isDemo: true
+            isDemo: true,
+
+            // Demo signup/profile data
+            phone: roleName === MOCK_ROLES.EMPLOYER ? '050-1234567' : '',
+            center: roleName === MOCK_ROLES.EMPLOYER ? 'מרכז הקריירה באוניברסיטה העברית' : '',
+            companyName: roleName === MOCK_ROLES.EMPLOYER ? 'מעסיק הדגמה בע"מ' : '',
+            organization: roleName === MOCK_ROLES.EMPLOYER ? 'מעסיק הדגמה בע"מ' : '',
         };
 
         if (roleName === MOCK_ROLES.GUEST) {

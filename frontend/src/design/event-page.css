@@ -440,3 +440,21 @@
 
 /* Utilities */
 .standard-numbers { font-family: var(--sans) !important; }
+
+.btn-cancel {
+  padding: 8px 28px;
+  border-radius: 99px;
+  background-color: var(--color-text-muted);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.btn-cancel:hover {
+  background-color: var(--color-primary-dark);
+  transform: scale(1.03);
+}

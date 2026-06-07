@@ -4,6 +4,9 @@ import { useAuth } from '../context/auth-context';
 import { EventForm } from '../components/events/event-form';
 import { eventService } from '../services/interfaces/event-services';
 
+import { EVENT_IMAGE_OPTIONS } from '../utils/eventImageMap'; // For the image dropdown in the form, temporary until we have a real upload solution in place
+import { CENTER_COLORS } from '../utils/centerColors'; 
+
 export const EditEventPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
