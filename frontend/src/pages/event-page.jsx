@@ -48,10 +48,15 @@ export const EventsPage = () => {
 
     // Fetch registered event IDs for the current user (if employer)
     useEffect(() => {
-        if (currentUser && userRole === 'employer') {
+        if (currentUser?.uid && userRole === 'employer') {
             const fetchRegistrations = async () => {
-                const ids = await eventService.getUserRegisteredEventIds(currentUser.uid);
-                setRegisteredEventIds(ids);
+                try {
+                    const ids = await eventService.getUserRegisteredEventIds(currentUser.uid);
+                    setRegisteredEventIds(ids);
+                } catch (error) {
+                    console.error('Failed to load registered events:', error);
+                    setRegisteredEventIds([]);
+                }
             };
             fetchRegistrations();
         }
@@ -133,43 +138,127 @@ export const EventsPage = () => {
         }
     };
 
-    // This function is called when the user clicks the "הרשמה לאירוע" button in the modal
-    const handleRegisterClick = async (event) => {
-        setIsRegistering(true);
-        try {
-            // Call the safe backend transaction
-            await eventService.registerToEvent(event.id, {
-                uid: currentUser.uid,
-                displayName: currentUser.displayName,
-                email: currentUser.email,
-                // If you have phone/company in currentUser, pass them here too
-            }, event.paymentMethod);
-
-            // Add to local state immediately for snappy UI (Checkmark appears instantly)
-            setRegisteredEventIds(prev => [...prev, event.id]);
-
-            // Handle the Routing based on payment method
-            if (event.paymentMethod === 'link') {
-                window.open(event.paymentDetails, '_blank');
-                alert("נרשמת בהצלחה! הועברת לעמוד התשלום.");
-            } else if (event.paymentMethod === 'bit') {
-                // Open the Bit UI modal
-                setBitPaymentDetails(event.paymentDetails);
-            } else {
-                alert("נרשמת לאירוע בהצלחה!");
-            }
-            
-            // Close the main event modal
-            setSelectedEventModal(null);
-
-        } catch (error) {
-            if (error.message === 'EVENT_FULL') alert("מצטערים, האירוע כבר מלא.");
-            else if (error.message === 'ALREADY_REGISTERED') alert("אתה כבר רשום לאירוע זה.");
-            else alert("שגיאה בהרשמה. אנא נסה שוב.");
-        } finally {
-            setIsRegistering(false);
-        }
+    const getCurrentEmployerUid = () => {
+        return currentUser?.uid || currentUser?.email || 'demo-employer-uid';
     };
+
+    const buildRegistrationUserData = () => {
+        const uid = getCurrentEmployerUid();
+
+        if (currentUser?.isDemo) {
+            return {
+                uid,
+                employerName: currentUser.displayName || 'מעסיק הדגמה',
+                displayName: currentUser.displayName || 'מעסיק הדגמה',
+                email: currentUser.email || 'employer@jerusalem.demo',
+                phone: currentUser.phone || '050-1234567',
+                center: currentUser.center || 'מרכז הקריירה באוניברסיטה העברית',
+                companyName: currentUser.companyName || currentUser.organization || 'מעסיק הדגמה בע"מ'
+            };
+        }
+
+        return {
+            uid,
+            employerName:
+                currentUser?.displayName ||
+                currentUser?.profile?.fullName ||
+                currentUser?.fullName ||
+                'ללא שם',
+
+            displayName:
+                currentUser?.displayName ||
+                currentUser?.profile?.fullName ||
+                currentUser?.fullName ||
+                'ללא שם',
+
+            email: currentUser?.email || '',
+            phone: currentUser?.phone || currentUser?.phoneNumber || '',
+            center: currentUser?.center || currentUser?.profile?.center || '',
+            companyName:
+                currentUser?.companyName ||
+                currentUser?.organization ||
+                currentUser?.profile?.company ||
+                currentUser?.company ||
+                ''
+        };
+    };
+
+const handleRegisterClick = async (event) => {
+    if (!currentUser?.uid) {
+        alert('יש להתחבר לפני הרשמה לאירוע.');
+        return;
+    }
+
+    if (userRole !== 'employer') {
+        alert('רק משתמש מסוג מעסיק יכול להירשם לאירוע.');
+        return;
+    }
+
+    setIsRegistering(true);
+
+    try {
+        const employerProfile = await eventService.getEmployerRegistrationProfile(currentUser);
+
+        const result = await eventService.registerToEvent(
+            event.id,
+            employerProfile,
+            event.paymentMethod || 'none'
+        );
+
+        setRegisteredEventIds(prev => {
+            if (prev.includes(event.id)) return prev;
+            return [...prev, event.id];
+        });
+
+        setRealEvents(prevEvents =>
+            prevEvents.map(existingEvent => {
+                if (existingEvent.id !== event.id) return existingEvent;
+
+                const currentCount = parseInt(existingEvent.registeredCount, 10) || 0;
+
+                return {
+                    ...existingEvent,
+                    registeredCount: currentCount + 1,
+                    registeredUids: Array.from(new Set([
+                        ...(existingEvent.registeredUids || []),
+                        employerProfile.uid
+                    ]))
+                };
+            })
+        );
+
+        if (event.paymentMethod === 'link') {
+            window.open(event.paymentDetails, '_blank');
+            alert('נרשמת בהצלחה! הועברת לעמוד התשלום.');
+        } else if (event.paymentMethod === 'bit') {
+            setBitPaymentDetails(event.paymentDetails);
+        } else {
+            alert('נרשמת לאירוע בהצלחה!');
+        }
+
+        console.log('Signup completed:', result);
+        setSelectedEventModal(null);
+
+    } catch (error) {
+        console.error('Registration failed:', error);
+
+        if (error.message === 'EVENT_FULL') {
+            alert('מצטערים, האירוע כבר מלא.');
+        } else if (error.message === 'ALREADY_REGISTERED') {
+            alert('אתה כבר רשום לאירוע זה.');
+        } else if (error.message === 'EVENT_NOT_AVAILABLE') {
+            alert('האירוע אינו זמין להרשמה.');
+        } else if (error.message === 'USER_ID_MISSING') {
+            alert('חסרים פרטי משתמש להרשמה.');
+        } else if (error.code === 'permission-denied') {
+            alert('אין הרשאה לבצע הרשמה. יש לבדוק את הרשאות Firestore.');
+        } else {
+            alert(`שגיאה בהרשמה: ${error.message || 'אנא נסה שוב.'}`);
+        }
+    } finally {
+        setIsRegistering(false);
+    }
+};
 
     // Filter to hide 'ממתינים לאישור' tab from guests or regular employers
     const visibleFilters = FILTER_CATEGORIES.filter(cat => {
