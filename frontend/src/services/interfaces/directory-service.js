@@ -40,17 +40,70 @@ export const directoryService = {
         const data = docSnap.data();
         const profile = data.profile || {};
 
+        const role = data.role || profile.role || "";
+
+        const centerName =
+          profile.centerName ||
+          data.centerName ||
+          profile.center ||
+          data.center ||
+          "";
+
+        const population =
+          profile.population ||
+          data.population ||
+          profile.targetPopulation ||
+          data.targetPopulation ||
+          "";
+
+        const phone =
+          profile.phone ||
+          data.phone ||
+          profile.mobile ||
+          data.mobile ||
+          "";
+
+        const organization =
+          profile.company ||
+          data.company ||
+          profile.organization ||
+          data.organization ||
+          centerName ||
+          "לא צוין";
+
         return {
           id: docSnap.id,
           email: docSnap.id,
 
-          role: data.role || "",
-          isWhitelisted: data.isWhitelisted === true,
+          role,
+          isWhitelisted:
+            data.isWhitelisted === true ||
+            data.isWhiteListed === true ||
+            data.contactHistory?.isWhitelisted === true ||
+            data.contactHistory?.isWhiteListed === true,
 
           name: profile.fullName || data.fullName || "לא צוין",
-          organization: profile.company || data.company || "לא צוין",
+          organization,
           address: profile.address || data.address || "לא צוין",
           field: profile.field || data.field || "לא צוין",
+          subField: profile.subField || data.subField || "",
+
+          // Coordinator fields
+          centerName,
+          population,
+          phone,
+
+          // Employer CRM fields
+          status: profile.status || data.status || "",
+          companyId: profile.companyId || data.companyId || "",
+          logoUrl: profile.logoUrl || data.logoUrl || "",
+          companyDescription:
+            profile.companyDescription || data.companyDescription || "",
+          jobsUrl: profile.jobsUrl || data.jobsUrl || "",
+          lastContactNote:
+            profile.lastContactNote || data.lastContactNote || "",
+          lastContactDate:
+            profile.lastContactDate || data.lastContactDate || "",
 
           rawData: data,
         };
@@ -81,17 +134,70 @@ export const directoryService = {
     const data = contactSnap.data();
     const profile = data.profile || {};
 
+    const role = data.role || profile.role || "";
+
+    const centerName =
+      profile.centerName ||
+      data.centerName ||
+      profile.center ||
+      data.center ||
+      "";
+
+    const population =
+      profile.population ||
+      data.population ||
+      profile.targetPopulation ||
+      data.targetPopulation ||
+      "";
+
+    const phone =
+      profile.phone ||
+      data.phone ||
+      profile.mobile ||
+      data.mobile ||
+      "";
+
+    const organization =
+      profile.company ||
+      data.company ||
+      profile.organization ||
+      data.organization ||
+      centerName ||
+      "לא צוין";
+
     return {
       id: contactSnap.id,
       email: contactSnap.id,
 
-      role: data.role || "",
-      isWhitelisted: data.isWhitelisted === true,
+      role,
+      isWhitelisted:
+        data.isWhitelisted === true ||
+        data.isWhiteListed === true ||
+        data.contactHistory?.isWhitelisted === true ||
+        data.contactHistory?.isWhiteListed === true,
 
       name: profile.fullName || data.fullName || "לא צוין",
-      organization: profile.company || data.company || "לא צוין",
+      organization,
       address: profile.address || data.address || "לא צוין",
       field: profile.field || data.field || "לא צוין",
+      subField: profile.subField || data.subField || "",
+
+      // Coordinator fields
+      centerName,
+      population,
+      phone,
+
+      // Employer CRM fields
+      status: profile.status || data.status || "",
+      companyId: profile.companyId || data.companyId || "",
+      logoUrl: profile.logoUrl || data.logoUrl || "",
+      companyDescription:
+        profile.companyDescription || data.companyDescription || "",
+      jobsUrl: profile.jobsUrl || data.jobsUrl || "",
+      lastContactNote:
+        profile.lastContactNote || data.lastContactNote || "",
+      lastContactDate:
+        profile.lastContactDate || data.lastContactDate || "",
 
       rawData: data,
     };

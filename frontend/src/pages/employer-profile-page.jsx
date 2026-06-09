@@ -21,7 +21,10 @@ const EmployerProfilePage = () => {
   const isAdmin = userRole === "admin";
   const isCoordinator = userRole === "coordinator";
 
-  const canRequestAccess = isCoordinator;
+  const isEmployerContact = employer?.role === "employer";
+  const isCoordinatorContact = employer?.role === "coordinator";
+
+  const canRequestAccess = isCoordinator && isEmployerContact;
   const hasApprovedAccess = accessStatus === "approved" || isAdmin;
 
   const displayRole = (role) => {
@@ -37,6 +40,38 @@ const EmployerProfilePage = () => {
     if (status === "approved") return "מאושר";
     if (status === "rejected") return "נדחה";
     return status || "לא ידוע";
+  };
+
+  const displayProfileDate = (value) => {
+    if (!value) return "";
+
+    if (value?.toDate) {
+      return value.toDate().toLocaleDateString("he-IL");
+    }
+
+    return String(value);
+  };
+
+  const displayPhoneNumber = (phone) => {
+    if (!phone) return "";
+
+    const cleanPhone = String(phone).trim();
+
+    if (!cleanPhone) return "";
+
+    if (cleanPhone.startsWith("+")) {
+      return cleanPhone;
+    }
+
+    if (cleanPhone.startsWith("0")) {
+      return cleanPhone;
+    }
+
+    if (/^\d+$/.test(cleanPhone)) {
+      return `0${cleanPhone}`;
+    }
+
+    return cleanPhone;
   };
 
   const isVisibleValue = (value) => {
@@ -65,7 +100,7 @@ const EmployerProfilePage = () => {
         );
 
         if (!employerData) {
-          setMessage("פרופיל מעסיק לא נמצא.");
+          setMessage("איש קשר לא נמצא.");
           return;
         }
 
@@ -73,7 +108,7 @@ const EmployerProfilePage = () => {
 
         let status = "none";
 
-        if (currentUser && !isAdmin) {
+        if (currentUser && !isAdmin && employerData.role === "employer") {
           status = await privacyService.getContactAccessStatus(
             currentUser,
             employerData
@@ -82,7 +117,8 @@ const EmployerProfilePage = () => {
           setAccessStatus(status);
         }
 
-        const shouldLoadPrivateDetails = isAdmin || status === "approved";
+        const shouldLoadPrivateDetails =
+          employerData.role === "employer" && (isAdmin || status === "approved");
 
         if (currentUser && shouldLoadPrivateDetails) {
           try {
@@ -102,8 +138,8 @@ const EmployerProfilePage = () => {
           }
         }
       } catch (error) {
-        console.error("Failed to load employer profile:", error);
-        setMessage("טעינת פרופיל המעסיק נכשלה.");
+        console.error("Failed to load contact profile:", error);
+        setMessage("טעינת פרטי איש הקשר נכשלה.");
       } finally {
         setLoading(false);
       }
@@ -141,7 +177,7 @@ const EmployerProfilePage = () => {
           fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
         }}
       >
-        טוען פרופיל מעסיק...
+        טוען פרטי איש קשר...
       </div>
     );
   }
@@ -155,11 +191,35 @@ const EmployerProfilePage = () => {
           fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
         }}
       >
-        <h1>פרופיל לא נמצא</h1>
+        <h1>איש קשר לא נמצא</h1>
         <p>{message}</p>
       </div>
     );
   }
+
+  const displayEmail = isEmployerContact
+    ? privateDetails?.directEmail || employer.email
+    : employer.email;
+
+  const rawPhone = isEmployerContact
+    ? privateDetails?.phone ||
+      privateDetails?.mobile ||
+      privateDetails?.directPhone ||
+      employer.phone ||
+      ""
+    : employer.phone || "";
+
+  const displayPhone = displayPhoneNumber(rawPhone);
+
+  const hasCompanyDetails =
+    isEmployerContact &&
+    (isVisibleValue(employer.logoUrl) ||
+      isVisibleValue(employer.status) ||
+      isVisibleValue(employer.companyId) ||
+      isVisibleValue(employer.companyDescription) ||
+      isVisibleValue(employer.jobsUrl) ||
+      isVisibleValue(employer.lastContactNote) ||
+      isVisibleValue(employer.lastContactDate));
 
   return (
     <div
@@ -171,7 +231,7 @@ const EmployerProfilePage = () => {
         fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
       }}
     >
-      <h1>פרופיל מעסיק</h1>
+      <h1>פרטי איש קשר</h1>
 
       <div
         style={{
@@ -183,6 +243,24 @@ const EmployerProfilePage = () => {
           boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
         }}
       >
+        {isEmployerContact && isVisibleValue(employer.logoUrl) && (
+          <div style={{ marginBottom: "18px", textAlign: "center" }}>
+            <img
+              src={employer.logoUrl}
+              alt={`לוגו ${employer.organization || "חברה"}`}
+              style={{
+                maxWidth: "180px",
+                maxHeight: "100px",
+                objectFit: "contain",
+                border: "1px solid #dde3ec",
+                borderRadius: "12px",
+                padding: "10px",
+                background: "#fff",
+              }}
+            />
+          </div>
+        )}
+
         {isVisibleValue(employer.organization) && (
           <h2>{employer.organization}</h2>
         )}
@@ -199,13 +277,40 @@ const EmployerProfilePage = () => {
           </p>
         )}
 
-        {isVisibleValue(employer.field) && (
+        {isCoordinatorContact && isVisibleValue(employer.centerName) && (
+          <p>
+            <strong>מרכז / ארגון:</strong> {employer.centerName}
+          </p>
+        )}
+
+        {isCoordinatorContact && isVisibleValue(employer.population) && (
+          <p>
+            <strong>אוכלוסייה:</strong> {employer.population}
+          </p>
+        )}
+
+        {isCoordinatorContact && isVisibleValue(displayPhone) && (
+          <p>
+            <strong>טלפון:</strong>{" "}
+            <span dir="ltr" style={ltrValueStyle}>
+              {displayPhone}
+            </span>
+          </p>
+        )}
+
+        {isEmployerContact && isVisibleValue(employer.field) && (
           <p>
             <strong>תחום:</strong> {employer.field}
           </p>
         )}
 
-        {isVisibleValue(employer.address) && (
+        {isEmployerContact && isVisibleValue(employer.subField) && (
+          <p>
+            <strong>תת־תחום:</strong> {employer.subField}
+          </p>
+        )}
+
+        {isEmployerContact && isVisibleValue(employer.address) && (
           <p>
             <strong>כתובת:</strong> {employer.address}
           </p>
@@ -217,95 +322,160 @@ const EmployerProfilePage = () => {
           </p>
         )}
 
-        <hr style={{ margin: "24px 0" }} />
-
-        <h3>פרטי קשר פרטיים</h3>
-
-        {hasApprovedAccess ? (
+        {hasCompanyDetails && (
           <>
-            {isVisibleValue(privateDetails?.directEmail) && (
+            <hr style={{ margin: "24px 0" }} />
+
+            <h3>פרטי חברה</h3>
+
+            {isVisibleValue(employer.status) && (
               <p>
-                <strong>אימייל:</strong>{" "}
+                <strong>סטטוס קשר:</strong> {employer.status}
+              </p>
+            )}
+
+            {isVisibleValue(employer.companyId) && (
+              <p>
+                <strong>ח.פ / מזהה חברה:</strong>{" "}
                 <span dir="ltr" style={ltrValueStyle}>
-                  {privateDetails.directEmail}
+                  {employer.companyId}
                 </span>
               </p>
             )}
 
-            {isVisibleValue(privateDetails?.phone) && (
+            {isVisibleValue(employer.companyDescription) && (
               <p>
-                <strong>טלפון:</strong>{" "}
-                <span dir="ltr" style={ltrValueStyle}>
-                  {privateDetails.phone}
-                </span>
+                <strong>תיאור החברה:</strong> {employer.companyDescription}
               </p>
             )}
 
-            {!isVisibleValue(privateDetails?.directEmail) &&
-              !isVisibleValue(privateDetails?.phone) && (
-                <p style={{ color: "#666" }}>
-                  אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
+            {isVisibleValue(employer.jobsUrl) && (
+              <p>
+                <strong>קישור לאזור משרות:</strong>{" "}
+                <a
+                  href={employer.jobsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "#003f9e",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                  }}
+                >
+                  מעבר לאזור המשרות
+                </a>
+              </p>
+            )}
+
+            {isVisibleValue(employer.lastContactNote) && (
+              <p>
+                <strong>תיעוד קשר אחרון:</strong> {employer.lastContactNote}
+              </p>
+            )}
+
+            {isVisibleValue(employer.lastContactDate) && (
+              <p>
+                <strong>תאריך קשר אחרון:</strong>{" "}
+                {displayProfileDate(employer.lastContactDate)}
+              </p>
+            )}
+          </>
+        )}
+
+        {isEmployerContact && (
+          <>
+            <hr style={{ margin: "24px 0" }} />
+
+            <h3>פרטי קשר פרטיים</h3>
+
+            {hasApprovedAccess ? (
+              <>
+                {isVisibleValue(displayEmail) && (
+                  <p>
+                    <strong>אימייל:</strong>{" "}
+                    <span dir="ltr" style={ltrValueStyle}>
+                      {displayEmail}
+                    </span>
+                  </p>
+                )}
+
+                {isVisibleValue(displayPhone) && (
+                  <p>
+                    <strong>טלפון:</strong>{" "}
+                    <span dir="ltr" style={ltrValueStyle}>
+                      {displayPhone}
+                    </span>
+                  </p>
+                )}
+
+                {!isVisibleValue(displayEmail) &&
+                  !isVisibleValue(displayPhone) && (
+                    <p style={{ color: "#666" }}>
+                      אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
+                    </p>
+                  )}
+              </>
+            ) : (
+              <>
+                <p>
+                  <strong>אימייל:</strong> מוסתר
                 </p>
-              )}
+
+                <p>
+                  <strong>טלפון:</strong> מוסתר
+                </p>
+
+                <p style={{ color: "#666" }}>
+                  פרטי הקשר מוסתרים עד שהמעסיק יאשר את בקשת הגישה.
+                </p>
+              </>
+            )}
+
+            {!isAdmin && (
+              <p>
+                <strong>סטטוס גישה:</strong>{" "}
+                {displayAccessStatus(accessStatus)}
+              </p>
+            )}
+
+            {canRequestAccess && accessStatus === "none" && (
+              <button
+                onClick={handleRequestAccess}
+                disabled={requestLoading}
+                style={{
+                  marginTop: "16px",
+                  padding: "10px 18px",
+                  border: "none",
+                  borderRadius: "999px",
+                  background: "#1976d2",
+                  color: "white",
+                  cursor: requestLoading ? "not-allowed" : "pointer",
+                  opacity: requestLoading ? 0.7 : 1,
+                  fontFamily: "inherit",
+                }}
+              >
+                {requestLoading ? "שולח בקשה..." : "בקשת גישה לפרטי קשר"}
+              </button>
+            )}
+
+            {!isAdmin && accessStatus === "pending" && (
+              <p style={{ marginTop: "16px", color: "#b26a00" }}>
+                בקשת הגישה נשלחה וממתינה לאישור המעסיק.
+              </p>
+            )}
+
+            {!isAdmin && accessStatus === "rejected" && (
+              <p style={{ marginTop: "16px", color: "#b00020" }}>
+                בקשת הגישה נדחתה.
+              </p>
+            )}
+
+            {!canRequestAccess && !hasApprovedAccess && (
+              <p style={{ marginTop: "16px", color: "#777" }}>
+                רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
+              </p>
+            )}
           </>
-        ) : (
-          <>
-            <p>
-              <strong>אימייל:</strong> מוסתר
-            </p>
-
-            <p>
-              <strong>טלפון:</strong> מוסתר
-            </p>
-
-            <p style={{ color: "#666" }}>
-              פרטי הקשר מוסתרים עד שהמעסיק יאשר את בקשת הגישה.
-            </p>
-          </>
-        )}
-
-        {!isAdmin && (
-          <p>
-            <strong>סטטוס גישה:</strong> {displayAccessStatus(accessStatus)}
-          </p>
-        )}
-
-        {canRequestAccess && accessStatus === "none" && (
-          <button
-            onClick={handleRequestAccess}
-            disabled={requestLoading}
-            style={{
-              marginTop: "16px",
-              padding: "10px 18px",
-              border: "none",
-              borderRadius: "999px",
-              background: "#1976d2",
-              color: "white",
-              cursor: requestLoading ? "not-allowed" : "pointer",
-              opacity: requestLoading ? 0.7 : 1,
-              fontFamily: "inherit",
-            }}
-          >
-            {requestLoading ? "שולח בקשה..." : "בקשת גישה לפרטי קשר"}
-          </button>
-        )}
-
-        {!isAdmin && accessStatus === "pending" && (
-          <p style={{ marginTop: "16px", color: "#b26a00" }}>
-            בקשת הגישה נשלחה וממתינה לאישור המעסיק.
-          </p>
-        )}
-
-        {!isAdmin && accessStatus === "rejected" && (
-          <p style={{ marginTop: "16px", color: "#b00020" }}>
-            בקשת הגישה נדחתה.
-          </p>
-        )}
-
-        {!canRequestAccess && !hasApprovedAccess && (
-          <p style={{ marginTop: "16px", color: "#777" }}>
-            רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
-          </p>
         )}
 
         {message && (

@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Box, Typography, Button, Paper, Container, Alert, TextField } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/firebase/auth-service';
+import { useAuth } from '../context/auth-context';
 
 /**
  * LoginPage Component
@@ -9,27 +10,43 @@ import { loginUser } from '../services/firebase/auth-service';
  */
 const LoginPage = () => {
     const navigate = useNavigate();
+    const { isAuthenticated, loading } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = async (event) => {
-        event.preventDefault();
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            navigate('/home', { replace: true });
+        }
+    }, [isAuthenticated, loading, navigate]);
+
+    /**
+     * Real Firebase demo login.
+     */
+    const handleDemoLogin = async (role) => {
         setLoginError('');
         setIsLoading(true);
 
         localStorage.removeItem('DEV_BYPASS');
 
         try {
-            await loginUser(email.trim(), password);
-            navigate('/home');
+            const selectedUser = demoUsers[role];
+
+            if (!selectedUser) {
+                throw new Error('Unknown demo role');
+            }
+
+            await loginUser(selectedUser.email, selectedUser.password);
         } catch (error) {
-            console.error('Login failed:', error);
-            setLoginError('ההתחברות נכשלה. בדקו שכתובת האימייל והסיסמה נכונות.');
-        } finally {
+            console.error('Demo login failed:', error);
+
             setIsLoading(false);
+            setLoginError(
+                `ההתחברות נכשלה. קוד שגיאה: ${error.code || error.message}`
+            );
         }
     };
 

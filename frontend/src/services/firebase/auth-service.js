@@ -1,4 +1,5 @@
 import { auth, db } from './config';
+
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -12,13 +13,10 @@ import {
 
 /**
  * Checks if a user's email exists in the unified users collection.
- *
- * In this project, the `users` collection is used as:
- * - whitelist
- * - role management
- * - general user profile
- *
- * Document ID is the user's email.
+ * Supports flexible database structures:
+ * - root level fields
+ * - nested contactHistory fields
+ * - nested profile role
  *
  * @param {string} email - The user email to verify.
  * @returns {Promise<Object|null>} User data if whitelisted, otherwise null.
@@ -39,12 +37,27 @@ export const checkWhitelist = async (email) => {
 
     const userData = userSnap.data();
 
-    if (userData.isWhitelisted !== true) {
+    const isRootWhitelisted =
+      userData.isWhitelisted === true ||
+      userData.isWhiteListed === true;
+
+    const isHistoryWhitelisted =
+      userData.contactHistory?.isWhitelisted === true ||
+      userData.contactHistory?.isWhiteListed === true;
+
+    if (!isRootWhitelisted && !isHistoryWhitelisted) {
+      return null;
+    }
+
+    const userRole = userData.role || userData.profile?.role;
+
+    if (!userRole) {
       return null;
     }
 
     return {
       email: normalizedEmail,
+      role: userRole,
       ...userData,
     };
   } catch (error) {

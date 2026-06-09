@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { directoryService } from "../services/interfaces/directory-service";
 
+// Design files
+import "../design/global-theme.css";
+
 const isVisibleValue = (value) => {
   return value && value !== "לא צוין" && String(value).trim() !== "";
 };
@@ -11,6 +14,38 @@ const displayRole = (role) => {
   if (role === "coordinator") return "רכז";
   if (role === "admin") return "מנהלת";
   return role || "";
+};
+
+const displayProfileDate = (value) => {
+  if (!value) return "לא צוין";
+
+  if (value?.toDate) {
+    return value.toDate().toLocaleDateString("he-IL");
+  }
+
+  return String(value);
+};
+
+const displayPhoneNumber = (phone) => {
+  if (!phone) return "לא צוין";
+
+  const cleanPhone = String(phone).trim();
+
+  if (!cleanPhone) return "לא צוין";
+
+  if (cleanPhone.startsWith("+")) {
+    return cleanPhone;
+  }
+
+  if (cleanPhone.startsWith("0")) {
+    return cleanPhone;
+  }
+
+  if (/^\d+$/.test(cleanPhone)) {
+    return `0${cleanPhone}`;
+  }
+
+  return cleanPhone;
 };
 
 const FIELD_GROUPS = {
@@ -742,6 +777,17 @@ const getFieldClassification = (field) => {
   };
 };
 
+const getContactFieldClassification = (contact) => {
+  if (isVisibleValue(contact.field) && isVisibleValue(contact.subField)) {
+    return {
+      mainCategory: contact.field,
+      subCategory: contact.subField,
+    };
+  }
+
+  return getFieldClassification(contact.field);
+};
+
 const DirectoryPage = () => {
   const navigate = useNavigate();
 
@@ -771,7 +817,7 @@ const DirectoryPage = () => {
 
   const availableMainCategories = useMemo(() => {
     const categoriesInUse = contacts
-      .map((contact) => getFieldClassification(contact.field).mainCategory)
+      .map((contact) => getContactFieldClassification(contact).mainCategory)
       .filter(isVisibleValue);
 
     const uniqueCategories = [...new Set(categoriesInUse)];
@@ -783,7 +829,7 @@ const DirectoryPage = () => {
 
   const availableSubCategories = useMemo(() => {
     const subCategoriesInUse = contacts
-      .map((contact) => getFieldClassification(contact.field))
+      .map((contact) => getContactFieldClassification(contact))
       .filter(({ mainCategory }) => {
         return mainFieldFilter === "all" || mainCategory === mainFieldFilter;
       })
@@ -809,18 +855,28 @@ const DirectoryPage = () => {
 
   const filteredContacts = contacts.filter((contact) => {
     const searchText = searchQuery.toLowerCase().trim();
-    const { mainCategory, subCategory } = getFieldClassification(contact.field);
+    const { mainCategory, subCategory } = getContactFieldClassification(contact);
 
     const matchesSearch =
       !searchText ||
       contact.name?.toLowerCase().includes(searchText) ||
       contact.organization?.toLowerCase().includes(searchText) ||
+      contact.centerName?.toLowerCase().includes(searchText) ||
+      contact.population?.toLowerCase().includes(searchText) ||
+      contact.phone?.toLowerCase().includes(searchText) ||
       contact.role?.toLowerCase().includes(searchText) ||
       displayRole(contact.role).toLowerCase().includes(searchText) ||
       contact.field?.toLowerCase().includes(searchText) ||
+      contact.subField?.toLowerCase().includes(searchText) ||
       mainCategory.toLowerCase().includes(searchText) ||
       subCategory.toLowerCase().includes(searchText) ||
-      contact.address?.toLowerCase().includes(searchText);
+      contact.address?.toLowerCase().includes(searchText) ||
+      contact.status?.toLowerCase().includes(searchText) ||
+      contact.companyId?.toLowerCase().includes(searchText) ||
+      contact.companyDescription?.toLowerCase().includes(searchText) ||
+      contact.jobsUrl?.toLowerCase().includes(searchText) ||
+      contact.lastContactNote?.toLowerCase().includes(searchText) ||
+      contact.lastContactDate?.toLowerCase().includes(searchText);
 
     const matchesRole = roleFilter === "all" || contact.role === roleFilter;
 
@@ -832,6 +888,257 @@ const DirectoryPage = () => {
 
     return matchesSearch && matchesRole && matchesMainField && matchesSubField;
   });
+
+  const coordinatorContacts = filteredContacts.filter(
+    (contact) => contact.role === "coordinator"
+  );
+
+  const employerContacts = filteredContacts.filter(
+    (contact) => contact.role === "employer"
+  );
+
+  const renderContactsTable = (tableContacts, tableType, title) => {
+    if (tableContacts.length === 0) {
+      return null;
+    }
+
+    const isCoordinatorTable = tableType === "coordinator";
+
+    return (
+      <div style={{ marginBottom: "32px" }}>
+        <h2
+          style={{
+            color: "#002b5c",
+            fontSize: "26px",
+            marginBottom: "14px",
+            fontWeight: 700,
+          }}
+        >
+          {title}
+        </h2>
+
+        <div
+          style={{
+            width: "100%",
+            overflowX: "auto",
+            border: "1px solid #dde3ec",
+            borderRadius: "16px",
+            background: "#fff",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              minWidth: isCoordinatorTable ? "900px" : "1450px",
+              borderCollapse: "collapse",
+              fontSize: "15px",
+              textAlign: "right",
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  background: "#f3f6fb",
+                  color: "#002b5c",
+                  borderBottom: "2px solid #dde3ec",
+                }}
+              >
+                <th style={{ padding: "14px 12px" }}>
+                  {isCoordinatorTable ? "מרכז / ארגון" : "חברה"}
+                </th>
+                <th style={{ padding: "14px 12px" }}>איש קשר</th>
+
+                {isCoordinatorTable ? (
+                  <>
+                    <th style={{ padding: "14px 12px" }}>אוכלוסייה</th>
+                    <th style={{ padding: "14px 12px" }}>טלפון</th>
+                    <th style={{ padding: "14px 12px" }}>סוג</th>
+                  </>
+                ) : (
+                  <>
+                    <th style={{ padding: "14px 12px" }}>סוג</th>
+                    <th style={{ padding: "14px 12px" }}>תחום</th>
+                    <th style={{ padding: "14px 12px" }}>תת־תחום</th>
+                    <th style={{ padding: "14px 12px" }}>סטטוס קשר</th>
+                    <th style={{ padding: "14px 12px" }}>ח.פ / מזהה</th>
+                    <th style={{ padding: "14px 12px" }}>כתובת</th>
+                    <th style={{ padding: "14px 12px" }}>קישור משרות</th>
+                    <th style={{ padding: "14px 12px" }}>קשר אחרון</th>
+                    <th style={{ padding: "14px 12px" }}>תאריך קשר</th>
+                  </>
+                )}
+
+                <th style={{ padding: "14px 12px" }}>פעולות</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {tableContacts.map((contact) => {
+                const { mainCategory, subCategory } =
+                  getContactFieldClassification(contact);
+
+                return (
+                  <tr
+                    key={contact.id}
+                    style={{
+                      borderBottom: "1px solid #edf0f5",
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "13px 12px",
+                        fontWeight: 700,
+                        color: "#002b5c",
+                      }}
+                    >
+                      {isVisibleValue(contact.organization)
+                        ? contact.organization
+                        : "לא צוין"}
+                    </td>
+
+                    <td style={{ padding: "13px 12px" }}>
+                      {isVisibleValue(contact.name) ? contact.name : "לא צוין"}
+                    </td>
+
+                    {isCoordinatorTable ? (
+                      <>
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(contact.population)
+                            ? contact.population
+                            : "לא צוין"}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "13px 12px",
+                            direction: "ltr",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {displayPhoneNumber(contact.phone)}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {displayRole(contact.role)}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding: "13px 12px" }}>
+                          {displayRole(contact.role)}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(mainCategory)
+                            ? mainCategory
+                            : "לא צוין"}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(subCategory)
+                            ? subCategory
+                            : "לא צוין"}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(contact.status)
+                            ? contact.status
+                            : "לא צוין"}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "13px 12px",
+                            direction: "ltr",
+                            textAlign: "right",
+                          }}
+                        >
+                          {isVisibleValue(contact.companyId)
+                            ? contact.companyId
+                            : "לא צוין"}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(contact.address)
+                            ? contact.address
+                            : "לא צוין"}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(contact.jobsUrl) ? (
+                            <a
+                              href={contact.jobsUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                color: "#003f9e",
+                                fontWeight: 700,
+                                textDecoration: "none",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              פתיחת משרות
+                            </a>
+                          ) : (
+                            "לא צוין"
+                          )}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "13px 12px",
+                            maxWidth: "220px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                          title={contact.lastContactNote || ""}
+                        >
+                          {isVisibleValue(contact.lastContactNote)
+                            ? contact.lastContactNote
+                            : "לא צוין"}
+                        </td>
+
+                        <td style={{ padding: "13px 12px" }}>
+                          {displayProfileDate(contact.lastContactDate)}
+                        </td>
+                      </>
+                    )}
+
+                    <td style={{ padding: "13px 12px" }}>
+                      <button
+                        onClick={() =>
+                          navigate(
+                            `/directory/${encodeURIComponent(contact.id)}`
+                          )
+                        }
+                        style={{
+                          padding: "8px 14px",
+                          border: "none",
+                          borderRadius: "999px",
+                          background: "#003f9e",
+                          color: "#fff",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          fontFamily: "inherit",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        צפייה בפרופיל
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -894,7 +1201,7 @@ const DirectoryPage = () => {
       >
         <input
           type="text"
-          placeholder="חיפוש לפי שם, ארגון, תפקיד, תחום או כתובת..."
+          placeholder="חיפוש לפי שם, חברה/מרכז, תפקיד, תחום, אוכלוסייה, טלפון, כתובת או ח.פ..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -993,104 +1300,20 @@ const DirectoryPage = () => {
           לא נמצאו אנשי קשר להצגה.
         </p>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: "18px",
-            alignItems: "stretch",
-            width: "100%",
-          }}
-        >
-          {filteredContacts.map((contact) => {
-            const { mainCategory, subCategory } = getFieldClassification(
-              contact.field
-            );
+        <>
+          {roleFilter === "coordinator" &&
+            renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
 
-            return (
-              <div
-                key={contact.id}
-                style={{
-                  padding: "20px",
-                  border: "1px solid #dde3ec",
-                  borderRadius: "18px",
-                  background: "#fff",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
-                  minHeight: "230px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  {isVisibleValue(contact.organization) && (
-                    <h2
-                      style={{
-                        marginTop: 0,
-                        marginBottom: "14px",
-                        color: "#002b5c",
-                        fontSize: "22px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {contact.organization}
-                    </h2>
-                  )}
+          {roleFilter === "employer" &&
+            renderContactsTable(employerContacts, "employer", "מעסיקים")}
 
-                  {isVisibleValue(contact.name) && (
-                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                      <strong>שם:</strong> {contact.name}
-                    </p>
-                  )}
-
-                  {isVisibleValue(contact.role) && (
-                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                      <strong>תפקיד:</strong> {displayRole(contact.role)}
-                    </p>
-                  )}
-
-                  {isVisibleValue(contact.field) && (
-                    <>
-                      <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                        <strong>תחום:</strong> {mainCategory}
-                      </p>
-
-                      <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                        <strong>תת־תחום:</strong> {subCategory}
-                      </p>
-                    </>
-                  )}
-
-                  {isVisibleValue(contact.address) && (
-                    <p style={{ margin: "7px 0", fontSize: "16px" }}>
-                      <strong>כתובת:</strong> {contact.address}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  onClick={() =>
-                    navigate(`/directory/${encodeURIComponent(contact.id)}`)
-                  }
-                  style={{
-                    marginTop: "16px",
-                    padding: "10px 16px",
-                    border: "none",
-                    borderRadius: "999px",
-                    background: "#003f9e",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    fontSize: "15px",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  צפייה בפרופיל
-                </button>
-              </div>
-            );
-          })}
-        </div>
+          {roleFilter === "all" && (
+            <>
+              {renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
+              {renderContactsTable(employerContacts, "employer", "מעסיקים")}
+            </>
+          )}
+        </>
       )}
     </div>
   );
