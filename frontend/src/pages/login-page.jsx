@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Button, Paper, Container, Alert, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/firebase/auth-service';
 
@@ -10,55 +10,24 @@ import { loginUser } from '../services/firebase/auth-service';
 const LoginPage = () => {
     const navigate = useNavigate();
 
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    /**
-     * Real Firebase demo login.
-     * These users must exist in Firebase Authentication.
-     * Their matching documents must also exist in Firestore collection `users`.
-     */
-    const handleDemoLogin = async (role) => {
+    const handleLogin = async (event) => {
+        event.preventDefault();
         setLoginError('');
         setIsLoading(true);
 
-        // Important: remove old frontend-only bypass mode
         localStorage.removeItem('DEV_BYPASS');
 
-        const demoUsers = {
-            employer: {
-                email: 'employer@jerusalem.demo',
-                password: 'Demo123!'
-            },
-            coordinator: {
-                email: 'coordinator@jerusalem.demo',
-                password: 'Demo123!'
-            },
-            admin: {
-                email: 'admin@jerusalem.demo',
-                password: 'Demo123!'
-            },
-            guest: {
-                email: 'guest@jerusalem.demo',
-                password: 'Demo123!'
-            }
-        };
-
         try {
-            const selectedUser = demoUsers[role];
-
-            if (!selectedUser) {
-                throw new Error('Unknown demo role');
-            }
-
-            await loginUser(selectedUser.email, selectedUser.password);
+            await loginUser(email.trim(), password);
             navigate('/home');
         } catch (error) {
-            console.error('Demo login failed:', error);
-
-            setLoginError(
-                'ההתחברות נכשלה. בדקי שהמשתמש קיים ב-Firebase Authentication ושהסיסמה נכונה.'
-            );
+            console.error('Login failed:', error);
+            setLoginError('ההתחברות נכשלה. בדקו שכתובת האימייל והסיסמה נכונות.');
         } finally {
             setIsLoading(false);
         }
@@ -90,44 +59,42 @@ const LoginPage = () => {
                         </Alert>
                     )}
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box
+                        component="form"
+                        onSubmit={handleLogin}
+                        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+                    >
+                        <TextField
+                            label="אימייל"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            autoComplete="email"
+                            required
+                            disabled={isLoading}
+                            fullWidth
+                        />
+
+                        <TextField
+                            label="סיסמה"
+                            type="password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            autoComplete="current-password"
+                            required
+                            disabled={isLoading}
+                            fullWidth
+                        />
+
                         <Button
+                            type="submit"
                             variant="contained"
                             size="large"
                             disabled={isLoading}
-                            onClick={() => handleDemoLogin('employer')}
                         >
-                            התחבר כמעסיק
-                        </Button>
-
-                        <Button
-                            variant="outlined"
-                            size="large"
-                            disabled={isLoading}
-                            onClick={() => handleDemoLogin('coordinator')}
-                        >
-                            התחבר כרכז
-                        </Button>
-
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            size="large"
-                            disabled={isLoading}
-                            onClick={() => handleDemoLogin('admin')}
-                        >
-                            התחבר כמנהלת
+                            {isLoading ? 'מתחברים...' : 'התחברות'}
                         </Button>
                     </Box>
-
-                    <Typography
-                        variant="caption"
-                        color="textSecondary"
-                        display="block"
-                        sx={{ mt: 4 }}
-                    >
-                        Demo login uses real Firebase Authentication users.
-                    </Typography>
                 </Paper>
             </Container>
         </Box>
