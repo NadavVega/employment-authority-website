@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/firebase/auth-service';
+import { useAuth } from '../context/auth-context';
 
 /**
  * LoginPage Component
@@ -9,20 +10,24 @@ import { loginUser } from '../services/firebase/auth-service';
  */
 const LoginPage = () => {
     const navigate = useNavigate();
+    const { isAuthenticated, loading } = useAuth();
 
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            navigate('/home', { replace: true });
+        }
+    }, [isAuthenticated, loading, navigate]);
+
     /**
      * Real Firebase demo login.
-     * These users must exist in Firebase Authentication.
-     * Their matching documents must also exist in Firestore collection `users`.
      */
     const handleDemoLogin = async (role) => {
         setLoginError('');
         setIsLoading(true);
 
-        // Important: remove old frontend-only bypass mode
         localStorage.removeItem('DEV_BYPASS');
 
         const demoUsers = {
@@ -52,15 +57,13 @@ const LoginPage = () => {
             }
 
             await loginUser(selectedUser.email, selectedUser.password);
-            navigate('/home');
         } catch (error) {
             console.error('Demo login failed:', error);
 
-            setLoginError(
-                'ההתחברות נכשלה. בדקי שהמשתמש קיים ב-Firebase Authentication ושהסיסמה נכונה.'
-            );
-        } finally {
             setIsLoading(false);
+            setLoginError(
+                `ההתחברות נכשלה. קוד שגיאה: ${error.code || error.message}`
+            );
         }
     };
 
