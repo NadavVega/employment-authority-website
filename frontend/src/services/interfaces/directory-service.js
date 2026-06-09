@@ -51,6 +51,15 @@ export const directoryService = {
           organization: profile.company || data.company || "לא צוין",
           address: profile.address || data.address || "לא צוין",
           field: profile.field || data.field || "לא צוין",
+          subField: profile.subField || data.subField || "",
+
+          status: profile.status || "",
+          companyId: profile.companyId || "",
+          logoUrl: profile.logoUrl || "",
+          companyDescription: profile.companyDescription || "",
+          jobsUrl: profile.jobsUrl || "",
+          lastContactNote: profile.lastContactNote || "",
+          lastContactDate: profile.lastContactDate || "",
 
           rawData: data,
         };
@@ -92,6 +101,15 @@ export const directoryService = {
       organization: profile.company || data.company || "לא צוין",
       address: profile.address || data.address || "לא צוין",
       field: profile.field || data.field || "לא צוין",
+      subField: profile.subField || data.subField || "",
+
+      status: profile.status || "",
+      companyId: profile.companyId || "",
+      logoUrl: profile.logoUrl || "",
+      companyDescription: profile.companyDescription || "",
+      jobsUrl: profile.jobsUrl || "",
+      lastContactNote: profile.lastContactNote || "",
+      lastContactDate: profile.lastContactDate || "",
 
       rawData: data,
     };

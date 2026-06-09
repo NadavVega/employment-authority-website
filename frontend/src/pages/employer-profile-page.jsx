@@ -39,6 +39,16 @@ const EmployerProfilePage = () => {
     return status || "לא ידוע";
   };
 
+  const displayProfileDate = (value) => {
+    if (!value) return "";
+
+    if (value?.toDate) {
+      return value.toDate().toLocaleDateString("he-IL");
+    }
+
+    return String(value);
+  };
+
   const isVisibleValue = (value) => {
     return value && value !== "לא צוין" && String(value).trim() !== "";
   };
@@ -86,10 +96,20 @@ const EmployerProfilePage = () => {
 
         if (currentUser && shouldLoadPrivateDetails) {
           try {
+            console.log("CURRENT USER:", currentUser);
+            console.log("CURRENT USER EMAIL:", currentUser?.email);
+            console.log("USER ROLE:", userRole);
+            console.log("IS ADMIN:", isAdmin);
+            console.log("ACCESS STATUS:", status);
+            console.log("SHOULD LOAD PRIVATE DETAILS:", shouldLoadPrivateDetails);
+            console.log("EMPLOYER DATA:", employerData);
             const details = await privacyService.getPrivateContactDetails(
               currentUser,
               employerData
             );
+
+            console.log("EMPLOYER DATA:", employerData);
+            console.log("PRIVATE DETAILS:", details);
 
             setPrivateDetails(details);
           } catch (privateDetailsError) {
@@ -161,6 +181,23 @@ const EmployerProfilePage = () => {
     );
   }
 
+  const displayEmail = privateDetails?.directEmail || employer.email;
+
+  const displayPhone =
+    privateDetails?.phone ||
+    privateDetails?.mobile ||
+    privateDetails?.directPhone ||
+    "";
+
+  const hasCompanyDetails =
+    isVisibleValue(employer.logoUrl) ||
+    isVisibleValue(employer.status) ||
+    isVisibleValue(employer.companyId) ||
+    isVisibleValue(employer.companyDescription) ||
+    isVisibleValue(employer.jobsUrl) ||
+    isVisibleValue(employer.lastContactNote) ||
+    isVisibleValue(employer.lastContactDate);
+
   return (
     <div
       dir="rtl"
@@ -183,6 +220,24 @@ const EmployerProfilePage = () => {
           boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
         }}
       >
+        {isVisibleValue(employer.logoUrl) && (
+          <div style={{ marginBottom: "18px", textAlign: "center" }}>
+            <img
+              src={employer.logoUrl}
+              alt={`לוגו ${employer.organization || "חברה"}`}
+              style={{
+                maxWidth: "180px",
+                maxHeight: "100px",
+                objectFit: "contain",
+                border: "1px solid #dde3ec",
+                borderRadius: "12px",
+                padding: "10px",
+                background: "#fff",
+              }}
+            />
+          </div>
+        )}
+
         {isVisibleValue(employer.organization) && (
           <h2>{employer.organization}</h2>
         )}
@@ -205,6 +260,12 @@ const EmployerProfilePage = () => {
           </p>
         )}
 
+        {isVisibleValue(employer.subField) && (
+          <p>
+            <strong>תת־תחום:</strong> {employer.subField}
+          </p>
+        )}
+
         {isVisibleValue(employer.address) && (
           <p>
             <strong>כתובת:</strong> {employer.address}
@@ -217,32 +278,92 @@ const EmployerProfilePage = () => {
           </p>
         )}
 
+        {hasCompanyDetails && (
+          <>
+            <hr style={{ margin: "24px 0" }} />
+
+            <h3>פרטי חברה</h3>
+
+            {isVisibleValue(employer.status) && (
+              <p>
+                <strong>סטטוס קשר:</strong> {employer.status}
+              </p>
+            )}
+
+            {isVisibleValue(employer.companyId) && (
+              <p>
+                <strong>ח.פ / מזהה חברה:</strong>{" "}
+                <span dir="ltr" style={ltrValueStyle}>
+                  {employer.companyId}
+                </span>
+              </p>
+            )}
+
+            {isVisibleValue(employer.companyDescription) && (
+              <p>
+                <strong>תיאור החברה:</strong> {employer.companyDescription}
+              </p>
+            )}
+
+            {isVisibleValue(employer.jobsUrl) && (
+              <p>
+                <strong>קישור לאזור משרות:</strong>{" "}
+                <a
+                  href={employer.jobsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "#003f9e",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                  }}
+                >
+                  מעבר לאזור המשרות
+                </a>
+              </p>
+            )}
+
+            {isVisibleValue(employer.lastContactNote) && (
+              <p>
+                <strong>תיעוד קשר אחרון:</strong> {employer.lastContactNote}
+              </p>
+            )}
+
+            {isVisibleValue(employer.lastContactDate) && (
+              <p>
+                <strong>תאריך קשר אחרון:</strong>{" "}
+                {displayProfileDate(employer.lastContactDate)}
+              </p>
+            )}
+          </>
+        )}
+
         <hr style={{ margin: "24px 0" }} />
 
         <h3>פרטי קשר פרטיים</h3>
 
         {hasApprovedAccess ? (
           <>
-            {isVisibleValue(privateDetails?.directEmail) && (
+            {isVisibleValue(displayEmail) && (
               <p>
                 <strong>אימייל:</strong>{" "}
                 <span dir="ltr" style={ltrValueStyle}>
-                  {privateDetails.directEmail}
+                  {displayEmail}
                 </span>
               </p>
             )}
 
-            {isVisibleValue(privateDetails?.phone) && (
+            {isVisibleValue(displayPhone) && (
               <p>
                 <strong>טלפון:</strong>{" "}
                 <span dir="ltr" style={ltrValueStyle}>
-                  {privateDetails.phone}
+                  {displayPhone}
                 </span>
               </p>
             )}
 
-            {!isVisibleValue(privateDetails?.directEmail) &&
-              !isVisibleValue(privateDetails?.phone) && (
+            {!isVisibleValue(displayEmail) &&
+              !isVisibleValue(displayPhone) && (
                 <p style={{ color: "#666" }}>
                   אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
                 </p>
