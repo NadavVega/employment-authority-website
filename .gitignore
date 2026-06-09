@@ -42,3 +42,5 @@ dist/
 *.log
 .firebase/
 .runtimeconfig.json
+
+AGENTS.md

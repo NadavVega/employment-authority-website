@@ -150,7 +150,7 @@ export const EventsPage = () => {
                 uid,
                 employerName: currentUser.displayName || 'מעסיק הדגמה',
                 displayName: currentUser.displayName || 'מעסיק הדגמה',
-                email: currentUser.email || 'employer@jerusalem.demo',
+                email: currentUser.email || '',
                 phone: currentUser.phone || '050-1234567',
                 center: currentUser.center || 'מרכז הקריירה באוניברסיטה העברית',
                 companyName: currentUser.companyName || currentUser.organization || 'מעסיק הדגמה בע"מ'
