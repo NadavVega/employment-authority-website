@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Paper, Container, Alert } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Typography, Button, Paper, Container, Alert, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/firebase/auth-service';
 import { useAuth } from '../context/auth-context';
@@ -23,30 +23,20 @@ const LoginPage = () => {
         }
     }, [isAuthenticated, loading, navigate]);
 
-    /**
-     * Real Firebase demo login.
-     */
-    const handleDemoLogin = async (role) => {
+    const handleLogin = async (event) => {
+        event.preventDefault();
         setLoginError('');
         setIsLoading(true);
 
         localStorage.removeItem('DEV_BYPASS');
 
         try {
-            const selectedUser = demoUsers[role];
-
-            if (!selectedUser) {
-                throw new Error('Unknown demo role');
-            }
-
-            await loginUser(selectedUser.email, selectedUser.password);
+            await loginUser(email.trim(), password);
         } catch (error) {
-            console.error('Demo login failed:', error);
-
+            console.error('Login failed:', error);
+            setLoginError('ההתחברות נכשלה. בדקו שכתובת האימייל והסיסמה נכונות.');
+        } finally {
             setIsLoading(false);
-            setLoginError(
-                `ההתחברות נכשלה. קוד שגיאה: ${error.code || error.message}`
-            );
         }
     };
 
