@@ -244,9 +244,17 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         capacity: isCapacityUnlimited ? '' : formData.capacity,
         time: `${formData.startTime}-${formData.endTime}`,
         coordinatorPhone: combinedCoordPhones,
-        accessibilityContactPhone: combinedAccPhones,
-        createdBy: currentUser.uid
+        accessibilityContactPhone: combinedAccPhones
       };
+      if (isEditMode) {
+        if (Object.prototype.hasOwnProperty.call(initialData, 'createdBy')) {
+          formattedData.createdBy = initialData.createdBy;
+        } else {
+          delete formattedData.createdBy;
+        }
+      } else {
+        formattedData.createdBy = currentUser.uid;
+      }
       formattedData.status = 'published';
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 20000));
       const dbOperation = isEditMode

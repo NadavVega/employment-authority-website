@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { EventForm } from '../components/events/event-form';
 import { eventService } from '../services/interfaces/event-services';
 
-import { EVENT_IMAGE_OPTIONS } from '../utils/eventImageMap'; // For the image dropdown in the form, temporary until we have a real upload solution in place
-import { CENTER_COLORS } from '../utils/centerColors'; 
-
 export const EditEventPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     
-    const { currentUser, userRole, isAdmin } = useAuth(); 
+    const { currentUser, userRole } = useAuth();
     
     const [eventData, setEventData] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
 
     useEffect(() => {
+        if (userRole !== 'coordinator' && userRole !== 'admin') {
+            return;
+        }
+
         const fetchEvent = async () => {
             try {
                 console.log("Attempting to fetch event with ID:", id);
@@ -28,12 +29,14 @@ export const EditEventPage = () => {
                     console.log("Successfully fetched data:", data);
                 }
 
-                // Security Check: Commented out temporarily for debugging
-                // if (!isAdmin && data && data.createdBy && data.createdBy !== currentUser?.uid) {
-                //     console.warn("Unauthorized access attempt. Redirecting to /events");
-                //     navigate('/events'); 
-                //     return;
-                // }
+                if (
+                    userRole === 'coordinator' &&
+                    (!currentUser?.uid || !data?.createdBy || data.createdBy !== currentUser.uid)
+                ) {
+                    console.warn("Unauthorized access attempt. Redirecting to /events");
+                    navigate('/events');
+                    return;
+                }
                 
                 setEventData(data);
             } catch (error) {
@@ -48,10 +51,8 @@ export const EditEventPage = () => {
             }
         };
 
-        if (userRole !== undefined) {
-             fetchEvent();
-        }
-    }, [id, currentUser, isAdmin, userRole, navigate]);
+        fetchEvent();
+    }, [id, currentUser, userRole, navigate]);
 
     if (userRole === undefined) return <div dir="rtl" style={{ padding: '40px', textAlign: 'center' }}>טוען נתוני משתמש...</div>;
     
