@@ -14,22 +14,7 @@ import {
 
 import { db } from "../firebase/config";
 
-/**
- * privacyService handles private contact access requests.
- *
- * UC4 - Request Access (Double Opt-in):
- * A coordinator can request access to an employer's private contact details.
- * The employer/admin must approve the request before private details are revealed.
- */
 export const privacyService = {
-  /**
-   * Creates a new pending access request from the current coordinator
-   * to the selected employer.
-   *
-   * @param {Object} currentUser - The logged-in Firebase user.
-   * @param {Object} targetEmployer - The employer profile being requested.
-   * @returns {Promise<Object>} Request result.
-   */
   async requestContactAccess(currentUser, targetEmployer) {
     if (!currentUser?.email) {
       throw new Error("User must be logged in to request access.");
@@ -39,10 +24,25 @@ export const privacyService = {
       throw new Error("Target employer email is missing.");
     }
 
-    // Important:
-    // requesterEmail must match request.auth.token.email exactly in Firestore Rules.
-    const requesterEmail = currentUser.email;
-    const targetEmail = targetEmployer.email;
+    const requesterEmail = currentUser.email.toLowerCase().trim();
+    const targetEmail = targetEmployer.email.toLowerCase().trim();
+
+    const assignedCoordinatorEmail = targetEmployer.assignedCoordinatorEmail
+      ? String(targetEmployer.assignedCoordinatorEmail).toLowerCase().trim()
+      : "";
+
+    const isRequesterAssignedCoordinator =
+      assignedCoordinatorEmail && assignedCoordinatorEmail === requesterEmail;
+
+    if (isRequesterAssignedCoordinator) {
+      return {
+        status: "already_allowed",
+        message: "You are already assigned to this employer.",
+      };
+    }
+
+    const requiresCoordinatorApproval =
+      assignedCoordinatorEmail && assignedCoordinatorEmail !== requesterEmail;
 
     const existingRequestQuery = query(
       collection(db, "privacy_requests"),
@@ -63,9 +63,30 @@ export const privacyService = {
     const requestData = {
       requesterEmail,
       targetEmail,
+
+      targetEmployerName: targetEmployer.organization || "",
+      targetEmployerContactName: targetEmployer.name || "",
+      targetEmployerRole: targetEmployer.role || "",
+
+      assignedCoordinatorEmail,
+      requiresCoordinatorApproval: Boolean(requiresCoordinatorApproval),
+
+      employerApprovalStatus: "pending",
+      coordinatorApprovalStatus: requiresCoordinatorApproval
+        ? "pending"
+        : "not_required",
+
       status: "pending",
+
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+
+      employerReviewedAt: null,
+      employerReviewedBy: null,
+
+      coordinatorReviewedAt: null,
+      coordinatorReviewedBy: null,
+
       reviewedAt: null,
       reviewedBy: null,
     };
@@ -78,27 +99,28 @@ export const privacyService = {
     return {
       id: docRef.id,
       status: "pending",
-      message: "Access request sent successfully.",
+      requiresCoordinatorApproval: Boolean(requiresCoordinatorApproval),
+      message: requiresCoordinatorApproval
+        ? "Access request sent. Employer and assigned coordinator approval are required."
+        : "Access request sent. Employer approval is required.",
     };
   },
 
-  /**
-   * Checks the current access status between the logged-in user
-   * and a target employer.
-   *
-   * Possible return values:
-   * - "none"
-   * - "pending"
-   * - "approved"
-   * - "rejected"
-   */
   async getContactAccessStatus(currentUser, targetEmployer) {
     if (!currentUser?.email || !targetEmployer?.email) {
       return "none";
     }
 
-    const requesterEmail = currentUser.email;
-    const targetEmail = targetEmployer.email;
+    const requesterEmail = currentUser.email.toLowerCase().trim();
+    const targetEmail = targetEmployer.email.toLowerCase().trim();
+
+    const assignedCoordinatorEmail = targetEmployer.assignedCoordinatorEmail
+      ? String(targetEmployer.assignedCoordinatorEmail).toLowerCase().trim()
+      : "";
+
+    if (assignedCoordinatorEmail && assignedCoordinatorEmail === requesterEmail) {
+      return "approved";
+    }
 
     const accessQuery = query(
       collection(db, "privacy_requests"),
@@ -129,14 +151,6 @@ export const privacyService = {
     return "none";
   },
 
-  /**
-   * Fetches private contact details for an employer.
-   * Firestore Rules decide whether the current user is allowed to read it.
-   *
-   * @param {Object} currentUser - Current logged-in user.
-   * @param {Object} targetEmployer - Employer profile.
-   * @returns {Promise<Object|null>} Private contact details or null.
-   */
   async getPrivateContactDetails(currentUser, targetEmployer) {
     if (!currentUser?.email || !targetEmployer?.email) {
       return null;
@@ -165,12 +179,60 @@ export const privacyService = {
     };
   },
 
-  /**
-   * Fetches all pending privacy requests.
-   * This is intended for admin review.
-   *
-   * @returns {Promise<Array>} Pending privacy requests.
-   */
+  async getActionablePrivacyRequests(currentUser, userRole) {
+    if (!currentUser?.email || !userRole) {
+      return [];
+    }
+
+    if (userRole === "admin") {
+      return [];
+    }
+
+    const currentEmail = currentUser.email.toLowerCase().trim();
+
+    let requestsQuery;
+
+    if (userRole === "employer") {
+      requestsQuery = query(
+        collection(db, "privacy_requests"),
+        where("targetEmail", "==", currentEmail),
+        where("employerApprovalStatus", "==", "pending"),
+        where("status", "==", "pending")
+      );
+    } else if (userRole === "coordinator") {
+      requestsQuery = query(
+        collection(db, "privacy_requests"),
+        where("assignedCoordinatorEmail", "==", currentEmail),
+        where("coordinatorApprovalStatus", "==", "pending"),
+        where("requiresCoordinatorApproval", "==", true),
+        where("status", "==", "pending")
+      );
+    } else {
+      return [];
+    }
+
+    const snapshot = await getDocs(requestsQuery);
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+
+      return {
+        id: docSnap.id,
+        requesterEmail: data.requesterEmail || "",
+        targetEmail: data.targetEmail || "",
+        targetEmployerName: data.targetEmployerName || "",
+        targetEmployerContactName: data.targetEmployerContactName || "",
+        assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
+        requiresCoordinatorApproval: data.requiresCoordinatorApproval === true,
+        employerApprovalStatus: data.employerApprovalStatus || "pending",
+        coordinatorApprovalStatus:
+          data.coordinatorApprovalStatus || "not_required",
+        status: data.status || "pending",
+        createdAt: data.createdAt || null,
+      };
+    });
+  },
+
   async getPendingPrivacyRequests() {
     const pendingRequestsQuery = query(
       collection(db, "privacy_requests"),
@@ -184,26 +246,39 @@ export const privacyService = {
 
       return {
         id: docSnap.id,
+
         requesterEmail: data.requesterEmail || "",
         targetEmail: data.targetEmail || "",
+
+        targetEmployerName: data.targetEmployerName || "",
+        targetEmployerContactName: data.targetEmployerContactName || "",
+        targetEmployerRole: data.targetEmployerRole || "",
+
+        assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
+        requiresCoordinatorApproval:
+          data.requiresCoordinatorApproval === true,
+
+        employerApprovalStatus: data.employerApprovalStatus || "pending",
+        coordinatorApprovalStatus:
+          data.coordinatorApprovalStatus || "not_required",
+
         status: data.status || "pending",
+
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
+
+        employerReviewedAt: data.employerReviewedAt || null,
+        employerReviewedBy: data.employerReviewedBy || null,
+
+        coordinatorReviewedAt: data.coordinatorReviewedAt || null,
+        coordinatorReviewedBy: data.coordinatorReviewedBy || null,
+
         reviewedAt: data.reviewedAt || null,
         reviewedBy: data.reviewedBy || null,
       };
     });
   },
 
-  /**
-   * Approves a pending privacy request.
-   * In addition to changing the request status, the requester is added
-   * to the target employer's approved_viewers list.
-   *
-   * @param {Object} request - Privacy request object.
-   * @param {Object} currentUser - Current logged-in admin/employer user.
-   * @returns {Promise<Object>} Result.
-   */
   async approvePrivacyRequest(request, currentUser) {
     if (!request?.id) {
       throw new Error("Request id is missing.");
@@ -223,6 +298,33 @@ export const privacyService = {
 
     const requestRef = doc(db, "privacy_requests", request.id);
 
+    const currentUserEmail = currentUser.email.toLowerCase().trim();
+    const assignedCoordinatorEmail = request.assignedCoordinatorEmail
+      ? String(request.assignedCoordinatorEmail).toLowerCase().trim()
+      : "";
+
+    const isAssignedCoordinatorApproval =
+      assignedCoordinatorEmail && assignedCoordinatorEmail === currentUserEmail;
+
+    const currentEmployerApprovalStatus =
+      request.employerApprovalStatus || "pending";
+
+    const currentCoordinatorApprovalStatus =
+      request.coordinatorApprovalStatus || "not_required";
+
+    const nextEmployerApprovalStatus = isAssignedCoordinatorApproval
+      ? currentEmployerApprovalStatus
+      : "approved";
+
+    const nextCoordinatorApprovalStatus = isAssignedCoordinatorApproval
+      ? "approved"
+      : currentCoordinatorApprovalStatus;
+
+    const shouldApproveRequest =
+      nextEmployerApprovalStatus === "approved" &&
+      (request.requiresCoordinatorApproval !== true ||
+        nextCoordinatorApprovalStatus === "approved");
+
     const privateInfoRef = doc(
       db,
       "users",
@@ -232,34 +334,50 @@ export const privacyService = {
     );
 
     await updateDoc(requestRef, {
-      status: "approved",
-      reviewedAt: serverTimestamp(),
-      reviewedBy: currentUser.email,
+      employerApprovalStatus: nextEmployerApprovalStatus,
+      coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
+
+      status: shouldApproveRequest ? "approved" : "pending",
+
+      employerReviewedAt: isAssignedCoordinatorApproval
+        ? request.employerReviewedAt || null
+        : serverTimestamp(),
+      employerReviewedBy: isAssignedCoordinatorApproval
+        ? request.employerReviewedBy || null
+        : currentUser.email,
+
+      coordinatorReviewedAt: isAssignedCoordinatorApproval
+        ? serverTimestamp()
+        : request.coordinatorReviewedAt || null,
+      coordinatorReviewedBy: isAssignedCoordinatorApproval
+        ? currentUser.email
+        : request.coordinatorReviewedBy || null,
+
+      reviewedAt: shouldApproveRequest ? serverTimestamp() : null,
+      reviewedBy: shouldApproveRequest ? currentUser.email : null,
+
       updatedAt: serverTimestamp(),
     });
 
-    await setDoc(
-      privateInfoRef,
-      {
-        approved_viewers: arrayUnion(request.requesterEmail),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    if (shouldApproveRequest) {
+      await setDoc(
+        privateInfoRef,
+        {
+          approved_viewers: arrayUnion(request.requesterEmail),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
 
     return {
-      status: "approved",
-      message: "Privacy request approved successfully.",
+      status: shouldApproveRequest ? "approved" : "pending",
+      message: shouldApproveRequest
+        ? "Privacy request approved successfully."
+        : "Approval saved. Waiting for the additional required approval.",
     };
   },
 
-  /**
-   * Rejects a pending privacy request.
-   *
-   * @param {Object} request - Privacy request object.
-   * @param {Object} currentUser - Current logged-in admin/employer user.
-   * @returns {Promise<Object>} Result.
-   */
   async rejectPrivacyRequest(request, currentUser) {
     if (!request?.id) {
       throw new Error("Request id is missing.");
@@ -271,8 +389,25 @@ export const privacyService = {
 
     const requestRef = doc(db, "privacy_requests", request.id);
 
+    const currentUserEmail = currentUser.email.toLowerCase().trim();
+    const assignedCoordinatorEmail = request.assignedCoordinatorEmail
+      ? String(request.assignedCoordinatorEmail).toLowerCase().trim()
+      : "";
+
+    const isAssignedCoordinatorRejection =
+      assignedCoordinatorEmail && assignedCoordinatorEmail === currentUserEmail;
+
     await updateDoc(requestRef, {
       status: "rejected",
+
+      employerApprovalStatus: isAssignedCoordinatorRejection
+        ? request.employerApprovalStatus || "pending"
+        : "rejected",
+
+      coordinatorApprovalStatus: isAssignedCoordinatorRejection
+        ? "rejected"
+        : request.coordinatorApprovalStatus || "not_required",
+
       reviewedAt: serverTimestamp(),
       reviewedBy: currentUser.email,
       updatedAt: serverTimestamp(),
