@@ -14,6 +14,37 @@ import {
 
 import { db } from "../firebase/config";
 
+const getUserProfileByEmail = async (email) => {
+  if (!email) {
+    return {};
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const userRef = doc(db, "users", normalizedEmail);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    return {};
+  }
+
+  const data = userSnap.data();
+  const profile = data.profile || {};
+
+  return {
+    fullName: profile.fullName || data.fullName || "",
+    centerName:
+      profile.centerName ||
+      data.centerName ||
+      profile.center ||
+      data.center ||
+      profile.organization ||
+      data.organization ||
+      "",
+    role: data.role || profile.role || "",
+    email: normalizedEmail,
+  };
+};
+
 export const privacyService = {
   async requestContactAccess(currentUser, targetEmployer) {
     if (!currentUser?.email) {
@@ -26,6 +57,8 @@ export const privacyService = {
 
     const requesterEmail = currentUser.email.toLowerCase().trim();
     const targetEmail = targetEmployer.email.toLowerCase().trim();
+
+    const requesterProfile = await getUserProfileByEmail(requesterEmail);
 
     const assignedCoordinatorEmail = targetEmployer.assignedCoordinatorEmail
       ? String(targetEmployer.assignedCoordinatorEmail).toLowerCase().trim()
@@ -62,8 +95,11 @@ export const privacyService = {
 
     const requestData = {
       requesterEmail,
-      targetEmail,
+      requesterName: requesterProfile.fullName || currentUser.displayName || "",
+      requesterCenterName: requesterProfile.centerName || "",
+      requesterRole: requesterProfile.role || "coordinator",
 
+      targetEmail,
       targetEmployerName: targetEmployer.organization || "",
       targetEmployerContactName: targetEmployer.name || "",
       targetEmployerRole: targetEmployer.role || "",
@@ -218,15 +254,23 @@ export const privacyService = {
 
       return {
         id: docSnap.id,
+
         requesterEmail: data.requesterEmail || "",
+        requesterName: data.requesterName || "",
+        requesterCenterName: data.requesterCenterName || "",
+        requesterRole: data.requesterRole || "",
+
         targetEmail: data.targetEmail || "",
         targetEmployerName: data.targetEmployerName || "",
         targetEmployerContactName: data.targetEmployerContactName || "",
+
         assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
         requiresCoordinatorApproval: data.requiresCoordinatorApproval === true,
+
         employerApprovalStatus: data.employerApprovalStatus || "pending",
         coordinatorApprovalStatus:
           data.coordinatorApprovalStatus || "not_required",
+
         status: data.status || "pending",
         createdAt: data.createdAt || null,
       };
@@ -248,8 +292,11 @@ export const privacyService = {
         id: docSnap.id,
 
         requesterEmail: data.requesterEmail || "",
-        targetEmail: data.targetEmail || "",
+        requesterName: data.requesterName || "",
+        requesterCenterName: data.requesterCenterName || "",
+        requesterRole: data.requesterRole || "",
 
+        targetEmail: data.targetEmail || "",
         targetEmployerName: data.targetEmployerName || "",
         targetEmployerContactName: data.targetEmployerContactName || "",
         targetEmployerRole: data.targetEmployerRole || "",

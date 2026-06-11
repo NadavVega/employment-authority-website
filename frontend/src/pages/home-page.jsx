@@ -133,7 +133,19 @@ const PrivacyRequestsWidget = () => {
                         </Typography>
 
                         <Typography variant="body2">
-                            <strong>מבקש:</strong> {request.requesterEmail}
+                            <strong>מבקש:</strong>{' '}
+                            {request.requesterName || request.requesterEmail}
+                        </Typography>
+
+                        {request.requesterCenterName && (
+                            <Typography variant="body2">
+                                <strong>מרכז:</strong> {request.requesterCenterName}
+                            </Typography>
+                        )}
+
+                        <Typography variant="body2">
+                            <strong>אימייל:</strong>{' '}
+                            <span dir="ltr">{request.requesterEmail}</span>
                         </Typography>
 
                         <Typography variant="body2">
