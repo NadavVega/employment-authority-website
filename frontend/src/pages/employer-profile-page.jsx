@@ -16,6 +16,7 @@ const EmployerProfilePage = () => {
   const [accessStatus, setAccessStatus] = useState("none");
   const [loading, setLoading] = useState(true);
   const [requestLoading, setRequestLoading] = useState(false);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const isAdmin = userRole === "admin";
@@ -24,8 +25,21 @@ const EmployerProfilePage = () => {
   const isEmployerContact = employer?.role === "employer";
   const isCoordinatorContact = employer?.role === "coordinator";
 
-  const canRequestAccess = isCoordinator && isEmployerContact;
-  const hasApprovedAccess = accessStatus === "approved" || isAdmin;
+  const isAssignedCoordinator =
+    isCoordinator &&
+    employer?.assignedCoordinatorEmail &&
+    currentUser?.email &&
+    employer.assignedCoordinatorEmail.toLowerCase() ===
+      currentUser.email.toLowerCase();
+
+  const canRequestAccess =
+    isCoordinator && isEmployerContact && !isAssignedCoordinator;
+
+  const hasApprovedAccess =
+    accessStatus === "approved" || isAdmin || isAssignedCoordinator;
+
+  const canAssignEmployer =
+    isCoordinator && isEmployerContact && !employer?.assignedCoordinatorEmail;
 
   const displayRole = (role) => {
     if (role === "employer") return "מעסיק";
@@ -59,17 +73,9 @@ const EmployerProfilePage = () => {
 
     if (!cleanPhone) return "";
 
-    if (cleanPhone.startsWith("+")) {
-      return cleanPhone;
-    }
-
-    if (cleanPhone.startsWith("0")) {
-      return cleanPhone;
-    }
-
-    if (/^\d+$/.test(cleanPhone)) {
-      return `0${cleanPhone}`;
-    }
+    if (cleanPhone.startsWith("+")) return cleanPhone;
+    if (cleanPhone.startsWith("0")) return cleanPhone;
+    if (/^\d+$/.test(cleanPhone)) return `0${cleanPhone}`;
 
     return cleanPhone;
   };
@@ -107,8 +113,19 @@ const EmployerProfilePage = () => {
         setEmployer(employerData);
 
         let status = "none";
+        const coordinatorIsAssigned =
+          userRole === "coordinator" &&
+          employerData.assignedCoordinatorEmail &&
+          currentUser?.email &&
+          employerData.assignedCoordinatorEmail.toLowerCase() ===
+            currentUser.email.toLowerCase();
 
-        if (currentUser && !isAdmin && employerData.role === "employer") {
+        if (
+          currentUser &&
+          !isAdmin &&
+          employerData.role === "employer" &&
+          !coordinatorIsAssigned
+        ) {
           status = await privacyService.getContactAccessStatus(
             currentUser,
             employerData
@@ -117,8 +134,13 @@ const EmployerProfilePage = () => {
           setAccessStatus(status);
         }
 
+        if (coordinatorIsAssigned) {
+          setAccessStatus("approved");
+        }
+
         const shouldLoadPrivateDetails =
-          employerData.role === "employer" && (isAdmin || status === "approved");
+          employerData.role === "employer" &&
+          (isAdmin || status === "approved" || coordinatorIsAssigned);
 
         if (currentUser && shouldLoadPrivateDetails) {
           try {
@@ -146,7 +168,7 @@ const EmployerProfilePage = () => {
     };
 
     loadEmployerProfile();
-  }, [employerId, currentUser, isAdmin]);
+  }, [employerId, currentUser, isAdmin, userRole]);
 
   const handleRequestAccess = async () => {
     setRequestLoading(true);
@@ -165,6 +187,40 @@ const EmployerProfilePage = () => {
       setMessage(error.message || "שליחת בקשת הגישה נכשלה.");
     } finally {
       setRequestLoading(false);
+    }
+  };
+
+  const handleAssignEmployerToCoordinator = async () => {
+    setAssignmentLoading(true);
+    setMessage("");
+
+    try {
+      const result = await directoryService.assignEmployerToCoordinator(
+        employer.email,
+        currentUser
+      );
+
+      const updatedEmployer = {
+        ...employer,
+        assignedCoordinatorEmail: result.assignedCoordinatorEmail,
+        assignedBy: result.assignedBy,
+      };
+
+      setEmployer(updatedEmployer);
+
+      const details = await privacyService.getPrivateContactDetails(
+        currentUser,
+        updatedEmployer
+      );
+
+      setPrivateDetails(details);
+      setAccessStatus("approved");
+      setMessage("המעסיק שויך אליך בהצלחה.");
+    } catch (error) {
+      console.error("Failed to assign employer to coordinator:", error);
+      setMessage(error.message || "שיוך המעסיק לרכז נכשל.");
+    } finally {
+      setAssignmentLoading(false);
     }
   };
 
@@ -261,9 +317,7 @@ const EmployerProfilePage = () => {
           </div>
         )}
 
-        {isVisibleValue(employer.organization) && (
-          <h2>{employer.organization}</h2>
-        )}
+        {isVisibleValue(employer.organization) && <h2>{employer.organization}</h2>}
 
         {isVisibleValue(employer.name) && (
           <p>
@@ -314,6 +368,38 @@ const EmployerProfilePage = () => {
           <p>
             <strong>כתובת:</strong> {employer.address}
           </p>
+        )}
+
+        {isEmployerContact && (isCoordinator || isAdmin) && (
+          <p>
+            <strong>שיוך רכז:</strong>{" "}
+            {employer.assignedCoordinatorEmail
+              ? employer.assignedCoordinatorEmail
+              : "טרם שויך למרכז"}
+          </p>
+        )}
+
+        {canAssignEmployer && (
+          <button
+            onClick={handleAssignEmployerToCoordinator}
+            disabled={assignmentLoading}
+            style={{
+              marginTop: "12px",
+              padding: "10px 18px",
+              border: "none",
+              borderRadius: "999px",
+              background: "#0f766e",
+              color: "white",
+              cursor: assignmentLoading ? "not-allowed" : "pointer",
+              opacity: assignmentLoading ? 0.7 : 1,
+              fontFamily: "inherit",
+              fontWeight: 700,
+            }}
+          >
+            {assignmentLoading
+              ? "משייך מעסיק..."
+              : "אני מרכז/ת את הקשר עם מעסיק זה"}
+          </button>
         )}
 
         {isVisibleValue(employer.notes) && (

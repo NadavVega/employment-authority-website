@@ -5,6 +5,8 @@ import {
   getDocs,
   query,
   where,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
@@ -71,6 +73,11 @@ export const directoryService = {
           centerName ||
           "לא צוין";
 
+        const assignedCoordinatorEmail =
+          data.assignedCoordinatorEmail ||
+          profile.assignedCoordinatorEmail ||
+          "";
+
         return {
           id: docSnap.id,
           email: docSnap.id,
@@ -92,6 +99,9 @@ export const directoryService = {
           centerName,
           population,
           phone,
+
+          // Employer-to-coordinator assignment
+          assignedCoordinatorEmail,
 
           // Employer CRM fields
           status: profile.status || data.status || "",
@@ -165,6 +175,11 @@ export const directoryService = {
       centerName ||
       "לא צוין";
 
+    const assignedCoordinatorEmail =
+      data.assignedCoordinatorEmail ||
+      profile.assignedCoordinatorEmail ||
+      "";
+
     return {
       id: contactSnap.id,
       email: contactSnap.id,
@@ -187,6 +202,9 @@ export const directoryService = {
       population,
       phone,
 
+      // Employer-to-coordinator assignment
+      assignedCoordinatorEmail,
+
       // Employer CRM fields
       status: profile.status || data.status || "",
       companyId: profile.companyId || data.companyId || "",
@@ -200,6 +218,70 @@ export const directoryService = {
         profile.lastContactDate || data.lastContactDate || "",
 
       rawData: data,
+    };
+  },
+
+  /**
+   * Assign an employer to the current coordinator.
+   *
+   * This is the first lightweight version:
+   * - Works only on employer documents.
+   * - Writes assignment fields directly on users/{employerEmail}.
+   * - Firestore Rules should later restrict this so assignment is allowed
+   *   only when assignedCoordinatorEmail is empty.
+   *
+   * @param {string} employerEmail
+   * @param {Object} coordinatorUser
+   * @returns {Promise<Object>}
+   */
+  async assignEmployerToCoordinator(employerEmail, coordinatorUser) {
+    if (!employerEmail) {
+      throw new Error("Employer email is missing.");
+    }
+
+    if (!coordinatorUser?.email) {
+      throw new Error("Coordinator email is missing.");
+    }
+
+    const normalizedEmployerEmail = decodeURIComponent(employerEmail)
+      .toLowerCase()
+      .trim();
+
+    const coordinatorEmail = coordinatorUser.email.toLowerCase().trim();
+
+    const employerRef = doc(db, "users", normalizedEmployerEmail);
+    const employerSnap = await getDoc(employerRef);
+
+    if (!employerSnap.exists()) {
+      throw new Error("Employer was not found.");
+    }
+
+    const employerData = employerSnap.data();
+    const employerProfile = employerData.profile || {};
+    const employerRole = employerData.role || employerProfile.role || "";
+
+    if (employerRole !== "employer") {
+      throw new Error("Only employer contacts can be assigned to coordinators.");
+    }
+
+    const existingAssignedCoordinatorEmail =
+      employerData.assignedCoordinatorEmail ||
+      employerProfile.assignedCoordinatorEmail ||
+      "";
+
+    if (existingAssignedCoordinatorEmail) {
+      throw new Error("This employer is already assigned to a coordinator.");
+    }
+
+    await updateDoc(employerRef, {
+      assignedCoordinatorEmail: coordinatorEmail,
+      assignedBy: coordinatorEmail,
+      assignedAt: serverTimestamp(),
+    });
+
+    return {
+      assignedCoordinatorEmail: coordinatorEmail,
+      assignedBy: coordinatorEmail,
     };
   },
 };
