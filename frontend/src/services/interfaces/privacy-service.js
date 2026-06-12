@@ -8,7 +8,6 @@ import {
   doc,
   updateDoc,
   setDoc,
-  arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -372,12 +371,12 @@ export const privacyService = {
       (request.requiresCoordinatorApproval !== true ||
         nextCoordinatorApprovalStatus === "approved");
 
-    const privateInfoRef = doc(
+    const privateAccessRef = doc(
       db,
       "users",
       request.targetEmail,
-      "private_info",
-      "details"
+      "private_access",
+      request.requesterEmail
     );
 
     await updateDoc(requestRef, {
@@ -408,12 +407,17 @@ export const privacyService = {
 
     if (shouldApproveRequest) {
       await setDoc(
-        privateInfoRef,
+        privateAccessRef,
         {
-          approved_viewers: arrayUnion(request.requesterEmail),
+          sourceRequestId: request.id,
+          targetEmail: request.targetEmail,
+          requesterEmail: request.requesterEmail,
+          assignedCoordinatorEmail,
+          employerApprovalStatus: "approved",
+          coordinatorApprovalStatus: "approved",
+          grantedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        },
-        { merge: true }
+        }
       );
     }
 
