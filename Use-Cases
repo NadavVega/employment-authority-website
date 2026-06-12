@@ -1,0 +1,174 @@
+## UC1 – Upload Event | Completed ✅
+
+### Primary Actor: Coordinator / Admin
+
+Precondition: User is authenticated and `userRole` matches 'coordinator' or 'admin' in `AuthContext`.
+
+_Main Flow:_
+
+- Actor navigates to the Dashboard Page.
+- System (via `AuthContext`) validates that `isAdmin` or `isCoordinator` is true.
+- Actor selects "Upload Event".
+- System renders the `EventForm` Component.
+- Actor enters details (title, date, location, description, image URL).
+- Actor submits the form.
+- System triggers `eventService.createEvent(details, currentUser.uid)`.
+- Service Layer validates the input and communicates with Firestore.
+- System updates the global Event State.
+
+_Post Condition:_
+
+- Event is stored in Firestore and automatically appears in the EventsPage carousel/calendar.
+
+## UC2 – Publish Article | Completed ✅
+
+### Primary Actor: Manager (Admin)
+
+Precondition: User is authenticated with `isAdmin` privileges.
+
+_Main Flow:_
+
+- Admin navigates to the Content Management section in the Dashboard.
+- System checks permissions via `useAuth` hook.
+- Admin enters article details (title, source, content, image).
+- Admin submits the article.
+- System calls `articleService.publishArticle(data)`.
+- Service Layer performs a write operation to the articles collection in Firestore.
+- System triggers a UI notification of success.
+
+_Post Condition:_
+
+- The article is persisted in the database and is immediately available for retrieval by the Landing Page's data stream
+
+## UC3 – Manage Event (Update/Delete) | Completed ✅
+
+### Primary Actor: Coordinator / Admin
+
+Precondition: User has valid permission and the event exists in Firestore.
+
+_Main Flow:_
+
+- Actor selects an existing event from the Dashboard Event List.
+- System fetches the current data via `eventService.getEventById()`.
+- Actor modifies fields in the `EventForm`.
+- Actor submits the update.
+- System calls `eventService.updateEvent(id, newData)`.
+- Firestore Security Rules validate that the Actor has the right to modify this specific entry.
+- System refreshes the local state to reflect changes.
+
+## UC4 – Request Access (Double Opt-in) | Completed ✅
+
+### Primary Actor: Coordinator
+
+_Main Flow:_
+
+- Coordinator views Employer profile (Private info hidden).
+- Coordinator clicks "Request Access".
+- System calls `privacyService.requestContactAccess(targetUid)`.
+- System creates a document in access_requests with status 'pending'.
+- Target Employer receives notification (via `logic/Cloud` Function).
+
+## UC5 – Register for Event ✅
+
+### Primary Actor: Employer
+
+Precondition: User is authenticated and `userRole` matches 'employer'.
+
+_Main Flow:_
+
+- Employer navigates to the Events Page.
+- System (via `AuthContext`) identifies the user as an Employer and enables the "Register Now" button in the `EventsCarousel`.
+- Employer selects a specific event.
+- Employer clicks "Register Now".
+- System triggers `eventService.registerToEvent(eventId, currentUser.uid)`.
+- Service Layer checks for duplicates (if the user is already registered).
+- System creates a record in the registrations sub-collection (or a global collection) in Firestore.
+- System displays a success message/confirmation.
+
+_Post Condition:_
+
+- A relationship is established in the database between the `uid` of the Employer and the `eventId`. The Employer is now on the "Participants List".
+
+_Exceptions:_
+
+- E1: Already Registered -> System informs the user they are already on the list.
+- E2: Event Full -> System displays "Sold Out" and disables registration.
+
+# UC6 – Approve/Reject Access Request ✅
+
+### Primary Actor:
+
+Employer
+
+### Precondition:
+
+A Coordinator has initiated an access request (UC4).
+
+### Main Flow:
+
+- Employer logs into the system.
+
+- System displays pending access requests.
+
+- Employer reviews the Coordinator details.
+
+- Employer selects **Approve** or **Reject**.
+
+- System updates the request status.
+
+- If the Employer is **not assigned** to a Coordinator:
+  - Approval immediately grants access to the requesting Coordinator.
+
+- If the Employer **is assigned** to a Coordinator:
+  - Employer approval is recorded.
+  - Assigned Coordinator receives a pending approval request.
+  - Assigned Coordinator selects **Approve** or **Reject**.
+  - If approved, access is granted.
+
+### Post Condition:
+
+- Approved request → Coordinator can view private contact details.
+- Rejected request → Coordinator cannot view private contact details.
+
+### Exceptions:
+
+- E1: Duplicate request already exists.
+- E2: Employer rejects the request.
+- E3: Assigned Coordinator rejects the request.
+- E4: User lacks required permissions.
+
+## UC7 – Create/Edit Employer Contact (Contact Management)
+
+### Primary Actor: Coordinator
+
+Precondition: User has 'coordinator' permissions.
+
+_Main Flow:_
+
+- Coordinator navigates to "Employer Directory".
+- Coordinator selects "Add New Contact".
+- Coordinator enters details: Employer Name, Industry, Main Office Phone, and Category (e.g., Tech, Retail).
+- System validates that the employer doesn't already exist.
+- System saves the contact in Firestore and assigns ``assignedCoordinatorId: currentUser.uid`.
+
+_Post Condition:_
+
+- A new Contact entity is created, linked to the Coordinator who manages it.
+
+## UC8 – Review & Approve Scraped Content
+
+### Primary Actor: Manager (Admin)
+
+Precondition: The content-scraper-bot has identified new articles and saved them as 'drafts'.
+
+_Main Flow:_
+
+- Manager enters the "Scraper Inbox" in the Dashboard.
+- System displays a list of articles found by the bot with status 'pending_review'.
+- Manager reviews the content, edits if necessary (fixes typos, changes images).
+- Manager selects "Approve & Publish".
+- System triggers `articleService.publishArticle(data)` (reusing logic from UC2).
+
+_Post Condition:_
+
+- Scraped content is officially published to the Landing Page.

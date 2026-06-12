@@ -238,6 +238,7 @@ export const privacyService = {
       requestsQuery = query(
         collection(db, "privacy_requests"),
         where("assignedCoordinatorEmail", "==", currentEmail),
+        where("employerApprovalStatus", "==", "approved"),
         where("coordinatorApprovalStatus", "==", "pending"),
         where("requiresCoordinatorApproval", "==", true),
         where("status", "==", "pending")
@@ -390,17 +391,17 @@ export const privacyService = {
         : serverTimestamp(),
       employerReviewedBy: isAssignedCoordinatorApproval
         ? request.employerReviewedBy || null
-        : currentUser.email,
+        : currentUserEmail,
 
       coordinatorReviewedAt: isAssignedCoordinatorApproval
         ? serverTimestamp()
         : request.coordinatorReviewedAt || null,
       coordinatorReviewedBy: isAssignedCoordinatorApproval
-        ? currentUser.email
+        ? currentUserEmail
         : request.coordinatorReviewedBy || null,
 
       reviewedAt: shouldApproveRequest ? serverTimestamp() : null,
-      reviewedBy: shouldApproveRequest ? currentUser.email : null,
+      reviewedBy: shouldApproveRequest ? currentUserEmail : null,
 
       updatedAt: serverTimestamp(),
     });
@@ -414,7 +415,7 @@ export const privacyService = {
           requesterEmail: request.requesterEmail,
           assignedCoordinatorEmail,
           employerApprovalStatus: "approved",
-          coordinatorApprovalStatus: "approved",
+          coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
           grantedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }
@@ -459,8 +460,22 @@ export const privacyService = {
         ? "rejected"
         : request.coordinatorApprovalStatus || "not_required",
 
+      employerReviewedAt: isAssignedCoordinatorRejection
+        ? request.employerReviewedAt || null
+        : serverTimestamp(),
+      employerReviewedBy: isAssignedCoordinatorRejection
+        ? request.employerReviewedBy || null
+        : currentUserEmail,
+
+      coordinatorReviewedAt: isAssignedCoordinatorRejection
+        ? serverTimestamp()
+        : request.coordinatorReviewedAt || null,
+      coordinatorReviewedBy: isAssignedCoordinatorRejection
+        ? currentUserEmail
+        : request.coordinatorReviewedBy || null,
+
       reviewedAt: serverTimestamp(),
-      reviewedBy: currentUser.email,
+      reviewedBy: currentUserEmail,
       updatedAt: serverTimestamp(),
     });
 

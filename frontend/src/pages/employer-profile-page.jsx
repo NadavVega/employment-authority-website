@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { directoryService } from "../services/interfaces/directory-service";
@@ -546,7 +546,7 @@ const EmployerProfilePage = () => {
 
             {!isAdmin && accessStatus === "pending" && (
               <p style={{ marginTop: "16px", color: "#b26a00" }}>
-                בקשת הגישה נשלחה וממתינה לאישור המעסיק.
+                בקשת הגישה נשלחה וממתינה לאישורים הנדרשים.
               </p>
             )}
 
