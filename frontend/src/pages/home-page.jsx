@@ -238,7 +238,7 @@ const HomePage = () => {
 
                 <Box sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(330px, 0.82fr) minmax(0, 1.75fr)' },
+                    gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(390px, 0.95fr) minmax(0, 1.55fr)' },
                     gridTemplateAreas: {
                         xs: '"events" "calendar" "articles"',
                         lg: '"calendar events" "calendar articles"'

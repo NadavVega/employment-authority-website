@@ -4,7 +4,7 @@ import '../../design/event-card.css';
 import '../../pages/event-page'
 import defaultPicture  from '../../assets/images/default-event.jpg';
 import { getEventColor } from '../../utils/centerColors';
-import { getCenterIcon } from '../../utils/centerIcons';
+import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 
@@ -36,7 +36,8 @@ export const EventCard = ({ event, isExpired, index = 0, onOpenDetails, onApprov
     const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
 
     const cardImage = resolveEventImage(event) || defaultPicture;
-    const centerIcon = getCenterIcon(event.center);
+    const centerIcon = getCenterIcon(event);
+    const centerName = getEventCenterName(event);
     const location = getEventLocation(event);
     const shortLocation = formatShortAddress(location);
     const mapUrl = getMapSearchUrl(event);
@@ -61,11 +62,13 @@ export const EventCard = ({ event, isExpired, index = 0, onOpenDetails, onApprov
         >
             
             <div className="event-card-image-area" style={{ backgroundImage: `url(${cardImage})` }}>
-                <div className="event-center-logo" title={event.center || 'מרכז תעסוקה'}>
+                <div className="event-center-logo" title={centerName || 'מרכז תעסוקה'}>
                     {centerIcon ? (
-                        <img src={centerIcon} alt={event.center || 'לוגו המרכז'} />
+                        <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
                     ) : (
-                        <span aria-hidden="true">{event.center?.trim()?.charAt(0) || 'מ'}</span>
+                        <svg viewBox="0 0 24 24" role="img" aria-label="סמל מרכז תעסוקה">
+                            <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
+                        </svg>
                     )}
                 </div>
                 <div className="card-badges-container">

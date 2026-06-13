@@ -127,6 +127,7 @@ export const eventService = {
                 capacity: eventDetails.capacity,
                 description: eventDetails.description,
                 coordinatorPhone: eventDetails.coordinatorPhone,
+                center: cleanValue(eventDetails.center),
                 
                 // CRITICAL FIX: These fields were missing from the database save payload
                 isAccessible: eventDetails.isAccessible || false,

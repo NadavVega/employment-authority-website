@@ -3,7 +3,7 @@ import { Box, Typography, Paper, Button } from '@mui/material';
 
 import defaultPicture from '../../assets/images/default-event.jpg';
 import { resolveEventImage } from '../../utils/eventImageMap';
-import { getCenterIcon } from '../../utils/centerIcons';
+import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 
 const formatEventDate = (dateValue) => {
@@ -37,7 +37,8 @@ const HeroCarousel = ({ events }) => {
     // 2. uploaded image from event.photoUrl
     // 3. default local picture
     const slideImage = resolveEventImage(currentSlide) || defaultPicture;
-    const centerIcon = getCenterIcon(currentSlide.center);
+    const centerIcon = getCenterIcon(currentSlide);
+    const centerName = getEventCenterName(currentSlide);
     const location = getEventLocation(currentSlide);
     const mapUrl = getMapSearchUrl(currentSlide);
 
@@ -48,11 +49,10 @@ const HeroCarousel = ({ events }) => {
                 position: 'relative', 
                 minHeight: { xs: '380px', sm: '320px' },
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'minmax(220px, 0.9fr) minmax(0, 1.1fr)' },
+                gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1.18fr) minmax(280px, 0.82fr)' },
                 overflow: 'hidden', 
                 borderRadius: 0,
                 border: '1px solid var(--color-border)',
-                borderTop: currentIndex === 0 ? '4px solid var(--color-accent)' : '1px solid var(--color-border)',
                 bgcolor: 'var(--color-surface)'
             }}
         >
@@ -64,7 +64,7 @@ const HeroCarousel = ({ events }) => {
                 order: { xs: -1, sm: 0 }
             }} />
 
-            <Box sx={{ p: { xs: 3, md: 4 }, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', minWidth: 0 }}>
+            <Box sx={{ p: { xs: 3, md: 3.5 }, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', minWidth: 0 }}>
                 <Box sx={{
                     width: '64px',
                     height: '48px',
@@ -77,11 +77,11 @@ const HeroCarousel = ({ events }) => {
                     overflow: 'hidden',
                 }}>
                     {centerIcon ? (
-                        <Box component="img" src={centerIcon} alt={currentSlide.center || 'לוגו המרכז'} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        <Box component="img" src={centerIcon} alt={centerName || 'לוגו המרכז'} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (
-                        <Typography aria-hidden="true" fontWeight={800} sx={{ color: 'var(--color-text-muted)' }}>
-                            {currentSlide.center?.trim()?.charAt(0) || 'מ'}
-                        </Typography>
+                        <Box component="svg" viewBox="0 0 24 24" aria-label="סמל מרכז תעסוקה" sx={{ width: 24, height: 24, fill: 'none', stroke: 'var(--color-text-muted)', strokeWidth: 1.7 }}>
+                            <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
+                        </Box>
                     )}
                 </Box>
                 <Typography component="h3" sx={{ color: 'var(--color-text)', fontWeight: 800, fontSize: { xs: '1.45rem', md: '1.8rem' }, lineHeight: 1.3, mb: 2 }}>
@@ -109,9 +109,9 @@ const HeroCarousel = ({ events }) => {
                         </Typography>
                     )
                 )}
-                {currentSlide.center && (
+                {centerName && (
                     <Typography variant="caption" sx={{ color: 'var(--color-text-muted)', mt: 2, borderRight: '3px solid var(--color-accent)', pr: 1 }}>
-                        {currentSlide.center}
+                        {centerName}
                     </Typography>
                 )}
 

@@ -224,43 +224,55 @@ const EventCalendar = ({ events, userName }) => {
         <Box sx={{ display: 'flex', flexDirection: 'column', bgcolor: 'var(--color-surface)' }}>
 
             {/* ── HEADER ── */}
-           <Box sx={{
-                display: 'flex',
+            <Box sx={{
+                display: 'grid',
                 flexDirection: 'column',
                 alignItems: 'center',
-                px: 2.5,
-                py: 2,
-                gap: 1.5,
+                px: { xs: 1.25, sm: 2 },
+                py: 1.5,
+                gap: 1,
                 direction: 'rtl',
                 bgcolor: 'var(--color-bg)',
                 borderBottom: '1px solid var(--color-border)',
                 zIndex: 10
             }}>
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
-                    <Typography variant="h6" fontWeight={800} sx={{ color: 'var(--color-text)' }}>
+                <Box sx={{
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'minmax(72px, 1fr) auto minmax(64px, 1fr)', sm: '1fr auto 1fr' },
+                    alignItems: 'center',
+                    columnGap: { xs: 0.5, sm: 1.25 }
+                }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ color: 'var(--color-text)', textAlign: 'right', whiteSpace: 'nowrap', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         לוח אירועים
                     </Typography>
-                    <Typography variant="caption" sx={{ color: 'var(--color-text-muted)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'ltr', minWidth: { xs: '132px', sm: '190px' } }}>
+                        <Button onClick={handlePrev} aria-label="התקופה הקודמת" sx={{ minWidth: '30px', width: '30px', height: '30px', p: 0, color: 'var(--color-text)' }}>&lt;</Button>
+                        <Typography fontWeight={800} sx={{ color: 'var(--color-text)', textAlign: 'center', flex: 1, whiteSpace: 'nowrap', fontSize: { xs: '0.85rem', sm: '1rem' } }}>
+                            {viewMode === 'year'
+                                ? activeDate.getFullYear()
+                                : activeDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+                        </Typography>
+                        <Button onClick={handleNext} aria-label="התקופה הבאה" sx={{ minWidth: '30px', width: '30px', height: '30px', p: 0, color: 'var(--color-text)' }}>&gt;</Button>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text)', minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
                         שלום, {userName}
                     </Typography>
                 </Box>
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                    <Button onClick={handlePrev} aria-label="התקופה הקודמת" sx={{ minWidth: '32px', p: 0.5 }}>&lt;</Button>
-                    <Typography fontWeight={700} sx={{ color: 'var(--color-text)', textAlign: 'center' }}>
-                        {viewMode === 'year'
-                            ? activeDate.getFullYear()
-                            : activeDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
-                    </Typography>
-                    <Button onClick={handleNext} aria-label="התקופה הבאה" sx={{ minWidth: '32px', p: 0.5 }}>&gt;</Button>
-                </Box>
-
-                <Box sx={{ display: 'flex', width: '100%', gap: 1, justifyContent: 'space-between' }}>
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto 1fr',
+                    width: '100%',
+                    alignItems: 'center',
+                    direction: 'ltr'
+                }}>
                     <Paper
                         elevation={0}
                         sx={{
+                            gridColumn: 2,
                             display: 'flex',
-                            p: '3px',
+                            p: '2px',
                             bgcolor: 'var(--color-surface)',
                             borderRadius: 0,
                             border: '1px solid var(--color-border)',
@@ -272,18 +284,18 @@ const EventCalendar = ({ events, userName }) => {
                         <Button
                             onClick={() => setViewMode('month')}
                             sx={{
-                                minWidth: '68px',
-                                px: 1.5,
-                                py: 0.5,
+                                minWidth: '58px',
+                                px: 1.25,
+                                py: 0.25,
                                 borderRadius: 'var(--radius-sm)',
                                 fontWeight: viewMode === 'month' ? '700' : '500',
-                                color: viewMode === 'month'
-                                    ? 'var(--color-primary-dark)'
-                                    : 'var(--color-text-muted)',
-                                bgcolor: viewMode === 'month' ? 'var(--color-accent-soft)' : 'transparent',
+                                color: 'var(--color-text)',
+                                bgcolor: viewMode === 'month'
+                                    ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)'
+                                    : 'transparent',
                                 boxShadow: 'none',
                                 '&:hover': {
-                                    bgcolor: 'var(--color-accent-soft)',
+                                    bgcolor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
                                     borderRadius: 'var(--radius-sm)'
                                 }
                             }}
@@ -294,18 +306,18 @@ const EventCalendar = ({ events, userName }) => {
                         <Button
                             onClick={() => setViewMode('year')}
                             sx={{
-                                minWidth: '68px',
-                                px: 1.5,
-                                py: 0.5,
+                                minWidth: '58px',
+                                px: 1.25,
+                                py: 0.25,
                                 borderRadius: 'var(--radius-sm)',
                                 fontWeight: viewMode === 'year' ? '700' : '500',
-                                color: viewMode === 'year'
-                                    ? 'var(--color-primary-dark)'
-                                    : 'var(--color-text-muted)',
-                                bgcolor: viewMode === 'year' ? 'var(--color-accent-soft)' : 'transparent',
+                                color: 'var(--color-text)',
+                                bgcolor: viewMode === 'year'
+                                    ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)'
+                                    : 'transparent',
                                 boxShadow: 'none',
                                 '&:hover': {
-                                    bgcolor: 'var(--color-accent-soft)',
+                                    bgcolor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
                                     borderRadius: 'var(--radius-sm)'
                                 }
                             }}
@@ -314,13 +326,26 @@ const EventCalendar = ({ events, userName }) => {
                         </Button>
                     </Paper>
 
-                    <Button onClick={handleToday} size="small" sx={{ minWidth: '60px' }}>היום</Button>
+                    <Button
+                        onClick={handleToday}
+                        size="small"
+                        sx={{
+                            gridColumn: 1,
+                            gridRow: 1,
+                            justifySelf: 'start',
+                            minWidth: '52px',
+                            py: 0.25,
+                            color: 'var(--color-text)'
+                        }}
+                    >
+                        היום
+                    </Button>
                 </Box>
             </Box>
 
             {/* ── CALENDAR ── */}
             <Box sx={{
-                px: 1.5,
+                px: { xs: 1, sm: 1.75 },
                 pb: 2,
                 pt: 1.5,
                 display: 'flex',
@@ -331,18 +356,24 @@ const EventCalendar = ({ events, userName }) => {
                 // YEAR VIEW
                 '& .react-calendar__year-view__months': {
                     display: 'grid !important',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr)) !important',
-                    gridAutoRows: '112px',
-                    gap: '8px',
-                    padding: '4px',
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr)) !important',
+                    gridTemplateRows: 'repeat(3, 136px) !important',
+                    gridAutoRows: '136px !important',
+                    gap: '6px',
+                    padding: '3px',
+                    height: '426px',
+                    minHeight: '426px',
+                    maxHeight: '426px',
+                    overflow: 'visible',
                 },
                 '& .react-calendar__year-view__months__month': {
                     alignItems: 'center',
                     justifyContent: 'flex-start',
-                    minHeight: '0',
                     borderRadius: 0,
-                    padding: '25px 6px 6px',
-                    height: '112px !important',
+                    padding: '25px 4px 4px',
+                    height: '136px !important',
+                    minHeight: '136px !important',
+                    maxHeight: '136px !important',
                     border: '1px solid var(--color-border)',
                     backgroundColor: 'var(--color-surface)',
                     boxShadow: 'none',
@@ -357,7 +388,7 @@ const EventCalendar = ({ events, userName }) => {
                     background: 'var(--color-surface) !important',
                     border: '2px solid var(--color-primary) !important',
                     color: 'var(--color-text) !important',
-                    transform: 'scale(1.035)',
+                    transform: 'none',
                     zIndex: 1,
                 },
                 '& .react-calendar__year-view__months__month.react-calendar__tile--now abbr': {
@@ -367,8 +398,8 @@ const EventCalendar = ({ events, userName }) => {
 
                 // MONTH VIEW — daily squares
                 '& .react-calendar__tile': {
-                    minHeight: viewMode === 'month' ? '64px' : 'auto',
-                    padding: viewMode === 'month' ? '7px 2px' : undefined,
+                    minHeight: viewMode === 'month' ? '72px' : 'auto',
+                    padding: viewMode === 'month' ? '9px 3px' : undefined,
                     borderRight: '1px solid var(--color-border)',
                     borderBottom: '1px solid var(--color-border)',
                     color: 'var(--color-text)',

@@ -11,11 +11,7 @@ import { eventService } from '../services/interfaces/event-services';
 import '../design/event-card.css';
 import '../design/event-page.css'; 
 
-// importing images and logos 
-import employmentLogo from '../assets/images/employment-logo.png';
-import cityView from '../assets/images/city-view.png';
-import { resolveEventImage } from '../utils/eventImageMap';
-import { getCenterIcon } from '../utils/centerIcons';
+import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 
 const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
@@ -24,6 +20,7 @@ export const EventsPage = () => {
     const { currentUser, isGuest, userRole, isAdmin, isCoordinator } = useAuth(); 
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState('cards');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -109,7 +106,7 @@ export const EventsPage = () => {
         return event.status === 'pending' && (event.title?.includes(searchQuery) || event.description?.includes(searchQuery));
     }
 
-    if (event.center === 'coordinators-only' && !isAdmin && userRole !== 'coordinator') return false;
+    if (getEventCenterName(event) === 'coordinators-only' && !isAdmin && userRole !== 'coordinator') return false;
 
     // Hide pending events from all other tabs
     if (event.status === 'pending') return false; 
@@ -268,22 +265,89 @@ const handleRegisterClick = async (event) => {
         return true;
     });
 
-    const selectedEventImage = resolveEventImage(selectedEventModal);
-    const selectedCenterIcon = getCenterIcon(selectedEventModal?.center);
+    const selectedCenterIcon = getCenterIcon(selectedEventModal);
+    const selectedCenterName = getEventCenterName(selectedEventModal);
     const selectedLocation = getEventLocation(selectedEventModal);
     const selectedMapUrl = getMapSearchUrl(selectedEventModal);
+    const filteredActiveEvents = activeEvents.filter(filterFunction);
+    const filteredPastEvents = pastEvents.filter(filterFunction);
+    const featuredEvent = filteredActiveEvents[0] || null;
+    const secondaryActiveEvents = filteredActiveEvents.slice(1);
+
+    const renderCenterLogo = (event, className) => {
+        const icon = getCenterIcon(event);
+        const centerName = getEventCenterName(event);
+
+        return (
+            <div className={className} title={centerName || 'מרכז תעסוקה'}>
+                {icon ? (
+                    <img src={icon} alt={centerName || 'לוגו המרכז'} />
+                ) : (
+                    <svg viewBox="0 0 24 24" role="img" aria-label="סמל מרכז תעסוקה">
+                        <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
+                    </svg>
+                )}
+            </div>
+        );
+    };
+
+    const renderEventRows = (events, isExpired = false) => (
+        <div className="events-rows">
+            {events.map((event) => {
+                const eventDate = event.date?.toDate ? event.date.toDate() : new Date(event.date);
+                const locationText = getEventLocation(event);
+                const mapUrl = getMapSearchUrl(event);
+                const centerName = getEventCenterName(event);
+
+                return (
+                    <article
+                        className={`event-row ${isExpired ? 'event-row-expired' : ''}`}
+                        key={event.id}
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => setSelectedEventModal(event)}
+                        onKeyDown={(keyboardEvent) => {
+                            if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+                                keyboardEvent.preventDefault();
+                                setSelectedEventModal(event);
+                            }
+                        }}
+                    >
+                        {renderCenterLogo(event, 'event-row-logo')}
+                        <div className="event-row-main">
+                            <h3>{event.title}</h3>
+                            <span>{event.type || 'אירוע'}</span>
+                        </div>
+                        <div className="event-row-meta standard-numbers">
+                            <strong>{Number.isNaN(eventDate.getTime()) ? 'טרם נקבע' : eventDate.toLocaleDateString('he-IL')}</strong>
+                            <span dir="ltr">{event.time || 'טרם נקבע'}</span>
+                        </div>
+                        <div className="event-row-meta">
+                            <strong>{centerName || 'מרכז תעסוקה'}</strong>
+                            {mapUrl ? (
+                                <a href={mapUrl} target="_blank" rel="noreferrer" onClick={(clickEvent) => clickEvent.stopPropagation()}>
+                                    {locationText}
+                                </a>
+                            ) : (
+                                <span>{locationText || 'מקוון'}</span>
+                            )}
+                        </div>
+                        <button type="button" className="event-row-action" onClick={() => setSelectedEventModal(event)}>
+                            לפרטים
+                        </button>
+                    </article>
+                );
+            })}
+        </div>
+    );
 
     return (
         <div className="events-page-wrapper" dir="rtl">
             
-            <header className="site-hero" style={{ backgroundImage: `url('${cityView}')` }}>
-                <div className="hero-overlay"></div>
-                <div className="hero-content">
-                    <img src={employmentLogo} alt="רשות התעסוקה ירושלים" className="hero-logo" />
-                    <div className="hero-text">
-                        <h1 className="hero-title">אירועים ופעילויות</h1>
-                        <p className="hero-subtitle">ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
-                    </div>
+            <header className="events-page-heading">
+                <div>
+                    <h1>אירועים ופעילויות</h1>
+                    <p>ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
                 </div>
             </header>
 
@@ -320,52 +384,150 @@ const handleRegisterClick = async (event) => {
                         </button>
                     )}
                 </div>
+                <div className="events-view-toggle" role="group" aria-label="תצוגת האירועים המשניים">
+                    <button
+                        type="button"
+                        className={viewMode === 'cards' ? 'active' : ''}
+                        onClick={() => setViewMode('cards')}
+                        aria-label="תצוגת כרטיסים"
+                        aria-pressed={viewMode === 'cards'}
+                        title="כרטיסים"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        className={viewMode === 'rows' ? 'active' : ''}
+                        onClick={() => setViewMode('rows')}
+                        aria-label="תצוגת שורות"
+                        aria-pressed={viewMode === 'rows'}
+                        title="שורות"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <line x1="8" y1="6" x2="21" y2="6" />
+                            <line x1="8" y1="12" x2="21" y2="12" />
+                            <line x1="8" y1="18" x2="21" y2="18" />
+                            <rect x="3" y="4" width="2" height="2" />
+                            <rect x="3" y="10" width="2" height="2" />
+                            <rect x="3" y="16" width="2" height="2" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
-            {/* ===== ACTIVE EVENTS GRID ===== */}
-            <main className="events-grid">
-                {activeEvents.filter(filterFunction).length > 0 ? (
-                    activeEvents.filter(filterFunction).map((event, index) => (
-                        <EventCard 
-                            key={event.id} 
-                            event={event} 
-                            index={index}
-                            isGuest={isGuest} 
-                            isRegistered={registeredEventIds.includes(event.id)}
-                            onOpenDetails={(e) => setSelectedEventModal(e)} 
-                            onApprove={handleApproveEvent}
-                            onDelete={handleDeleteEvent} // ADDED HERE JUST IN CASE
-                        />
-                    ))
-                ) : (
-                    <div className="no-results-message" style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#64748b', marginTop: '40px' }}>
-                        <p>לא נמצאו אירועים.</p>
-                    </div>
-                )}
-            </main>
-
-            {/* ===== PAST EVENTS GRID (ADMIN ONLY) ===== */}
-            {(isAdmin || isCoordinator) && pastEvents.length > 0 && (
-                <div className="past-events-section">
-                    <div className="section-divider">
-                        <h2>אירועים שנגמרו</h2>
-                        <hr/>
-                    </div>
-                    <main className="events-grid">
-                        {pastEvents.filter(filterFunction).map((event, index) => (
-                            <EventCard 
-                                key={event.id} 
-                                event={event} 
-                                index={index}
-                                isGuest={isGuest} 
-                                isExpired={true} 
-                                onOpenDetails={(e) => setSelectedEventModal(e)}
-                                onApprove={handleApproveEvent} 
-                                onDelete={handleDeleteEvent} // PROPERLY PASSED HERE
+            {featuredEvent ? (
+                <main className="events-showcase">
+                    <aside className="featured-event-column" aria-label="האירוע הקרוב ביותר">
+                        <div className="featured-event-heading">
+                            <span>האירוע הקרוב ביותר</span>
+                        </div>
+                        <div className="featured-event-panel">
+                            <EventCard
+                                event={featuredEvent}
+                                index={0}
+                                isGuest={isGuest}
+                                isRegistered={registeredEventIds.includes(featuredEvent.id)}
+                                onOpenDetails={(event) => setSelectedEventModal(event)}
+                                onApprove={handleApproveEvent}
+                                onDelete={handleDeleteEvent}
                             />
-                        ))}
-                    </main>
-                </div>
+                        </div>
+                    </aside>
+
+                    <section className="events-secondary-area" aria-label="אירועים נוספים">
+                        <div className="events-secondary-heading">
+                            <div>
+                                <h2>אירועים נוספים</h2>
+                                <p>{secondaryActiveEvents.length} אירועים קרובים</p>
+                            </div>
+                        </div>
+
+                        <div className="events-secondary-scroll">
+                            {secondaryActiveEvents.length > 0 ? (
+                                viewMode === 'cards' ? (
+                                    <div className="events-grid events-secondary-grid">
+                                        {secondaryActiveEvents.map((event, index) => (
+                                            <EventCard
+                                                key={event.id}
+                                                event={event}
+                                                index={index + 1}
+                                                isGuest={isGuest}
+                                                isRegistered={registeredEventIds.includes(event.id)}
+                                                onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                onApprove={handleApproveEvent}
+                                                onDelete={handleDeleteEvent}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : renderEventRows(secondaryActiveEvents)
+                            ) : (
+                                <div className="no-results-message no-secondary-events">
+                                    <p>אין אירועים קרובים נוספים.</p>
+                                </div>
+                            )}
+
+                            {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                                <div className="past-events-section">
+                                    <div className="section-divider">
+                                        <h2>אירועים שנגמרו</h2>
+                                        <hr/>
+                                    </div>
+                                    {viewMode === 'cards' ? (
+                                        <div className="events-grid events-secondary-grid events-grid-compact">
+                                            {filteredPastEvents.map((event, index) => (
+                                                <EventCard
+                                                    key={event.id}
+                                                    event={event}
+                                                    index={index}
+                                                    isGuest={isGuest}
+                                                    isExpired={true}
+                                                    onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                    onApprove={handleApproveEvent}
+                                                    onDelete={handleDeleteEvent}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : renderEventRows(filteredPastEvents, true)}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                </main>
+            ) : (
+                <>
+                    <div className="no-results-message">
+                        <p>לא נמצאו אירועים קרובים.</p>
+                    </div>
+                    {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                        <section className="past-events-section past-events-standalone" aria-label="אירועים שנגמרו">
+                            <div className="section-divider">
+                                <h2>אירועים שנגמרו</h2>
+                                <hr/>
+                            </div>
+                            {viewMode === 'cards' ? (
+                                <div className="events-grid events-secondary-grid events-grid-compact">
+                                    {filteredPastEvents.map((event, index) => (
+                                        <EventCard
+                                            key={event.id}
+                                            event={event}
+                                            index={index}
+                                            isGuest={isGuest}
+                                            isExpired={true}
+                                            onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                            onApprove={handleApproveEvent}
+                                            onDelete={handleDeleteEvent}
+                                        />
+                                    ))}
+                                </div>
+                            ) : renderEventRows(filteredPastEvents, true)}
+                        </section>
+                    )}
+                </>
             )}
 
             {/* ===== FULLSCREEN EVENT MODAL ===== */}
@@ -374,26 +536,21 @@ const handleRegisterClick = async (event) => {
                     <div className="full-event-modal-content" onClick={(e) => e.stopPropagation()}>
                         <button className="event-modal-close" onClick={() => setSelectedEventModal(null)}>✖</button>
                         
-                        <div
-                            className="modal-header-banner"
-                            style={selectedEventImage ? {
-                                backgroundImage: `linear-gradient(rgba(0, 48, 110, 0.72), rgba(0, 48, 110, 0.72)), url(${selectedEventImage})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center'
-                            } : undefined}
-                        >
+                        <div className="modal-header-banner">
                             <div className="modal-header-content">
-                                <div className="modal-center-logo" title={selectedEventModal.center || 'מרכז תעסוקה'}>
+                                <div className="modal-center-logo" title={selectedCenterName || 'מרכז תעסוקה'}>
                                     {selectedCenterIcon ? (
-                                        <img src={selectedCenterIcon} alt={selectedEventModal.center || 'לוגו המרכז'} />
+                                        <img src={selectedCenterIcon} alt={selectedCenterName || 'לוגו המרכז'} />
                                     ) : (
-                                        <span aria-hidden="true">{selectedEventModal.center?.trim()?.charAt(0) || 'מ'}</span>
+                                        <svg viewBox="0 0 24 24" role="img" aria-label="סמל מרכז תעסוקה">
+                                            <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
+                                        </svg>
                                     )}
                                 </div>
                                 <h2>
-                                    <span>{selectedEventModal.title}</span>
+                                    <span className="event-card-type">{selectedEventModal.type || 'אירוע'}</span>
                                     <span className="event-title-separator" aria-hidden="true">|</span>
-                                    <span className="event-card-type">{selectedEventModal.type}</span>
+                                    <span>{selectedEventModal.title}</span>
                                 </h2>
                             </div>
                         </div>
