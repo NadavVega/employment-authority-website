@@ -54,7 +54,7 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
                         {isRegistered && (
                         <div style={{
                             background: '#10b981', color: 'white', padding: '4px 12px',
-                            borderRadius: '99px', fontSize: '12px', fontWeight: 'bold',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)', fontWeight: 'bold',
                             display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>

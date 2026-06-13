@@ -37,15 +37,14 @@
     border-radius: var(--radius-md);
     padding: var(--space-5);
     transition: all var(--t);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
 }
 
 .article-review-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 30, 80, 0.08);
-    transform: translateY(-2px);
-    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-accent);
 }
 
 .article-title {
@@ -91,7 +90,7 @@
     color: white;
     border: none;
     padding: 8px 20px;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     font-weight: 700;
     font-size: var(--text-sm);
     cursor: pointer;
@@ -108,7 +107,7 @@
     color: #ef4444; /* Danger Red */
     border: 2px solid #ef4444;
     padding: 6px 20px;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     font-weight: 700;
     font-size: var(--text-sm);
     cursor: pointer;

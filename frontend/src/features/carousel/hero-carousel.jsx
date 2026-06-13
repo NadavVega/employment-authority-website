@@ -9,7 +9,7 @@ const HeroCarousel = ({ events }) => {
 
     if (!events || events.length === 0) {
         return (
-            <Box sx={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc', borderRadius: 2 }}>
+            <Box sx={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'var(--color-bg)', borderRadius: 'var(--radius-lg)' }}>
                 <Typography fontWeight="300" sx={{ color: '#64748b' }}>
                     אין אירועים קרובים להצגה.
                 </Typography>
@@ -38,7 +38,7 @@ const HeroCarousel = ({ events }) => {
                 flexDirection: 'column', 
                 justifyContent: 'flex-end',
                 overflow: 'hidden', 
-                borderRadius: 2,
+                borderRadius: 'var(--radius-lg)',
                 backgroundImage: `url(${slideImage})`, 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
@@ -93,7 +93,6 @@ const HeroCarousel = ({ events }) => {
                     width: '100%',
                     py: 1.5,
                     px: 2,
-                    borderBottom: '4px solid #facc15',
                     position: 'relative',
                     zIndex: 5
                 }}
@@ -115,7 +114,7 @@ const HeroCarousel = ({ events }) => {
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%', 
-                                bgcolor: index === currentIndex ? '#facc15' : 'rgba(255,255,255,0.4)',
+                                bgcolor: index === currentIndex ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)',
                                 cursor: 'pointer',
                                 transition: '0.3s'
                             }}

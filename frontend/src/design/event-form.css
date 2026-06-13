@@ -1,6 +1,6 @@
 /* Clean flat layout removing the blue overlay */
 .flat-page-wrapper {
-    background-color: #ffffff;
+    background-color: var(--color-bg);
     min-height: 100vh;
     padding: 40px 10%; /* Center the form with margins */
 }
@@ -20,10 +20,10 @@
 .form-columns-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
 .form-column { display: flex; flex-direction: column; gap: 16px; }
 
-.panel-box { margin-top: 10px; background: #f8fafc; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.panel-box { margin-top: 10px; background: var(--color-surface); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); }
 
 .phone-split-input { display: flex; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: #ffffff; overflow: hidden; max-width: 320px; }
-.phone-split-input:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgb(255, 255, 255); }
+.phone-split-input:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(201, 154, 46, 0.14); }
 .phone-prefix { border: none; background: #f8fafc; padding: 10px; border-right: 1px solid var(--color-border); color: var(--color-primary-dark); cursor: pointer; outline: none; }
 .phone-suffix { border: none; padding: 10px; flex: 1; outline: none; letter-spacing: 1px; color: var(--color-primary-dark); }
 .btn-remove-phone { background: none; border: none; color: #ef4444; padding: 0 10px; cursor: pointer; font-size: 16px; opacity: 0.7; }
@@ -44,8 +44,8 @@
 }
 
 .file-upload-container:hover {
-    border-color: var(--color-primary);
-    background: rgba(0, 59, 139, 0.02);
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
 }
 
 .file-upload-input {
@@ -65,7 +65,7 @@
 .upload-placeholder svg {
     width: 32px;
     height: 32px;
-    stroke: var(--color-primary);
+    stroke: var(--color-accent);
     margin-bottom: 8px;
 }
 
@@ -140,7 +140,7 @@
     appearance: auto !important;
     background-color: #ffffff !important;
     color-scheme: light !important; /* Overrides dark OS settings */
-    accent-color: var(--color-primary) !important;
+    accent-color: var(--color-accent) !important;
     border: 1px solid var(--color-border) !important;
 }
 

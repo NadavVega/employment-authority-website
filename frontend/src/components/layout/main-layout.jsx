@@ -39,13 +39,12 @@ const MainLayout = ({ children }) => {
         fontWeight: 700,
         fontSize: '16px',
         color: '#ffffff',
-        borderRadius: '99px',
+        borderRadius: 'var(--radius-sm)',
         px: 2.5,
         py: 0.8,
         transition: 'all 0.2s ease',
         '&:hover': {
-            bgcolor: 'rgba(255, 255, 255, 0.15)',
-            transform: 'translateY(-2px)'
+            bgcolor: 'rgba(255, 255, 255, 0.15)'
         }
     };
 
@@ -116,7 +115,7 @@ const MainLayout = ({ children }) => {
                                 sx={{
                                     bgcolor: '#ffffff',
                                     p: 0.5,
-                                    borderRadius: 1,
+                                    borderRadius: 'var(--radius-sm)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     height: '50px'

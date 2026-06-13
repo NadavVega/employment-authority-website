@@ -182,13 +182,13 @@ const EventCalendar = ({ events, userName }) => {
                                         size="medium"
                                         variant="contained"
                                         sx={{
-                                            borderRadius: '99px',
-                                            bgcolor: '#003b8b',
-                                            color: '#fff',
+                                            borderRadius: 'var(--radius-md)',
+                                            bgcolor: 'var(--color-accent)',
+                                            color: 'var(--color-text)',
                                             width: '100%',
                                             fontWeight: 700,
                                             boxShadow: 'none',
-                                            '&:hover': { bgcolor: '#002863' }
+                                            '&:hover': { bgcolor: 'var(--color-accent-hover)' }
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -274,9 +274,9 @@ const EventCalendar = ({ events, userName }) => {
                         sx={{
                             display: 'flex',
                             p: '4px',
-                            bgcolor: '#f8fafc',
-                            borderRadius: '99px',
-                            border: '1px solid #f1f5f9',
+                            bgcolor: 'var(--color-bg)',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--color-border)',
                             overflow: 'hidden',
                             gap: 0,
                             direction: 'rtl'

@@ -2,28 +2,49 @@
 /* ===== 1. GLOBAL THEME VARIABLES & PALETTE ===== */
 /* ========================================================= */
 :root {
-  /* Official Jerusalem Employment Authority Palette */
-  --color-primary: #003b8b;
-  --color-primary-dark: #002b66;
-  --color-primary-darker: #001a40;
+  /* Core municipal palette */
+  --color-bg: #f7f7f4;
   --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-gold: #fbb03b;
-  --color-text-main: #0f172a;
-  --color-text-muted: #64748b;
+  --color-text: #1f2933;
+  --color-muted: #6b7280;
+  --color-border: #d8d8d2;
+  --color-accent: #c99a2e;
+  --color-accent-hover: #ad7f1f;
+  --color-accent-soft: #f4e6c3;
+  --color-brand: #003b8b;
+  --color-brand-dark: #002b66;
+  --color-brand-darker: #001a40;
+
+  /* Backward-compatible semantic aliases */
+  --color-primary: var(--color-accent);
+  --color-primary-dark: var(--color-brand-dark);
+  --color-primary-darker: var(--color-brand-darker);
+  --color-gold: var(--color-accent);
+  --color-text-main: var(--color-text);
+  --color-text-muted: var(--color-muted);
   
   /* Standardized Spacing */
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
   
-  /* Radii & Transitions */
-  --radius-md: 8px; 
-  --radius-lg: 12px; 
+  /* Shape, borders, shadows & transitions */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
+  --border-default: 1px solid var(--color-border);
+  --shadow-sm: 0 1px 3px rgba(31, 41, 51, 0.08);
+  --shadow-md: 0 4px 12px rgba(31, 41, 51, 0.1);
+  --shadow-lg: 0 10px 24px rgba(31, 41, 51, 0.14);
   --t: 0.2s ease-in-out;
 
-  /* Typography Scale */
-  --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-lg: 20px; --text-xl: 26px;
+  /* Core typography scale */
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.35rem;
+  --text-xs: var(--text-sm);
+  --text-base: var(--text-md);
+  --text-xl: var(--text-lg);
   --sans: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -38,14 +59,14 @@ body {
     font-family: var(--sans);
     margin: 0; 
     padding: 0;
-    background-color: #f4f7fa; /* The global soft background */
-    color: var(--color-text-main);
+    background-color: var(--color-bg);
+    color: var(--color-text);
     -webkit-font-smoothing: antialiased; 
     -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    color: var(--color-primary-dark);
+    color: var(--color-text);
     margin-top: 0;
     font-weight: 800;
 }
@@ -60,22 +81,21 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: var(--space-2); 
   padding: 12px 28px; 
-  background: var(--color-primary); 
-  color: var(--color-surface);
-  border-radius: var(--radius-full); 
+  background: var(--color-accent);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 700;
   transition: all var(--t);
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 59, 139, 0.2); 
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover { 
-    background: var(--color-primary-dark); 
-    transform: translateY(-2px); 
-    box-shadow: 0 6px 16px rgba(0, 59, 139, 0.3);
+    background: var(--color-accent-hover);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-secondary {
@@ -85,7 +105,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 12px 28px;
   background: transparent; 
   color: var(--color-text-muted);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 700;
@@ -95,8 +115,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary:hover {
-    background: #f1f5f9;
-    color: var(--color-primary-dark);
+    background: var(--color-accent-soft);
+    color: var(--color-text);
     border-color: var(--color-text-muted);
 }
 
@@ -114,8 +134,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .input-standard:focus { 
-    border-color: var(--color-primary); 
-    box-shadow: 0 0 0 3px rgba(0, 59, 139, 0.08); 
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(201, 154, 46, 0.14);
 }
 
 /* ========================================================= */
@@ -196,6 +216,6 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--color-surface);
     border-radius: var(--radius-lg);
     padding: var(--space-8); 
-    box-shadow: 0 4px 20px rgba(0, 24, 64, 0.05);
+    box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-border);
 }

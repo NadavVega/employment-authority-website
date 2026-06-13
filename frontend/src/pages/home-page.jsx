@@ -14,12 +14,11 @@ import { resolveEventImage } from '../utils/eventImageMap';
 import { privacyService } from '../services/interfaces/privacy-service';
 
 const SectionTitle = ({ title, icon }) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '2px solid var(--color-border)', position: 'relative' }}>
-        <Box sx={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center' }}>{icon}</Box>
-        <Typography variant="h5" fontWeight="700" sx={{ color: 'var(--color-primary-dark)', m: 0 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '1px solid var(--color-border)' }}>
+        <Box sx={{ color: 'var(--color-accent)', display: 'flex', alignItems: 'center' }}>{icon}</Box>
+        <Typography variant="h5" fontWeight="700" sx={{ color: 'var(--color-text)', m: 0 }}>
             {title}
         </Typography>
-        <Box sx={{ position: 'absolute', bottom: '-2px', right: 0, width: '40px', height: '2px', bgcolor: 'var(--color-gold)' }} />
     </Box>
 );
 
@@ -103,7 +102,7 @@ const PrivacyRequestsWidget = () => {
                 borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--color-border)',
                 bgcolor: 'var(--color-surface)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                boxShadow: 'var(--shadow-sm)',
                 direction: 'rtl',
             }}
         >
@@ -270,7 +269,7 @@ const HomePage = () => {
                     }}>
                         <Box sx={{ mb: 4 }}>
                             <SectionTitle title="אירועים בחודש הקרוב" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>} />
-                            <Box sx={{ overflow: 'hidden', borderRadius: 'var(--radius-lg)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', minHeight: '220px', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ overflow: 'hidden', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', minHeight: '220px', display: 'flex', flexDirection: 'column' }}>
                                 <HeroCarousel events={events} />
                             </Box>
                         </Box>
@@ -279,7 +278,7 @@ const HomePage = () => {
                             <SectionTitle title="כתבות ועדכוני רשת" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>} />
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, pr: 1 }}>
                                 {articles.length > 0 ? articles.map(article => (
-                                    <Card key={article.id} elevation={0} sx={{ borderRight: '4px solid var(--color-gold)', bgcolor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', transition: '0.2s', '&:hover': { transform: 'translateX(-4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
+                                    <Card key={article.id} elevation={0} sx={{ borderRight: '4px solid var(--color-accent)', bgcolor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', transition: '0.2s', '&:hover': { boxShadow: 'var(--shadow-md)' } }}>
                                         <CardContent sx={{ p: '16px !important' }}>
                                             <Typography variant="caption" fontWeight="700" sx={{ color: 'var(--color-primary-dark)', display: 'block', mb: 0.5 }}>{article.sourceName}</Typography>
                                             <Typography variant="body1" fontWeight="500" sx={{ color: 'var(--color-text-main)', lineHeight: 1.3, cursor: 'pointer' }} onClick={() => window.open(article.url, '_blank')}>{article.title}</Typography>
@@ -296,7 +295,7 @@ const HomePage = () => {
                         display: 'flex', flexDirection: 'column', flex: 2.2,
                         direction: 'rtl', bgcolor: 'var(--color-surface)',
                         borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid var(--color-border)',
+                        boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)',
                         order: { xs: 1, lg: 2 }
                     }}>
                         <EventCalendar events={events} userName={isAuthenticated ? currentUser?.displayName : 'אורח'} />
@@ -306,7 +305,7 @@ const HomePage = () => {
 
                 <Box sx={{ mt: 6, direction: 'rtl' }}>
                     <SectionTitle title="גלריית אירועי תעסוקה" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>} />
-                    <Paper elevation={0} sx={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', p: 2, bgcolor: 'var(--color-surface)', height: '800px', display: 'flex', flexDirection: 'column' }}>
+                    <Paper elevation={0} sx={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', p: 2, bgcolor: 'var(--color-surface)', height: '800px', display: 'flex', flexDirection: 'column' }}>
                         <Box sx={{ flexGrow: 1, width: '100%', height: '100%', '& > div': { height: '100%' } }}>
                             <MediaCarousel photos={galleryPhotos} />
                         </Box>

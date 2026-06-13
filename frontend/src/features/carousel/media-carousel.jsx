@@ -43,7 +43,7 @@ const MediaCarousel = () => {
             sx={{ 
                 flex: 1, // Ensures it shares exactly 50% height with the Articles box above it
                 p: 0, 
-                borderRadius: 4, 
+                borderRadius: 'var(--radius-lg)',
                 direction: 'rtl', 
                 display: 'flex', 
                 flexDirection: 'column', 
@@ -98,8 +98,8 @@ const MediaCarousel = () => {
             {/* BOTTOM BANNER (Matches Events Carousel Exactly) */}
             <Box sx={{ 
                 bgcolor: 'rgba(0, 59, 139, 0.90)', width: '100%',
-                py: 1.5, px: 2, 
-                borderBottom: '4px solid #facc15', position: 'relative', zIndex: 5
+                py: 1.5, px: 2,
+                position: 'relative', zIndex: 5
             }}>
                 <Typography variant="subtitle1" fontWeight="700" noWrap sx={{ color: '#ffffff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)', lineHeight: 1.2 }}>
                     {currentSlide.title}
@@ -115,7 +115,7 @@ const MediaCarousel = () => {
                             key={index} onClick={() => setCurrentIndex(index)}
                             sx={{ 
                                 width: '8px', height: '8px', borderRadius: '50%', 
-                                bgcolor: index === currentIndex ? '#facc15' : 'rgba(255,255,255,0.4)',
+                                bgcolor: index === currentIndex ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)',
                                 cursor: 'pointer', transition: '0.3s'
                             }}
                         />
