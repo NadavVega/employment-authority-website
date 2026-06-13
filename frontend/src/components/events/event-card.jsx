@@ -1,11 +1,12 @@
-import React from 'react';
 import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
 import '../../pages/event-page'
 import defaultPicture  from '../../assets/images/default-event.jpg';
 import { getEventColor } from '../../utils/centerColors';
+import { getCenterIcon } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
+import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -17,7 +18,7 @@ const formatShortAddress = (address) => {
     return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isExpired, index = 0, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -35,12 +36,38 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
     const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
 
     const cardImage = resolveEventImage(event) || defaultPicture;
-    const shortLocation = formatShortAddress(event.location);
+    const centerIcon = getCenterIcon(event.center);
+    const location = getEventLocation(event);
+    const shortLocation = formatShortAddress(location);
+    const mapUrl = getMapSearchUrl(event);
+
+    const handleCardKeyDown = (keyboardEvent) => {
+        if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
+
+        if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+            keyboardEvent.preventDefault();
+            onOpenDetails(event);
+        }
+    };
 
     return (
-        <div className={`event-card ${isExpired ? 'event-card-expired' : ''}`} onClick={() => onOpenDetails(event)}>
+        <div
+            className={`event-card ${isExpired ? 'event-card-expired' : ''}`}
+            onClick={() => onOpenDetails(event)}
+            onKeyDown={handleCardKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label={`פרטי האירוע ${event.title}`}
+        >
             
             <div className="event-card-image-area" style={{ backgroundImage: `url(${cardImage})` }}>
+                <div className="event-center-logo" title={event.center || 'מרכז תעסוקה'}>
+                    {centerIcon ? (
+                        <img src={centerIcon} alt={event.center || 'לוגו המרכז'} />
+                    ) : (
+                        <span aria-hidden="true">{event.center?.trim()?.charAt(0) || 'מ'}</span>
+                    )}
+                </div>
                 <div className="card-badges-container">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {event.paymentMethod === 'none' && <div className="badge-free">חינם</div>}
@@ -117,7 +144,18 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
                         </div>
                         <div className="overlay-meta-item">
                             <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                            <span>{shortLocation}</span>
+                            {mapUrl ? (
+                                <a
+                                    href={mapUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                >
+                                    {shortLocation}
+                                </a>
+                            ) : (
+                                <span>{location ? shortLocation : 'מקוון'}</span>
+                            )}
                         </div>
                     </div>
                     <div className="overlay-desc">{event.description}</div>

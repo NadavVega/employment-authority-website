@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { EventCard } from '../components/events/event-card';
@@ -15,6 +15,8 @@ import '../design/event-page.css';
 import employmentLogo from '../assets/images/employment-logo.png';
 import cityView from '../assets/images/city-view.png';
 import { resolveEventImage } from '../utils/eventImageMap';
+import { getCenterIcon } from '../utils/centerIcons';
+import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 
 const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
@@ -267,6 +269,9 @@ const handleRegisterClick = async (event) => {
     });
 
     const selectedEventImage = resolveEventImage(selectedEventModal);
+    const selectedCenterIcon = getCenterIcon(selectedEventModal?.center);
+    const selectedLocation = getEventLocation(selectedEventModal);
+    const selectedMapUrl = getMapSearchUrl(selectedEventModal);
 
     return (
         <div className="events-page-wrapper" dir="rtl">
@@ -377,15 +382,36 @@ const handleRegisterClick = async (event) => {
                                 backgroundPosition: 'center'
                             } : undefined}
                         >
-                            <span className="event-card-type">{selectedEventModal.type}</span>
-                            <h2>{selectedEventModal.title}</h2>
+                            <div className="modal-header-content">
+                                <div className="modal-center-logo" title={selectedEventModal.center || 'מרכז תעסוקה'}>
+                                    {selectedCenterIcon ? (
+                                        <img src={selectedCenterIcon} alt={selectedEventModal.center || 'לוגו המרכז'} />
+                                    ) : (
+                                        <span aria-hidden="true">{selectedEventModal.center?.trim()?.charAt(0) || 'מ'}</span>
+                                    )}
+                                </div>
+                                <h2>
+                                    <span>{selectedEventModal.title}</span>
+                                    <span className="event-title-separator" aria-hidden="true">|</span>
+                                    <span className="event-card-type">{selectedEventModal.type}</span>
+                                </h2>
+                            </div>
                         </div>
                         
                         <div className="modal-body-content">
                             <div className="modal-info-grid">
                                 <div><strong>תאריך:</strong> <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span></div>
                                 <div><strong>שעות:</strong> <span className="standard-numbers" dir="ltr">{selectedEventModal.time}</span></div>
-                                <div><strong>מיקום:</strong> {selectedEventModal.location}</div>
+                                <div>
+                                    <strong>מיקום:</strong>{' '}
+                                    {selectedMapUrl ? (
+                                        <a className="event-address-link" href={selectedMapUrl} target="_blank" rel="noreferrer">
+                                            {selectedLocation}
+                                        </a>
+                                    ) : (
+                                        <span>{selectedLocation || 'מקוון'}</span>
+                                    )}
+                                </div>
                                 <div>
                                     <strong>משתתפים:</strong>{' '}
                                     {(!selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה') ? (

@@ -1,5 +1,5 @@
 .event-card {
-    border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
+    border-radius: 0; overflow: hidden; cursor: pointer;
     display: flex; flex-direction: column;
     height: 290px; 
     position: relative; box-shadow: var(--shadow-sm);
@@ -7,11 +7,33 @@
     transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 .event-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.event-card:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+}
 .event-card-expired { filter: grayscale(100%); opacity: 0.6; }
 .event-card-expired .event-card-bottom { background: #64748b; }
 
 .event-card-image-area { position: relative; flex-grow: 1; background-color: #f0f0f0; background-size: cover; background-position: center; overflow: hidden; }
 .card-badges-container { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
+.event-center-logo {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 12;
+    width: 64px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    color: var(--color-text-muted);
+    font-weight: 800;
+}
+.event-center-logo img { width: 100%; height: 100%; object-fit: contain; }
+.card-badges-container { left: 88px; }
 
 .badge-free { background-color: var(--color-accent); color: #000; font-weight: 800; font-size: var(--text-sm); width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px dashed #000; }
 .status-badge-pending { background: #f59e0b; color: white; padding: 4px 10px; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; display: inline-block; box-shadow: var(--shadow-sm); }
@@ -26,9 +48,14 @@
 
 .overlay-meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; text-align: center; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 12px; }
 .overlay-meta-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.overlay-meta-item a {
+    color: white;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
 .overlay-meta-item svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .overlay-desc { font-size: 12px; line-height: 1.4; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-bottom: auto; }
-.overlay-btn { border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; border-radius: var(--radius-md); padding: 6px 16px; font-size: var(--text-sm); font-weight: bold; align-self: center; cursor: pointer; transition: background 0.2s; margin-top: 10px;}
+.overlay-btn { border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; border-radius: 4px; padding: 6px 16px; font-size: var(--text-sm); font-weight: bold; align-self: center; cursor: pointer; transition: background 0.2s; margin-top: 10px;}
 .overlay-btn:hover { background: var(--color-accent-soft); }
 
 /* Bottom Section - Updated for Issue #6 */

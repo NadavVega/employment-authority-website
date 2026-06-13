@@ -1,31 +1,38 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Box, Typography, Paper, Button } from '@mui/material';
-import promoVideo from '../promotional-content/promotional-video.jsx';
-import cityImage from '../../assets/images/city-view.png';       
+import cityImage from '../../assets/images/city-view.png';
+import employerServicesImage from '../../assets/images/image-event-center.png';
+import trainingImage from '../../assets/images/image_event_WorkAtJer.jpg';
+import careerCenterImage from '../../assets/center-icons/taasuka-logo-color.png';
+import employmentLogo from '../../assets/images/employment-logo.png';
 
-// You can edit your images and videos here!
 const MEDIA_SLIDES = [
     {
         id: 1,
-        type: 'image',
-        url: cityImage, // This should be the path to your image file or a URL
-        title: 'ברוכים הבאים למרכז המידע',
-        subtitle: 'הפלטפורמה המרכזית לניהול קשרי מעסיקים, פרסום משרות והכשרות מקצועיות במרחב ירושלים.'
+        image: cityImage,
+        title: 'שירותי תעסוקה לתושבי ירושלים',
+        subtitle: 'מידע עירוני מרוכז על מרכזי קריירה, הכשרות, אירועים ושירותים למעסיקים ברחבי העיר.'
     },
     {
         id: 2,
-        type: 'vimeo',
-        // Example video URL - replace with your own raw MP4 link
-        url: "https://player.vimeo.com/video/1187966141?badge=0&autopause=0&player_id=0&app_id=58479", // This should be the path to your video file or a URL
-        title: 'צפו: פעילות הרשות בשטח',
-        subtitle: 'הצצה מיוחדת לפעילויות והכשרות שבוצעו בשנה האחרונה ברחבי העיר.'
+        image: careerCenterImage,
+        eyebrow: 'מרכזי קריירה',
+        title: 'ליווי מקצועי קרוב לבית',
+        subtitle: 'מרכזי התעסוקה העירוניים מציעים הכוונה, ייעוץ וכלים להשתלבות וקידום בעולם העבודה.'
     },
     {
         id: 3,
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200',
-        title: 'מרחבי למידה חדשניים',
-        subtitle: 'כיתות ההדרכה החדשות שלנו מחכות לכם בקמפוס המרכזי.'
+        image: employerServicesImage,
+        eyebrow: 'שירות למעסיקים',
+        title: 'חיבור בין מעסיקים לכוח אדם איכותי',
+        subtitle: 'מענים עירוניים לפרסום הזדמנויות, יצירת שותפויות וגיוס עובדים בירושלים.'
+    },
+    {
+        id: 4,
+        image: trainingImage,
+        eyebrow: 'סדנאות והכשרות',
+        title: 'כלים מעשיים להתפתחות מקצועית',
+        subtitle: 'סדנאות, קורסים ואירועי תעסוקה המותאמים לצרכים המשתנים של תושבי העיר.'
     }
 ];
 
@@ -41,87 +48,110 @@ const MediaCarousel = () => {
         <Paper 
             elevation={0} 
             sx={{ 
-                flex: 1, // Ensures it shares exactly 50% height with the Articles box above it
-                p: 0, 
-                borderRadius: 'var(--radius-lg)',
-                direction: 'rtl', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'flex-end', 
-                minHeight: 0, 
-                overflow: 'hidden', 
-                position: 'relative'
+                height: { xs: '455px', md: '350px' },
+                p: 0,
+                borderRadius: 0,
+                direction: 'rtl',
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.05fr) minmax(360px, 0.95fr)' },
+                gridTemplateRows: { xs: '190px 1fr', md: '1fr' },
+                overflow: 'hidden',
+                position: 'relative',
+                border: '1px solid var(--color-border)',
+                bgcolor: 'var(--color-surface)'
             }}
         >
-            {/* BACKGROUND MEDIA LAYER */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, overflow: 'hidden' }}>
-                {currentSlide.type === 'vimeo' ? (
-                    <iframe 
-                        src={currentSlide.url}
-                        frameBorder="0" 
-                        allow="autoplay; fullscreen; picture-in-picture" 
-                        // Removed pointerEvents: 'none' and reset sizing to 100% so it can be clicked
-                        style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} 
-                        title={currentSlide.title}
-                    ></iframe>
-                ) : currentSlide.type === 'video' ? (
-                    <video 
-                        src={currentSlide.url} 
-                        autoPlay loop muted playsInline
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            <Box sx={{
+                minWidth: 0,
+                p: { xs: 3, md: 5 },
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                borderTop: { xs: '4px solid var(--color-accent)', md: 0 },
+                borderRight: { xs: 0, md: '4px solid var(--color-accent)' }
+            }}>
+                {currentSlide.id === 1 ? (
+                    <Box
+                        component="img"
+                        src={employmentLogo}
+                        alt="הרשות העירונית לתעסוקה ירושלים"
+                        sx={{
+                            width: { xs: '118px', md: '142px' },
+                            height: { xs: '72px', md: '88px' },
+                            objectFit: 'contain',
+                            objectPosition: 'right center',
+                            mb: { xs: 2, md: 2.5 },
+                        }}
                     />
                 ) : (
-                    <Box sx={{ 
-                        width: '100%', height: '100%', 
-                        backgroundImage: `url(${currentSlide.url})`, 
-                        backgroundSize: 'cover', backgroundPosition: 'center',
-                        transition: 'background-image 0.5s ease-in-out'
-                    }} />
+                    <Typography variant="overline" fontWeight={800} sx={{ color: 'var(--color-text-muted)', letterSpacing: 0, mb: 1 }}>
+                        {currentSlide.eyebrow}
+                    </Typography>
                 )}
+                <Typography component="h1" sx={{
+                    color: 'var(--color-text)',
+                    fontSize: { xs: '1.65rem', md: '2.25rem' },
+                    lineHeight: 1.25,
+                    fontWeight: 800,
+                    mb: 2,
+                    maxWidth: '650px'
+                }}>
+                    {currentSlide.title}
+                </Typography>
+                <Typography sx={{ color: 'var(--color-text-muted)', lineHeight: 1.75, maxWidth: '660px' }}>
+                    {currentSlide.subtitle}
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1, mt: 3 }}>
+                    {MEDIA_SLIDES.map((slide, index) => (
+                        <Box
+                            component="button"
+                            type="button"
+                            aria-label={`מעבר לשקופית ${index + 1}`}
+                            key={slide.id}
+                            onClick={() => setCurrentIndex(index)}
+                            sx={{
+                                width: index === currentIndex ? '28px' : '10px',
+                                height: '6px',
+                                p: 0,
+                                border: 0,
+                                borderRadius: 0,
+                                bgcolor: index === currentIndex ? 'var(--color-accent)' : 'var(--color-border)',
+                                cursor: 'pointer',
+                                transition: 'var(--t)'
+                            }}
+                        />
+                    ))}
+                </Box>
             </Box>
 
-            {/* ARROW NAVIGATION */}
+            <Box sx={{
+                minWidth: 0,
+                minHeight: 0,
+                backgroundImage: `linear-gradient(rgba(0, 43, 102, 0.08), rgba(0, 43, 102, 0.08)), url(${currentSlide.image})`,
+                backgroundSize: currentSlide.id === 2 ? 'contain' : 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                bgcolor: currentSlide.id === 2 ? '#eef1f4' : 'var(--color-brand-dark)',
+                order: { xs: -1, md: 0 }
+            }} />
+
             <Button 
                 onClick={handleNext} 
-                sx={{ position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', minWidth: '36px', height: '36px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
+                aria-label="השקופית הבאה"
+                sx={{ position: 'absolute', bottom: 20, left: 20, minWidth: '40px', width: '40px', height: '40px', borderRadius: 'var(--radius-md)', bgcolor: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)', '&:hover': { bgcolor: 'var(--color-accent-soft)' }, fontWeight: 'bold' }}
             >
                 &gt;
             </Button>
             
             <Button 
                 onClick={handlePrev} 
-                sx={{ position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', minWidth: '36px', height: '36px', borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.7)', color: 'black', '&:hover': { bgcolor: 'white' }, fontWeight: 'bold', fontSize: '1.2rem', zIndex: 10 }}
+                aria-label="השקופית הקודמת"
+                sx={{ position: 'absolute', bottom: 20, left: 68, minWidth: '40px', width: '40px', height: '40px', borderRadius: 'var(--radius-md)', bgcolor: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)', '&:hover': { bgcolor: 'var(--color-accent-soft)' }, fontWeight: 'bold' }}
             >
                 &lt;
             </Button>
-
-            {/* BOTTOM BANNER (Matches Events Carousel Exactly) */}
-            <Box sx={{ 
-                bgcolor: 'rgba(0, 59, 139, 0.90)', width: '100%',
-                py: 1.5, px: 2,
-                position: 'relative', zIndex: 5
-            }}>
-                <Typography variant="subtitle1" fontWeight="700" noWrap sx={{ color: '#ffffff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)', lineHeight: 1.2 }}>
-                    {currentSlide.title}
-                </Typography>
-                <Typography variant="caption" fontWeight="300" noWrap sx={{ display: 'block', mt: 0.5, color: '#ffffff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
-                    {currentSlide.subtitle}
-                </Typography>
-                
-                {/* DOT PAGINATION */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, gap: 1 }}>
-                    {MEDIA_SLIDES.map((_, index) => (
-                        <Box 
-                            key={index} onClick={() => setCurrentIndex(index)}
-                            sx={{ 
-                                width: '8px', height: '8px', borderRadius: '50%', 
-                                bgcolor: index === currentIndex ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)',
-                                cursor: 'pointer', transition: '0.3s'
-                            }}
-                        />
-                    ))}
-                </Box>
-            </Box>
         </Paper>
     );
 };
