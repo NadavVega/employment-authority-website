@@ -97,7 +97,15 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return hasRole('admin');
+      return currentUserExists()
+        && isWhitelistedData(currentUserData())
+        && (
+          rootRole(currentUserData()) == 'admin'
+          || (
+            rootRole(currentUserData()) == ''
+            && profileRole(currentUserData()) == 'admin'
+          )
+        );
     }
 
     function isCoordinator() {
@@ -835,6 +843,56 @@ service cloud.firestore {
         && eventAfter.registeredUids.hasAny([request.auth.uid]);
     }
 
+    function validPromotionalContent(data) {
+      return data.keys().hasOnly([
+          'title',
+          'description',
+          'mediaType',
+          'mediaUrl',
+          'mediaAssetKey',
+          'order',
+          'isActive',
+          'audience',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && data.keys().hasAll([
+          'title',
+          'description',
+          'mediaType',
+          'order',
+          'isActive',
+          'audience',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 80
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 140
+        && data.mediaType in ['image', 'video']
+        && (
+          (
+            data.keys().hasAll(['mediaUrl'])
+            && data.mediaUrl is string
+            && data.mediaUrl.size() > 0
+          )
+          || (
+            data.keys().hasAll(['mediaAssetKey'])
+            && data.mediaAssetKey is string
+            && data.mediaAssetKey.size() > 0
+          )
+        )
+        && data.order is int
+        && data.order >= 0
+        && data.isActive is bool
+        && data.audience in ['all', 'admin', 'coordinator', 'employer']
+        && data.updatedAt == request.time
+        && data.updatedBy == authenticatedEmail();
+    }
+
     match /users/{userId} {
       // Self-get supports the login rejection flow. Firestore cannot expose
       // selected fields from a document, so protected data must stay elsewhere.
@@ -963,6 +1021,18 @@ service cloud.firestore {
           && resource.data.status == 'approved'
         );
       allow create, update, delete: if isAdmin();
+    }
+
+    match /promotional_content/{slideId} {
+      allow get, list: if isAdmin()
+        || (
+          isApplicationUser()
+          && resource.data.keys().hasAll(['isActive'])
+          && resource.data.isActive == true
+        );
+      allow create, update: if isAdmin()
+        && validPromotionalContent(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {

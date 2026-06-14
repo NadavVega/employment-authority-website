@@ -1,45 +1,33 @@
 import { useState } from 'react';
 import { Box, Typography, Paper, Button } from '@mui/material';
-import cityImage from '../../assets/images/city-view.png';
-import employerServicesImage from '../../assets/images/content-bot-theme.jpg';
-import careerCenterImage from '../../assets/images/Jerusalem-color-logo.jpeg';
-import trainingImage from '../../assets/images/color-logo.png';
 import employmentLogo from '../../assets/images/employment-logo.png';
+import {
+    DEFAULT_PROMOTIONAL_SLIDES,
+    getPromotionalAsset,
+} from '../promotional-content/promotional-assets';
 
-const MEDIA_SLIDES = [
-    {
-        id: 1,
-        image: cityImage,
-        title: 'שירותי תעסוקה לתושבי ירושלים',
-        subtitle: 'מרכזי קריירה, הכשרות, אירועים ושירותים למעסיקים ברחבי ירושלים.'
-    },
-    {
-        id: 2,
-        image: careerCenterImage,
-        title: 'ליווי מקצועי קרוב לבית',
-        subtitle: 'הכוונה, ייעוץ וכלים להשתלבות ולקידום בעולם העבודה.'
-    },
-    {
-        id: 3,
-        image: employerServicesImage,
-        title: 'חיבור בין מעסיקים לכוח אדם איכותי',
-        subtitle: 'מענים עירוניים לפרסום הזדמנויות, שותפויות וגיוס עובדים בירושלים.'
-    },
-    {
-        id: 4,
-        image: trainingImage,
-        title: 'כלים מעשיים להתפתחות מקצועית',
-        subtitle: 'סדנאות, קורסים ואירועי תעסוקה המותאמים לתושבי העיר.'
-    }
-];
-
-const MediaCarousel = () => {
+const MediaCarousel = ({ slides = DEFAULT_PROMOTIONAL_SLIDES }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const validSlides = Array.isArray(slides)
+        ? slides.filter((slide) => {
+            const asset = getPromotionalAsset(slide?.mediaAssetKey);
+            return Boolean(
+                slide?.title
+                && slide?.description
+                && ['image', 'video'].includes(slide?.mediaType)
+                && (asset?.mediaUrl || slide?.mediaUrl)
+            );
+        })
+        : [];
+    const displaySlides = validSlides.length > 0 ? validSlides : DEFAULT_PROMOTIONAL_SLIDES;
+    const safeCurrentIndex = currentIndex % displaySlides.length;
 
-    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % MEDIA_SLIDES.length);
-    const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? MEDIA_SLIDES.length - 1 : prev - 1));
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % displaySlides.length);
+    const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? displaySlides.length - 1 : prev - 1));
 
-    const currentSlide = MEDIA_SLIDES[currentIndex];
+    const currentSlide = displaySlides[safeCurrentIndex] || displaySlides[0];
+    const currentAsset = getPromotionalAsset(currentSlide.mediaAssetKey);
+    const resolvedMediaUrl = currentAsset?.mediaUrl || currentSlide.mediaUrl;
 
     return (
         <Paper 
@@ -94,11 +82,11 @@ const MediaCarousel = () => {
                     {currentSlide.title}
                 </Typography>
                 <Typography sx={{ color: 'var(--color-text-muted)', lineHeight: 1.45, maxWidth: '660px' }}>
-                    {currentSlide.subtitle}
+                    {currentSlide.description}
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1, mt: 1.5 }}>
-                    {MEDIA_SLIDES.map((slide, index) => (
+                    {displaySlides.map((slide, index) => (
                         <Box
                             component="button"
                             type="button"
@@ -106,12 +94,12 @@ const MediaCarousel = () => {
                             key={slide.id}
                             onClick={() => setCurrentIndex(index)}
                             sx={{
-                                width: index === currentIndex ? '28px' : '10px',
+                                width: index === safeCurrentIndex ? '28px' : '10px',
                                 height: '6px',
                                 p: 0,
                                 border: 0,
                                 borderRadius: 0,
-                                bgcolor: index === currentIndex ? 'var(--color-accent)' : 'var(--color-border)',
+                                bgcolor: index === safeCurrentIndex ? 'var(--color-accent)' : 'var(--color-border)',
                                 cursor: 'pointer',
                                 transition: 'var(--t)'
                             }}
@@ -120,16 +108,35 @@ const MediaCarousel = () => {
                 </Box>
             </Box>
 
-            <Box sx={{
-                minWidth: 0,
-                minHeight: 0,
-                backgroundImage: `linear-gradient(rgba(0, 43, 102, 0.08), rgba(0, 43, 102, 0.08)), url(${currentSlide.image})`,
-                backgroundSize: currentSlide.id === 2 || currentSlide.id === 4 ? 'contain' : 'cover',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                bgcolor: currentSlide.id === 2 || currentSlide.id === 4 ? '#eef1f4' : 'var(--color-brand-dark)',
-                order: { xs: -1, md: 0 }
-            }} />
+            {currentSlide.mediaType === 'video' ? (
+                <Box
+                    component="iframe"
+                    src={resolvedMediaUrl}
+                    title={currentSlide.title}
+                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    sx={{
+                        width: '100%',
+                        height: '100%',
+                        minWidth: 0,
+                        minHeight: 0,
+                        border: 0,
+                        bgcolor: 'var(--color-brand-dark)',
+                        order: { xs: -1, md: 0 },
+                    }}
+                />
+            ) : (
+                <Box sx={{
+                    minWidth: 0,
+                    minHeight: 0,
+                    backgroundImage: `linear-gradient(rgba(0, 43, 102, 0.08), rgba(0, 43, 102, 0.08)), url(${resolvedMediaUrl})`,
+                    backgroundSize: currentAsset?.fit || 'cover',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    bgcolor: currentAsset?.fit === 'contain' ? '#eef1f4' : 'var(--color-brand-dark)',
+                    order: { xs: -1, md: 0 }
+                }} />
+            )}
 
             <Button 
                 onClick={handleNext} 

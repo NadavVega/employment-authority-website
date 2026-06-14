@@ -140,7 +140,6 @@ const EventCalendar = ({ events, userName }) => {
                     {dayEvents.map((e, i) => (
                         <Tooltip
                             key={i}
-                            interactive
                             placement="top"
                             arrow
                             slotProps={{

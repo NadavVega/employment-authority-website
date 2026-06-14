@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Typography, Box, Divider } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
 import { Navigate } from 'react-router-dom';
+import PromotionalContentManager from '../features/promotional-content/promotional-content-manager';
 
 import '../design/content-management.css';
 
 const ContentManagementPage = () => {
     const { currentUser, isAdmin } = useAuth();
-    
-    if (!isAdmin) {
-        return <Navigate to="/home" replace />;
-    }
-
     const [formData, setFormData] = useState({
         title: '', sourceName: '', category: 'general', url: '', content: '', imageUrl: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    if (!isAdmin) {
+        return <Navigate to="/home" replace />;
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -127,6 +127,8 @@ const ContentManagementPage = () => {
                 </Box>
 
             </Box>
+
+            <PromotionalContentManager currentUser={currentUser} />
         </Box>
     );
 };

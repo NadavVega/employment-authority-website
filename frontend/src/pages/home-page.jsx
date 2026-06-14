@@ -11,6 +11,8 @@ import MediaCarousel from '../features/carousel/media-carousel';
 import '../design/event-page.css';
 import { resolveEventImage } from '../utils/eventImageMap';
 import { privacyService } from '../services/interfaces/privacy-service';
+import { promotionalContentService } from '../services/interfaces/promotional-content-service';
+import { DEFAULT_PROMOTIONAL_SLIDES } from '../features/promotional-content/promotional-assets';
 
 const SectionTitle = ({ title, icon }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '1px solid var(--color-border)' }}>
@@ -193,9 +195,10 @@ const getEventDate = (dateValue) => {
 };
 
 const HomePage = () => {
-    const { isAuthenticated, currentUser } = useAuth();
+    const { isAuthenticated, currentUser, userRole } = useAuth();
     const [articles] = useState([]);
     const [events, setEvents] = useState([]);
+    const [promotionalSlides, setPromotionalSlides] = useState(DEFAULT_PROMOTIONAL_SLIDES);
 
     useEffect(() => {
         const q = query(collection(db, 'events'));
@@ -226,12 +229,31 @@ const HomePage = () => {
         return () => unsubscribe();
     }, []);
 
+    useEffect(() => {
+        if (!userRole || userRole === 'guest') {
+            return undefined;
+        }
+
+        const unsubscribe = promotionalContentService.subscribeToActiveSlides(
+            userRole,
+            (slides) => setPromotionalSlides(slides.length > 0
+                ? slides
+                : DEFAULT_PROMOTIONAL_SLIDES),
+            (error) => {
+                console.error('Failed to load promotional content:', error);
+                setPromotionalSlides(DEFAULT_PROMOTIONAL_SLIDES);
+            }
+        );
+
+        return unsubscribe;
+    }, [userRole]);
+
     return (
         <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
             <Box className="modern-layout-wrapper" sx={{ display: 'flex', flexDirection: 'column', px: { xs: 2, md: 4, xl: 6 }, pt: { xs: 2, md: 4 }, maxWidth: '1600px', width: '100%', mx: 'auto' }}>
 
                 <Box component="section" aria-label="שירותי רשות התעסוקה ירושלים" sx={{ mb: { xs: 4, md: 5 } }}>
-                    <MediaCarousel />
+                    <MediaCarousel slides={promotionalSlides} />
                 </Box>
 
                 <PrivacyRequestsWidget />
