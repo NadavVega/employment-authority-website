@@ -126,6 +126,7 @@ export const eventService = {
                 location: eventDetails.location,
                 capacity: eventDetails.capacity,
                 description: eventDetails.description,
+                coordinatorName: cleanValue(eventDetails.coordinatorName),
                 coordinatorPhone: eventDetails.coordinatorPhone,
                 center: cleanValue(eventDetails.center),
                 

@@ -12,7 +12,10 @@ import '../design/event-card.css';
 import '../design/event-page.css'; 
 
 import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
+import { getEventColor } from '../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
+import eventsDecoration from '../assets/images/city-view.png';
+import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
 const FILTER_CATEGORIES = ['הכל', 'יום קריירה', 'הכשרה', 'ירידת עבודה', 'סדנה'];
 
@@ -269,6 +272,17 @@ const handleRegisterClick = async (event) => {
     const selectedCenterName = getEventCenterName(selectedEventModal);
     const selectedLocation = getEventLocation(selectedEventModal);
     const selectedMapUrl = getMapSearchUrl(selectedEventModal);
+    const selectedEventIsCurrentUserOwned = selectedEventModal?.createdBy === currentUser?.uid;
+    const selectedCreatorName =
+        selectedEventModal?.creatorName ||
+        selectedEventModal?.coordinatorName ||
+        (selectedEventIsCurrentUserOwned
+            ? currentUser?.displayName || currentUser?.fullName || currentUser?.profile?.fullName
+            : '');
+    const selectedCreatorEmail =
+        selectedEventModal?.creatorEmail ||
+        selectedEventModal?.coordinatorEmail ||
+        (selectedEventIsCurrentUserOwned ? currentUser?.email : '');
     const filteredActiveEvents = activeEvents.filter(filterFunction);
     const filteredPastEvents = pastEvents.filter(filterFunction);
     const featuredEvent = filteredActiveEvents[0] || null;
@@ -298,10 +312,12 @@ const handleRegisterClick = async (event) => {
                 const locationText = getEventLocation(event);
                 const mapUrl = getMapSearchUrl(event);
                 const centerName = getEventCenterName(event);
+                const centerColor = getEventColor(event);
 
                 return (
                     <article
                         className={`event-row ${isExpired ? 'event-row-expired' : ''}`}
+                        style={{ '--event-center-color': centerColor }}
                         key={event.id}
                         tabIndex={0}
                         role="button"
@@ -332,7 +348,7 @@ const handleRegisterClick = async (event) => {
                                 <span>{locationText || 'מקוון'}</span>
                             )}
                         </div>
-                        <button type="button" className="event-row-action" onClick={() => setSelectedEventModal(event)}>
+                        <button type="button" className="event-row-action btn-primary pill-btn" onClick={() => setSelectedEventModal(event)}>
                             לפרטים
                         </button>
                     </article>
@@ -345,10 +361,12 @@ const handleRegisterClick = async (event) => {
         <div className="events-page-wrapper" dir="rtl">
             
             <header className="events-page-heading">
-                <div>
+                <img className="events-heading-logo" src={employmentLogo} alt="רשות התעסוקה ירושלים" />
+                <div className="events-heading-copy">
                     <h1>אירועים ופעילויות</h1>
                     <p>ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
                 </div>
+                <img className="events-heading-decoration" src={eventsDecoration} alt="" aria-hidden="true" />
             </header>
 
             <div className="events-toolbar">
@@ -424,7 +442,7 @@ const handleRegisterClick = async (event) => {
                 <main className="events-showcase">
                     <aside className="featured-event-column" aria-label="האירוע הקרוב ביותר">
                         <div className="featured-event-heading">
-                            <span>האירוע הקרוב ביותר</span>
+                            <h2>האירוע הקרוב ביותר</h2>
                         </div>
                         <div className="featured-event-panel">
                             <EventCard
@@ -557,10 +575,16 @@ const handleRegisterClick = async (event) => {
                         
                         <div className="modal-body-content">
                             <div className="modal-info-grid">
-                                <div><strong>תאריך:</strong> <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span></div>
-                                <div><strong>שעות:</strong> <span className="standard-numbers" dir="ltr">{selectedEventModal.time}</span></div>
-                                <div>
-                                    <strong>מיקום:</strong>{' '}
+                                <div className="modal-info-item">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                                    <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span>
+                                </div>
+                                <div className="modal-info-item">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                                    <span className="standard-numbers" dir="ltr">{selectedEventModal.time || 'טרם נקבע'}</span>
+                                </div>
+                                <div className="modal-info-item">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
                                     {selectedMapUrl ? (
                                         <a className="event-address-link" href={selectedMapUrl} target="_blank" rel="noreferrer">
                                             {selectedLocation}
@@ -569,8 +593,8 @@ const handleRegisterClick = async (event) => {
                                         <span>{selectedLocation || 'מקוון'}</span>
                                     )}
                                 </div>
-                                <div>
-                                    <strong>משתתפים:</strong>{' '}
+                                <div className="modal-info-item">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                     {(!selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה') ? (
                                         <span>ללא הגבלה</span>
                                     ) : (
@@ -590,8 +614,20 @@ const handleRegisterClick = async (event) => {
 
                             <div className="modal-contact-grid">
                                 <div>
-                                    <h4>רכז אחראי</h4>
-                                    <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEventModal.coordinatorPhone}</p>
+                                    <h4>אחראי/ת האירוע</h4>
+                                    {selectedCreatorName && (
+                                        <p>{selectedCreatorName}</p>
+                                    )}
+                                    {selectedEventModal.coordinatorPhone && (
+                                        <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEventModal.coordinatorPhone}</p>
+                                    )}
+                                    {selectedCreatorEmail && (
+                                        <p>
+                                            <a className="event-creator-email" href={`mailto:${selectedCreatorEmail}`}>
+                                                {selectedCreatorEmail}
+                                            </a>
+                                        </p>
+                                    )}
                                 </div>
                                 
                                 {selectedEventModal.isAccessible && (
