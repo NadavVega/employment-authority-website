@@ -1,11 +1,12 @@
-import React from 'react';
 import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import '../../design/event-card.css';
 import '../../pages/event-page'
 import defaultPicture  from '../../assets/images/default-event.jpg';
 import { getEventColor } from '../../utils/centerColors';
+import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
+import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -17,7 +18,19 @@ const formatShortAddress = (address) => {
     return shortAddress;
 };
 
-export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+const getReadableTextColor = (backgroundColor) => {
+    const hex = String(backgroundColor || '').replace('#', '');
+    if (!/^[0-9a-f]{6}$/i.test(hex)) return '#ffffff';
+
+    const [red, green, blue] = [0, 2, 4].map((offset) => (
+        parseInt(hex.slice(offset, offset + 2), 16)
+    ));
+    const luminance = (red * 299 + green * 587 + blue * 114) / 1000;
+
+    return luminance > 155 ? '#172033' : '#ffffff';
+};
+
+export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -35,10 +48,35 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
     const fullDate = isNaN(dateObj) ? 'טרם נקבע' : dateObj.toLocaleDateString('he-IL');
 
     const cardImage = resolveEventImage(event) || defaultPicture;
-    const shortLocation = formatShortAddress(event.location);
+    const centerIcon = getCenterIcon(event);
+    const centerName = getEventCenterName(event);
+    const centerColor = getEventColor(event);
+    const location = getEventLocation(event);
+    const shortLocation = formatShortAddress(location);
+    const mapUrl = getMapSearchUrl(event);
+
+    const handleCardKeyDown = (keyboardEvent) => {
+        if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
+
+        if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+            keyboardEvent.preventDefault();
+            onOpenDetails(event);
+        }
+    };
 
     return (
-        <div className={`event-card ${isExpired ? 'event-card-expired' : ''}`} onClick={() => onOpenDetails(event)}>
+        <div
+            className={`event-card ${isExpired ? 'event-card-expired' : ''}`}
+            style={{
+                '--event-center-color': centerColor,
+                '--event-center-text': getReadableTextColor(centerColor),
+            }}
+            onClick={() => onOpenDetails(event)}
+            onKeyDown={handleCardKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label={`פרטי האירוע ${event.title}`}
+        >
             
             <div className="event-card-image-area" style={{ backgroundImage: `url(${cardImage})` }}>
                 <div className="card-badges-container">
@@ -54,7 +92,7 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
                         {isRegistered && (
                         <div style={{
                             background: '#10b981', color: 'white', padding: '4px 12px',
-                            borderRadius: '99px', fontSize: '12px', fontWeight: 'bold',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)', fontWeight: 'bold',
                             display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -84,26 +122,25 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
                             </div>
                         )}
                     </div>
-                    
-                    {/* Archive button for Expired */}
-                    {canEdit && (
-                        isExpired ? (
-                            <button className="edit-pencil-btn-new" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
-                                            <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
-                                            <path d="M10 13h4"></path>
-                                </svg>
-                            </button>
-                        ) : (
-                            <button className="edit-pencil-btn-new" onClick={handleEditClick} title="עריכת אירוע">
-                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                </svg>
-                            </button>
-                        )
-                    )}
                 </div>
+
+                {canEdit && (
+                    isExpired ? (
+                        <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
+                                <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
+                                <path d="M10 13h4"></path>
+                            </svg>
+                        </button>
+                    ) : (
+                        <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
+                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                            </svg>
+                        </button>
+                    )
+                )}
 
                 <div className="event-card-overlay">
                     <div className="overlay-meta-grid">
@@ -117,7 +154,18 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
                         </div>
                         <div className="overlay-meta-item">
                             <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                            <span>{shortLocation}</span>
+                            {mapUrl ? (
+                                <a
+                                    href={mapUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                >
+                                    {shortLocation}
+                                </a>
+                            ) : (
+                                <span>{location ? shortLocation : 'מקוון'}</span>
+                            )}
                         </div>
                     </div>
                     <div className="overlay-desc">{event.description}</div>
@@ -126,13 +174,21 @@ export const EventCard = ({ event, isGuest, isExpired, index = 0, onOpenDetails,
             </div>
 
             <div 
-                className="event-card-bottom"
-                style={{ borderTop: `4px solid ${getEventColor(event, index)}` }}>
+                className="event-card-bottom">
                 <div className="bottom-date-area standard-numbers">
                     <p className="bottom-date-big">{dayMonth}</p>
                 </div>
                 <div className="bottom-title-area">
                     <p className="bottom-title">{event.title}</p>
+                </div>
+                <div className="event-center-logo" title={centerName || 'מרכז תעסוקה'}>
+                    {centerIcon ? (
+                        <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
+                    ) : (
+                        <svg viewBox="0 0 24 24" role="img" aria-label="סמל מרכז תעסוקה">
+                            <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
+                        </svg>
+                    )}
                 </div>
             </div>
         </div>

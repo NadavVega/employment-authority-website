@@ -10,7 +10,8 @@ import {
     collectionGroup,
     where,
     getDocs,
-    arrayUnion
+    arrayUnion,
+    Timestamp
 } from 'firebase/firestore';
 
 import { db } from '../firebase/config';
@@ -21,6 +22,30 @@ const cleanValue = (value, fallback = '') => {
 
 const getUserDocIdFromEmail = (email) => {
     return String(email || '').trim().toLowerCase();
+};
+
+const buildEventTimeRange = (date, time) => {
+    const [startTime, endTime] = String(time || '').split('-');
+
+    if (!date || !startTime || !endTime) {
+        throw new Error('EVENT_TIME_RANGE_MISSING');
+    }
+
+    const startsAt = new Date(`${date}T${startTime}:00`);
+    const endsAt = new Date(`${date}T${endTime}:00`);
+
+    if (
+        Number.isNaN(startsAt.getTime()) ||
+        Number.isNaN(endsAt.getTime()) ||
+        endsAt < startsAt
+    ) {
+        throw new Error('EVENT_TIME_RANGE_INVALID');
+    }
+
+    return {
+        startsAt: Timestamp.fromDate(startsAt),
+        endsAt: Timestamp.fromDate(endsAt),
+    };
 };
 
 const buildEmployerProfileFromFirestore = async (currentUser) => {
@@ -87,16 +112,23 @@ export const eventService = {
     async createEvent(eventDetails, currentUser, userRole) {
         try {
             const eventStatus = 'published';
+            const eventTimeRange = buildEventTimeRange(
+                eventDetails.date,
+                eventDetails.time
+            );
 
             const payload = {
                 title: eventDetails.title,
                 type: eventDetails.type,
                 date: eventDetails.date, 
                 time: eventDetails.time,
+                ...eventTimeRange,
                 location: eventDetails.location,
                 capacity: eventDetails.capacity,
                 description: eventDetails.description,
+                coordinatorName: cleanValue(eventDetails.coordinatorName),
                 coordinatorPhone: eventDetails.coordinatorPhone,
+                center: cleanValue(eventDetails.center),
                 
                 // CRITICAL FIX: These fields were missing from the database save payload
                 isAccessible: eventDetails.isAccessible || false,
@@ -150,7 +182,18 @@ export const eventService = {
     async updateEvent(eventId, updatedData) {
         try {
             const docRef = doc(db, 'events', eventId);
-            await updateDoc(docRef, updatedData);
+            const payload = { ...updatedData };
+
+            delete payload.id;
+
+            if (payload.date && payload.time) {
+                Object.assign(
+                    payload,
+                    buildEventTimeRange(payload.date, payload.time)
+                );
+            }
+
+            await updateDoc(docRef, payload);
             return true;
         } catch (error) {
             console.error("Error updating event:", error);

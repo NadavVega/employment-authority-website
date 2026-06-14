@@ -8,7 +8,6 @@ import {
   doc,
   updateDoc,
   setDoc,
-  arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -239,6 +238,7 @@ export const privacyService = {
       requestsQuery = query(
         collection(db, "privacy_requests"),
         where("assignedCoordinatorEmail", "==", currentEmail),
+        where("employerApprovalStatus", "==", "approved"),
         where("coordinatorApprovalStatus", "==", "pending"),
         where("requiresCoordinatorApproval", "==", true),
         where("status", "==", "pending")
@@ -372,12 +372,12 @@ export const privacyService = {
       (request.requiresCoordinatorApproval !== true ||
         nextCoordinatorApprovalStatus === "approved");
 
-    const privateInfoRef = doc(
+    const privateAccessRef = doc(
       db,
       "users",
       request.targetEmail,
-      "private_info",
-      "details"
+      "private_access",
+      request.requesterEmail
     );
 
     await updateDoc(requestRef, {
@@ -391,29 +391,34 @@ export const privacyService = {
         : serverTimestamp(),
       employerReviewedBy: isAssignedCoordinatorApproval
         ? request.employerReviewedBy || null
-        : currentUser.email,
+        : currentUserEmail,
 
       coordinatorReviewedAt: isAssignedCoordinatorApproval
         ? serverTimestamp()
         : request.coordinatorReviewedAt || null,
       coordinatorReviewedBy: isAssignedCoordinatorApproval
-        ? currentUser.email
+        ? currentUserEmail
         : request.coordinatorReviewedBy || null,
 
       reviewedAt: shouldApproveRequest ? serverTimestamp() : null,
-      reviewedBy: shouldApproveRequest ? currentUser.email : null,
+      reviewedBy: shouldApproveRequest ? currentUserEmail : null,
 
       updatedAt: serverTimestamp(),
     });
 
     if (shouldApproveRequest) {
       await setDoc(
-        privateInfoRef,
+        privateAccessRef,
         {
-          approved_viewers: arrayUnion(request.requesterEmail),
+          sourceRequestId: request.id,
+          targetEmail: request.targetEmail,
+          requesterEmail: request.requesterEmail,
+          assignedCoordinatorEmail,
+          employerApprovalStatus: "approved",
+          coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
+          grantedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        },
-        { merge: true }
+        }
       );
     }
 
@@ -455,8 +460,22 @@ export const privacyService = {
         ? "rejected"
         : request.coordinatorApprovalStatus || "not_required",
 
+      employerReviewedAt: isAssignedCoordinatorRejection
+        ? request.employerReviewedAt || null
+        : serverTimestamp(),
+      employerReviewedBy: isAssignedCoordinatorRejection
+        ? request.employerReviewedBy || null
+        : currentUserEmail,
+
+      coordinatorReviewedAt: isAssignedCoordinatorRejection
+        ? serverTimestamp()
+        : request.coordinatorReviewedAt || null,
+      coordinatorReviewedBy: isAssignedCoordinatorRejection
+        ? currentUserEmail
+        : request.coordinatorReviewedBy || null,
+
       reviewedAt: serverTimestamp(),
-      reviewedBy: currentUser.email,
+      reviewedBy: currentUserEmail,
       updatedAt: serverTimestamp(),
     });
 

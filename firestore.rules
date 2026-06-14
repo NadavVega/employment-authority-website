@@ -1,0 +1,1042 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Authentication and application roles
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasAuthenticatedEmail() {
+      return isAuthenticated()
+        && request.auth.token.keys().hasAll(['email'])
+        && request.auth.token.email is string
+        && request.auth.token.email.size() > 0;
+    }
+
+    function authenticatedEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function userPath(email) {
+      return /databases/$(database)/documents/users/$(email);
+    }
+
+    function currentUserExists() {
+      return hasAuthenticatedEmail() && exists(userPath(authenticatedEmail()));
+    }
+
+    function currentUserData() {
+      return get(userPath(authenticatedEmail())).data;
+    }
+
+    function isWhitelistedData(data) {
+      return (data.keys().hasAll(['isWhitelisted']) && data.isWhitelisted == true)
+        || (data.keys().hasAll(['isWhiteListed']) && data.isWhiteListed == true)
+        || (
+          data.keys().hasAll(['contactHistory'])
+          && data.contactHistory is map
+          && (
+            (
+              data.contactHistory.keys().hasAll(['isWhitelisted'])
+              && data.contactHistory.isWhitelisted == true
+            )
+            || (
+              data.contactHistory.keys().hasAll(['isWhiteListed'])
+              && data.contactHistory.isWhiteListed == true
+            )
+          )
+        );
+    }
+
+    function rootRole(data) {
+      return data.keys().hasAll(['role']) && data.role is string
+        ? data.role
+        : '';
+    }
+
+    function profileRole(data) {
+      return data.keys().hasAll(['profile'])
+        && data.profile is map
+        && data.profile.keys().hasAll(['role'])
+        && data.profile.role is string
+        ? data.profile.role
+        : '';
+    }
+
+    function hasValidRoleData(data) {
+      let root = rootRole(data);
+      let profile = profileRole(data);
+      let role = root != '' ? root : profile;
+
+      return (root == '' || profile == '' || root == profile)
+        && role in ['admin', 'coordinator', 'employer'];
+    }
+
+    function dataHasRole(data, role) {
+      let root = rootRole(data);
+      let profile = profileRole(data);
+      let resolved = root != '' ? root : profile;
+
+      return (root == '' || profile == '' || root == profile)
+        && resolved in ['admin', 'coordinator', 'employer']
+        && resolved == role;
+    }
+
+    function isValidApplicationUserData(data) {
+      return isWhitelistedData(data) && hasValidRoleData(data);
+    }
+
+    function isApplicationUser() {
+      return currentUserExists()
+        && isValidApplicationUserData(currentUserData());
+    }
+
+    function hasRole(role) {
+      return isApplicationUser() && dataHasRole(currentUserData(), role);
+    }
+
+    function isAdmin() {
+      return currentUserExists()
+        && isWhitelistedData(currentUserData())
+        && (
+          rootRole(currentUserData()) == 'admin'
+          || (
+            rootRole(currentUserData()) == ''
+            && profileRole(currentUserData()) == 'admin'
+          )
+        );
+    }
+
+    function isCoordinator() {
+      return hasRole('coordinator');
+    }
+
+    function isEmployer() {
+      return hasRole('employer');
+    }
+
+    function isSelfUser(userId) {
+      return hasAuthenticatedEmail() && userId == authenticatedEmail();
+    }
+
+    // User profiles and employer assignment
+    function isAllowedSelfUserUpdate() {
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+      let profileChanged = changedFields.hasAny(['profile']);
+      let allowedRootFields = [
+        'profile',
+        'fullName',
+        'name',
+        'companyName',
+        'company',
+        'organization',
+        'address',
+        'field',
+        'subField',
+        'population',
+        'targetPopulation',
+        'phone',
+        'mobile',
+        'logoUrl',
+        'companyDescription',
+        'jobsUrl',
+        'updatedAt'
+      ];
+      let allowedProfileFields = [
+        'fullName',
+        'company',
+        'organization',
+        'address',
+        'field',
+        'subField',
+        'population',
+        'targetPopulation',
+        'phone',
+        'mobile',
+        'logoUrl',
+        'companyDescription',
+        'jobsUrl'
+      ];
+
+      return changedFields.hasOnly(allowedRootFields)
+        && (
+          !profileChanged
+          || (
+            resource.data.keys().hasAll(['profile'])
+            && resource.data.profile is map
+            && request.resource.data.keys().hasAll(['profile'])
+            && request.resource.data.profile is map
+            && request.resource.data.profile
+              .diff(resource.data.profile)
+              .affectedKeys()
+              .hasOnly(allowedProfileFields)
+          )
+        );
+    }
+
+    function assignedCoordinatorEmail(userId) {
+      let userData = get(userPath(userId)).data;
+      let rootAssignment = userData.keys().hasAll(['assignedCoordinatorEmail'])
+        && userData.assignedCoordinatorEmail is string
+        ? userData.assignedCoordinatorEmail.lower()
+        : '';
+      let profileAssignment = userData.keys().hasAll(['profile'])
+        && userData.profile is map
+        && userData.profile.keys().hasAll(['assignedCoordinatorEmail'])
+        && userData.profile.assignedCoordinatorEmail is string
+        ? userData.profile.assignedCoordinatorEmail.lower()
+        : '';
+
+      return rootAssignment != '' ? rootAssignment : profileAssignment;
+    }
+
+    function isAllowedCoordinatorAssignment(userId) {
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+
+      return isCoordinator()
+        && dataHasRole(resource.data, 'employer')
+        && assignedCoordinatorEmail(userId) == ''
+        && changedFields.hasOnly([
+          'assignedCoordinatorEmail',
+          'assignedBy',
+          'assignedAt'
+        ])
+        && request.resource.data.assignedCoordinatorEmail
+          == authenticatedEmail()
+        && request.resource.data.assignedBy == authenticatedEmail()
+        && request.resource.data.assignedAt == request.time;
+    }
+
+    // Privacy requests and deterministic private-access grants
+    function privacyRequestPath(requestId) {
+      return /databases/$(database)/documents/privacy_requests/$(requestId);
+    }
+
+    function privateAccessPath(targetEmail, requesterEmail) {
+      return /databases/$(database)/documents/users/$(targetEmail)/private_access/$(requesterEmail);
+    }
+
+    function targetEmployerExists(targetEmail) {
+      return exists(userPath(targetEmail));
+    }
+
+    function targetEmployerData(targetEmail) {
+      return get(userPath(targetEmail)).data;
+    }
+
+    function validApprovalStatus(status) {
+      return status in ['pending', 'approved', 'rejected'];
+    }
+
+    function privacyRequestResult(data) {
+      return data.employerApprovalStatus == 'rejected'
+          || data.coordinatorApprovalStatus == 'rejected'
+        ? 'rejected'
+        : (
+          data.employerApprovalStatus == 'approved'
+            && (
+              data.coordinatorApprovalStatus == 'approved'
+              || (
+                data.requiresCoordinatorApproval == false
+                && data.coordinatorApprovalStatus == 'not_required'
+              )
+            )
+          ? 'approved'
+          : 'pending'
+        );
+    }
+
+    function validPrivacyRequestCreate() {
+      let data = request.resource.data;
+      let targetEmail = data.targetEmail;
+      let assignedEmail = assignedCoordinatorEmail(targetEmail);
+
+      return isCoordinator()
+        && data.keys().hasOnly([
+          'requesterEmail',
+          'requesterName',
+          'requesterCenterName',
+          'requesterRole',
+          'targetEmail',
+          'targetEmployerName',
+          'targetEmployerContactName',
+          'targetEmployerRole',
+          'assignedCoordinatorEmail',
+          'requiresCoordinatorApproval',
+          'employerApprovalStatus',
+          'coordinatorApprovalStatus',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'employerReviewedAt',
+          'employerReviewedBy',
+          'coordinatorReviewedAt',
+          'coordinatorReviewedBy',
+          'reviewedAt',
+          'reviewedBy'
+        ])
+        && data.keys().hasAll([
+          'requesterEmail',
+          'requesterRole',
+          'targetEmail',
+          'assignedCoordinatorEmail',
+          'requiresCoordinatorApproval',
+          'employerApprovalStatus',
+          'coordinatorApprovalStatus',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.requesterEmail == authenticatedEmail()
+        && data.requesterRole == 'coordinator'
+        && data.targetEmail is string
+        && data.targetEmail == data.targetEmail.lower()
+        && data.targetEmail != authenticatedEmail()
+        && targetEmployerExists(data.targetEmail)
+        && isValidApplicationUserData(targetEmployerData(data.targetEmail))
+        && dataHasRole(targetEmployerData(data.targetEmail), 'employer')
+        && assignedEmail != authenticatedEmail()
+        && data.assignedCoordinatorEmail == assignedEmail
+        && data.requiresCoordinatorApproval == (assignedEmail != '')
+        && data.employerApprovalStatus == 'pending'
+        && data.coordinatorApprovalStatus
+          == (assignedEmail != '' ? 'pending' : 'not_required')
+        && data.status == 'pending'
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && data.employerReviewedAt == null
+        && data.employerReviewedBy == null
+        && data.coordinatorReviewedAt == null
+        && data.coordinatorReviewedBy == null
+        && data.reviewedAt == null
+        && data.reviewedBy == null;
+    }
+
+    function privacyRequestIdentityIsUnchanged() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          'employerApprovalStatus',
+          'coordinatorApprovalStatus',
+          'status',
+          'updatedAt',
+          'employerReviewedAt',
+          'employerReviewedBy',
+          'coordinatorReviewedAt',
+          'coordinatorReviewedBy',
+          'reviewedAt',
+          'reviewedBy'
+        ]);
+    }
+
+    function privacyRequestAssignmentIsCurrent(data) {
+      return targetEmployerExists(data.targetEmail)
+        && dataHasRole(targetEmployerData(data.targetEmail), 'employer')
+        && assignedCoordinatorEmail(data.targetEmail)
+          == data.assignedCoordinatorEmail;
+    }
+
+    function privacyRequestStateIsValid(data) {
+      return validApprovalStatus(data.employerApprovalStatus)
+        && (
+          (
+            data.requiresCoordinatorApproval == true
+            && validApprovalStatus(data.coordinatorApprovalStatus)
+          )
+          || (
+            data.requiresCoordinatorApproval == false
+            && data.assignedCoordinatorEmail == ''
+            && data.coordinatorApprovalStatus == 'not_required'
+          )
+        )
+        && data.status == privacyRequestResult(data);
+    }
+
+    function validEmployerPrivacyDecision() {
+      return resource.data.targetEmail == authenticatedEmail()
+        && isEmployer()
+        && resource.data.requesterEmail != authenticatedEmail()
+        && resource.data.status == 'pending'
+        && resource.data.employerApprovalStatus == 'pending'
+        && request.resource.data.employerApprovalStatus
+          in ['approved', 'rejected']
+        && request.resource.data.coordinatorApprovalStatus
+          == resource.data.coordinatorApprovalStatus
+        && request.resource.data.employerReviewedAt == request.time
+        && request.resource.data.employerReviewedBy == authenticatedEmail()
+        && request.resource.data.coordinatorReviewedAt
+          == resource.data.coordinatorReviewedAt
+        && request.resource.data.coordinatorReviewedBy
+          == resource.data.coordinatorReviewedBy
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validCoordinatorPrivacyDecision() {
+      return resource.data.assignedCoordinatorEmail == authenticatedEmail()
+        && isCoordinator()
+        && resource.data.requesterEmail != authenticatedEmail()
+        && resource.data.status == 'pending'
+        && resource.data.employerApprovalStatus == 'approved'
+        && resource.data.coordinatorApprovalStatus == 'pending'
+        && request.resource.data.employerApprovalStatus
+          == resource.data.employerApprovalStatus
+        && request.resource.data.coordinatorApprovalStatus
+          in ['approved', 'rejected']
+        && request.resource.data.employerReviewedAt
+          == resource.data.employerReviewedAt
+        && request.resource.data.employerReviewedBy
+          == resource.data.employerReviewedBy
+        && request.resource.data.coordinatorReviewedAt == request.time
+        && request.resource.data.coordinatorReviewedBy
+          == authenticatedEmail()
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validPrivacyRequestUpdate() {
+      return privacyRequestIdentityIsUnchanged()
+        && privacyRequestAssignmentIsCurrent(request.resource.data)
+        && privacyRequestStateIsValid(request.resource.data)
+        && (
+          validEmployerPrivacyDecision()
+          || validCoordinatorPrivacyDecision()
+          || isAdmin()
+        );
+    }
+
+    function isPrivacyRequestParticipant(data) {
+      return isApplicationUser()
+        && (
+          data.requesterEmail == authenticatedEmail()
+          || data.targetEmail == authenticatedEmail()
+          || (
+            isCoordinator()
+            && data.assignedCoordinatorEmail == authenticatedEmail()
+          )
+        );
+    }
+
+    function approvedRequestMatchesGrant(targetEmail, requesterEmail, grantData) {
+      let approval = get(privacyRequestPath(grantData.sourceRequestId)).data;
+
+      return approval.requesterEmail == requesterEmail
+        && approval.targetEmail == targetEmail
+        && approval.assignedCoordinatorEmail == grantData.assignedCoordinatorEmail
+        && approval.employerApprovalStatus == 'approved'
+        && approval.coordinatorApprovalStatus
+          == grantData.coordinatorApprovalStatus
+        && approval.status == 'approved'
+        && privacyRequestAssignmentIsCurrent(approval);
+    }
+
+    function validPrivateAccessGrant(targetEmail, requesterEmail, grantData) {
+      return grantData.keys().hasOnly([
+          'sourceRequestId',
+          'targetEmail',
+          'requesterEmail',
+          'assignedCoordinatorEmail',
+          'employerApprovalStatus',
+          'coordinatorApprovalStatus',
+          'grantedAt',
+          'updatedAt'
+        ])
+        && grantData.keys().hasAll([
+          'sourceRequestId',
+          'targetEmail',
+          'requesterEmail',
+          'assignedCoordinatorEmail',
+          'employerApprovalStatus',
+          'coordinatorApprovalStatus',
+          'grantedAt',
+          'updatedAt'
+        ])
+        && grantData.sourceRequestId is string
+        && exists(privacyRequestPath(grantData.sourceRequestId))
+        && grantData.targetEmail == targetEmail
+        && grantData.requesterEmail == requesterEmail
+        && grantData.assignedCoordinatorEmail
+          == assignedCoordinatorEmail(targetEmail)
+        && grantData.employerApprovalStatus == 'approved'
+        && (
+          grantData.coordinatorApprovalStatus == 'approved'
+          || (
+            grantData.assignedCoordinatorEmail == ''
+            && grantData.coordinatorApprovalStatus == 'not_required'
+          )
+        )
+        && approvedRequestMatchesGrant(
+          targetEmail,
+          requesterEmail,
+          grantData
+        );
+    }
+
+    function canWritePrivateAccessGrant(targetEmail, requesterEmail) {
+      let assignedEmail = assignedCoordinatorEmail(targetEmail);
+
+      return (
+          hasAuthenticatedEmail()
+          && authenticatedEmail() != requesterEmail
+          && (
+            authenticatedEmail() == targetEmail
+            || authenticatedEmail() == assignedEmail
+          )
+        )
+        || isAdmin();
+    }
+
+    function hasApprovedPrivateAccess(
+      targetEmail,
+      requesterEmail,
+      currentAssignedEmail
+    ) {
+      let grantPath = privateAccessPath(targetEmail, requesterEmail);
+      let grant = get(grantPath).data;
+      let approvalPath = privacyRequestPath(grant.sourceRequestId);
+      let approval = get(approvalPath).data;
+
+      return exists(grantPath)
+        && grant.sourceRequestId is string
+        && grant.targetEmail == targetEmail
+        && grant.requesterEmail == requesterEmail
+        && exists(approvalPath)
+        && approval.targetEmail == targetEmail
+        && approval.requesterEmail == requesterEmail
+        && approval.status == 'approved'
+        && approval.employerApprovalStatus == 'approved'
+        && approval.coordinatorApprovalStatus
+          == grant.coordinatorApprovalStatus
+        && approval.assignedCoordinatorEmail
+          == currentAssignedEmail;
+    }
+
+    function canReadPrivateInfo(userId) {
+      let assignedEmail = assignedCoordinatorEmail(userId);
+
+      return currentUserExists()
+        && isWhitelistedData(currentUserData())
+        && (
+          isSelfUser(userId)
+          || assignedEmail == authenticatedEmail()
+          || hasApprovedPrivateAccess(
+            userId,
+            authenticatedEmail(),
+            assignedEmail
+          )
+          || isAdmin()
+        );
+    }
+
+    function isAllowedPrivateInfoOwnerWrite() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          'phone',
+          'directEmail',
+          'personalMobile',
+          'mobile',
+          'directPhone',
+          'updatedAt'
+        ]);
+    }
+
+    // Events and registrations
+    function eventPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    function registrationPath(eventId, userId) {
+      return /databases/$(database)/documents/events/$(eventId)/registrations/$(userId);
+    }
+
+    function eventIsOwnedByCurrentUser(eventData) {
+      return isAuthenticated()
+        && eventData.keys().hasAll(['createdBy'])
+        && eventData.createdBy == request.auth.uid;
+    }
+
+    function eventIsPublished(eventData) {
+      return eventData.keys().hasAll(['status'])
+        && eventData.status == 'published';
+    }
+
+    function eventHasSecureTimeRange(eventData) {
+      return eventData.keys().hasAll(['startsAt', 'endsAt'])
+        && eventData.startsAt is timestamp
+        && eventData.endsAt is timestamp
+        && eventData.endsAt >= eventData.startsAt;
+    }
+
+    function eventHasNotPassed(eventData) {
+      return eventHasSecureTimeRange(eventData)
+        && eventData.endsAt >= request.time;
+    }
+
+    function eventHasPassed(eventData) {
+      return eventHasSecureTimeRange(eventData)
+        && eventData.endsAt < request.time;
+    }
+
+    function canReadEvent(eventData) {
+      return isAdmin()
+        || (
+          isCoordinator()
+          && (
+            eventIsPublished(eventData)
+            || eventIsOwnedByCurrentUser(eventData)
+            || eventHasPassed(eventData)
+          )
+        )
+        || (
+          isEmployer()
+          && eventIsPublished(eventData)
+          && eventHasNotPassed(eventData)
+        );
+    }
+
+    function eventHasRegistrationCapacity(eventData) {
+      return !eventData.keys().hasAny(['capacity'])
+        || eventData.capacity == ''
+        || eventData.capacity == 'ללא הגבלה'
+        || (
+          eventData.keys().hasAll(['registeredCount'])
+          && eventData.registeredCount is int
+          && (
+            (
+              eventData.capacity is int
+              && eventData.registeredCount < eventData.capacity
+            )
+            || (
+              eventData.capacity is string
+              && eventData.registeredCount < int(eventData.capacity)
+            )
+          )
+        );
+    }
+
+    function eventCreateFieldsAreAllowed() {
+      return request.resource.data.keys().hasOnly([
+        'title',
+        'type',
+        'date',
+        'time',
+        'startsAt',
+        'endsAt',
+        'location',
+        'capacity',
+        'description',
+        'coordinatorPhone',
+        'coordinatorName',
+        'center',
+        'isOnline',
+        'isAccessible',
+        'accessibilityContactName',
+        'accessibilityContactPhone',
+        'paymentMethod',
+        'price',
+        'discountDetails',
+        'paymentDetails',
+        'media',
+        'image',
+        'photoUrl',
+        'logoUrl',
+        'photoPreview',
+        'status',
+        'createdBy',
+        'createdAt',
+        'registeredCount',
+        'registeredUids'
+      ]);
+    }
+
+    function validEventCreate() {
+      return (isCoordinator() || isAdmin())
+        && eventCreateFieldsAreAllowed()
+        && request.resource.data.keys().hasAll([
+          'title',
+          'description',
+          'date',
+          'time',
+          'startsAt',
+          'endsAt',
+          'status',
+          'createdBy',
+          'createdAt',
+          'registeredCount',
+          'registeredUids'
+        ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'published'
+        && request.resource.data.createdAt == request.time
+        && eventHasSecureTimeRange(request.resource.data)
+        && request.resource.data.endsAt >= request.time
+        && request.resource.data.registeredCount == 0
+        && request.resource.data.registeredUids is list
+        && request.resource.data.registeredUids.size() == 0;
+    }
+
+    function eventUpdateKeepsOwnership() {
+      return resource.data.keys().hasAll(['createdBy'])
+        && request.resource.data.keys().hasAll(['createdBy'])
+        && request.resource.data.createdBy == resource.data.createdBy;
+    }
+
+    function coordinatorEventFieldsAreAllowed() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          'title',
+          'type',
+          'date',
+          'time',
+          'startsAt',
+          'endsAt',
+          'location',
+          'capacity',
+          'description',
+          'coordinatorPhone',
+          'coordinatorName',
+          'center',
+          'isOnline',
+          'isAccessible',
+          'accessibilityContactName',
+          'accessibilityContactPhone',
+          'paymentMethod',
+          'price',
+          'discountDetails',
+          'paymentDetails',
+          'media',
+          'image',
+          'photoUrl',
+          'logoUrl',
+          'photoPreview',
+          'status'
+        ]);
+    }
+
+    function validCoordinatorEventUpdate() {
+      return isCoordinator()
+        && eventIsOwnedByCurrentUser(resource.data)
+        && eventUpdateKeepsOwnership()
+        && eventHasNotPassed(resource.data)
+        && eventHasNotPassed(request.resource.data)
+        && coordinatorEventFieldsAreAllowed()
+        && request.resource.data.status in ['published', 'unpublished'];
+    }
+
+    function isEventArchiveTransition() {
+      return resource.data.status != 'deleted'
+        && request.resource.data.status == 'deleted';
+    }
+
+    function validAdminPastArchive() {
+      return isAdmin()
+        && eventUpdateKeepsOwnership()
+        && isEventArchiveTransition()
+        && eventHasPassed(resource.data)
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'status',
+            'updatedAt',
+            'archivedAt',
+            'deletedAt'
+          ]);
+    }
+
+    function validAdminEventUpdate() {
+      return isAdmin()
+        && eventUpdateKeepsOwnership()
+        && (
+          !isEventArchiveTransition()
+          || validAdminPastArchive()
+        );
+    }
+
+    function validEmployerEventRegistrationUpdate(eventId) {
+      let oldUids = resource.data.registeredUids;
+      let newUids = request.resource.data.registeredUids;
+
+      return isEmployer()
+        && eventIsPublished(resource.data)
+        && eventHasNotPassed(resource.data)
+        && eventHasRegistrationCapacity(resource.data)
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'registeredCount',
+            'registeredUids',
+            'lastRegistrationAt'
+          ])
+        && resource.data.registeredCount is int
+        && request.resource.data.registeredCount
+          == resource.data.registeredCount + 1
+        && oldUids is list
+        && newUids is list
+        && !oldUids.hasAny([request.auth.uid])
+        && newUids.size() == oldUids.size() + 1
+        && newUids.hasAll(oldUids)
+        && newUids.hasAny([request.auth.uid])
+        && request.resource.data.lastRegistrationAt == request.time
+        && existsAfter(registrationPath(eventId, request.auth.uid))
+        && getAfter(registrationPath(eventId, request.auth.uid)).data.uid
+          == request.auth.uid;
+    }
+
+    function eventIsOwnedByCurrentCoordinator(eventId) {
+      return isCoordinator()
+        && eventIsOwnedByCurrentUser(get(eventPath(eventId)).data);
+    }
+
+    function validRegistrationCreate(eventId, registrationId) {
+      let eventBefore = get(eventPath(eventId)).data;
+      let eventAfter = getAfter(eventPath(eventId)).data;
+      let registration = request.resource.data;
+
+      return isEmployer()
+        && registrationId == request.auth.uid
+        && eventIsPublished(eventBefore)
+        && eventHasNotPassed(eventBefore)
+        && eventHasRegistrationCapacity(eventBefore)
+        && registration.keys().hasOnly([
+          'signupId',
+          'uid',
+          'employerName',
+          'displayName',
+          'email',
+          'center',
+          'companyName',
+          'role',
+          'paymentMethod',
+          'status',
+          'registeredAt',
+          'registeredAtISO'
+        ])
+        && registration.keys().hasAll([
+          'signupId',
+          'uid',
+          'email',
+          'role',
+          'status',
+          'registeredAt'
+        ])
+        && registration.signupId == eventId + '_' + request.auth.uid
+        && registration.uid == request.auth.uid
+        && registration.email is string
+        && registration.email.lower() == authenticatedEmail()
+        && registration.role == 'employer'
+        && registration.status in ['registered', 'pending_payment']
+        && registration.registeredAt == request.time
+        && eventBefore.registeredCount is int
+        && eventAfter.registeredCount == eventBefore.registeredCount + 1
+        && eventBefore.registeredUids is list
+        && eventAfter.registeredUids is list
+        && !eventBefore.registeredUids.hasAny([request.auth.uid])
+        && eventAfter.registeredUids.size()
+          == eventBefore.registeredUids.size() + 1
+        && eventAfter.registeredUids.hasAll(eventBefore.registeredUids)
+        && eventAfter.registeredUids.hasAny([request.auth.uid]);
+    }
+
+    function validPromotionalContent(data) {
+      return data.keys().hasOnly([
+          'title',
+          'description',
+          'mediaType',
+          'mediaUrl',
+          'mediaAssetKey',
+          'order',
+          'isActive',
+          'audience',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && data.keys().hasAll([
+          'title',
+          'description',
+          'mediaType',
+          'order',
+          'isActive',
+          'audience',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 80
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 140
+        && data.mediaType in ['image', 'video']
+        && (
+          (
+            data.keys().hasAll(['mediaUrl'])
+            && data.mediaUrl is string
+            && data.mediaUrl.size() > 0
+          )
+          || (
+            data.keys().hasAll(['mediaAssetKey'])
+            && data.mediaAssetKey is string
+            && data.mediaAssetKey.size() > 0
+          )
+        )
+        && data.order is int
+        && data.order >= 0
+        && data.isActive is bool
+        && data.audience in ['all', 'admin', 'coordinator', 'employer']
+        && data.updatedAt == request.time
+        && data.updatedBy == authenticatedEmail();
+    }
+
+    match /users/{userId} {
+      // Self-get supports the login rejection flow. Firestore cannot expose
+      // selected fields from a document, so protected data must stay elsewhere.
+      allow get: if isSelfUser(userId)
+        || isAdmin()
+        || isApplicationUser();
+      allow list: if isAdmin() || isApplicationUser();
+
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || isAllowedCoordinatorAssignment(userId)
+        || (
+          isSelfUser(userId)
+          && isApplicationUser()
+          && isAllowedSelfUserUpdate()
+        );
+
+      match /private_info/{privateDocumentId} {
+        allow read: if privateDocumentId == 'details'
+          && canReadPrivateInfo(userId);
+        allow create: if privateDocumentId == 'details'
+          && (
+            isAdmin()
+            || (
+              isSelfUser(userId)
+              && isEmployer()
+              && isApplicationUser()
+              && request.resource.data.keys().hasOnly([
+                'phone',
+                'directEmail',
+                'personalMobile',
+                'mobile',
+                'directPhone',
+                'updatedAt'
+              ])
+            )
+          );
+        allow update: if privateDocumentId == 'details'
+          && (
+            isAdmin()
+            || (
+              isSelfUser(userId)
+              && isEmployer()
+              && isApplicationUser()
+              && isAllowedPrivateInfoOwnerWrite()
+            )
+          );
+        allow delete: if privateDocumentId == 'details' && isAdmin();
+      }
+
+      match /private_access/{requesterEmail} {
+        allow get: if isAdmin()
+          || (
+            isApplicationUser()
+            && (
+              isSelfUser(userId)
+              || authenticatedEmail() == requesterEmail
+              || assignedCoordinatorEmail(userId) == authenticatedEmail()
+            )
+          );
+        allow list: if isAdmin() || isSelfUser(userId);
+        allow create, update: if canWritePrivateAccessGrant(
+            userId,
+            requesterEmail
+          )
+          && validPrivateAccessGrant(
+            userId,
+            requesterEmail,
+            request.resource.data
+          )
+          && request.resource.data.grantedAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canWritePrivateAccessGrant(userId, requesterEmail);
+      }
+    }
+
+    match /events/{eventId} {
+      allow get, list: if canReadEvent(resource.data);
+      allow create: if validEventCreate();
+      allow update: if validAdminEventUpdate()
+        || validCoordinatorEventUpdate()
+        || validEmployerEventRegistrationUpdate(eventId);
+      allow delete: if false;
+
+      match /registrations/{registrationId} {
+        allow get, list: if isAdmin()
+          || (
+            isEmployer()
+            && resource.data.keys().hasAll(['uid'])
+            && resource.data.uid == request.auth.uid
+          )
+          || eventIsOwnedByCurrentCoordinator(eventId);
+        allow create: if validRegistrationCreate(eventId, registrationId);
+        allow update: if isAdmin()
+          || (
+            isEmployer()
+            && registrationId == request.auth.uid
+            && resource.data.uid == request.auth.uid
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.email == resource.data.email
+            && request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly(['paymentMethod', 'status'])
+            && request.resource.data.status
+              in ['registered', 'pending_payment', 'cancelled']
+          );
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /privacy_requests/{requestId} {
+      allow get, list: if isAdmin()
+        || isPrivacyRequestParticipant(resource.data);
+      allow create: if validPrivacyRequestCreate();
+      allow update: if validPrivacyRequestUpdate();
+      allow delete: if isAdmin();
+    }
+
+    // Preserve the current admin-managed article moderation workflow.
+    match /articles/{articleId} {
+      allow get, list: if isAdmin()
+        || (
+          isApplicationUser()
+          && resource.data.keys().hasAll(['status'])
+          && resource.data.status == 'approved'
+        );
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /promotional_content/{slideId} {
+      allow get, list: if isAdmin()
+        || (
+          isApplicationUser()
+          && resource.data.keys().hasAll(['isActive'])
+          && resource.data.isActive == true
+        );
+      allow create, update: if isAdmin()
+        && validPromotionalContent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

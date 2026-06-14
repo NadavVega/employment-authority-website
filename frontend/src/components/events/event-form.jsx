@@ -424,7 +424,7 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                   <option value="" disabled hidden>בחר סוג אירוע</option>
                                     <option value="הכשרה">הכשרה</option>
                                     <option value="יום קריירה">יום קריירה</option>
-                                    <option value="ירידת תעסוקה">ירידת תעסוקה</option>
+                                    <option value="ירידת עבודה">ירידת עבודה</option>
                                     <option value="סדנה">סדנה</option>
                 </select>
                 {errors.type && <span className="error-text">{errors.type}</span>}
@@ -450,7 +450,7 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
             <div className="form-group">
               <label>שיוך למרכז</label>
               <select value={formData.center} onChange={e => setFormData({ ...formData, center: e.target.value })} className="input-standard">
-                <option value="">מרכז הקרייה באוניברסיטה העברית</option>
+                <option value="">בחר מרכז</option>
                 {Object.keys(CENTER_COLORS).map(c => <option key={c} value={c}>{c}</option>)}
                 {(userRole === 'coordinator' && !isAdmin) && <option value="coordinators-only">coordinators-only</option>}
               </select>

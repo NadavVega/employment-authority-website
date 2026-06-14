@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Calendar from 'react-calendar';
 import { Box, Typography, Button, Tooltip, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { getEventColor } from '../../utils/centerColors';
 const EventCalendar = ({ events, userName }) => {
     const navigate = useNavigate();
     const [activeDate, setActiveDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState('year');
+    const [viewMode, setViewMode] = useState('month');
 
     const handlePrev = () => {
         setActiveDate(viewMode === 'year'
@@ -55,6 +55,9 @@ const EventCalendar = ({ events, userName }) => {
         // ─── YEAR VIEW ───────────────────────────────────────────────
         if (view === 'year') {
             const monthEvents = getFutureEventsForMonth(date);
+            const isCurrentMonth =
+                date.getFullYear() === now.getFullYear() &&
+                date.getMonth() === now.getMonth();
             const isPast =
                 date.getFullYear() < now.getFullYear() ||
                 (date.getFullYear() === now.getFullYear() && date.getMonth() < now.getMonth());
@@ -64,68 +67,54 @@ const EventCalendar = ({ events, userName }) => {
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    pt: 1,
+                    pt: 0.75,
                     width: '100%',
                     opacity: isPast ? 0.4 : 1,
                     filter: isPast ? 'grayscale(0.5)' : 'none',
+                    overflow: 'hidden',
                 }}>
-                    <Typography variant="body2" fontWeight={800} sx={{ color: 'var(--color-primary-dark)', textAlign: 'center' }}>
-                        {monthEvents.length > 0 ? `(${monthEvents.length} אירועים)` : ''}
-                    </Typography>
-
-                    <Box sx={{ mt: 1, px: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        {monthEvents.length === 0 ? (
-                            // Only show "no events" message for current and future months
-                            !isPast && (
-                                <Typography variant="caption" sx={{
-                                    color: 'var(--color-text-muted)',
-                                    textAlign: 'center',
-                                    display: 'block',
-                                    mt: 2
-                                }}>
-                                    לא נוצרו אירועים לחודש זה כרגע.
+                    {isCurrentMonth ? (
+                        <Box sx={{ mt: 0.75, px: 0.75, display: 'flex', flexDirection: 'column', gap: 0.4 }}>
+                            {monthEvents.slice(0, 3).map((event, index) => (
+                                <Box key={event.id || index} sx={{ minWidth: 0, borderRight: `3px solid ${getEventColor(event, index)}`, pr: 0.75 }}>
+                                    <Typography variant="caption" sx={{
+                                        color: 'var(--color-text)',
+                                        fontWeight: 600,
+                                        display: 'block',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        textAlign: 'right'
+                                    }}>
+                                        {event.title}
+                                    </Typography>
+                                </Box>
+                            ))}
+                            {monthEvents.length > 3 && (
+                                <Typography variant="caption" sx={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                                    +{monthEvents.length - 3}
                                 </Typography>
-                            )
-                        ) : (
-                            monthEvents.slice(0, 3).map((e, i) => {
-                                const eDate = e.date?.toDate ? e.date.toDate() : new Date(e.date);
-                                return (
-                                    <Box key={i} sx={{
-                                bgcolor: '#ffffff',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                                borderRadius: '8px',
-                                p: '4px 8px',
-                                borderRight: `3px solid ${getEventColor(e, i)}`,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.1)'
-                                }
-                            }}>
-                                <Typography variant="caption" sx={{
-                                    color: getEventColor(e, i),
-                                    fontWeight: 700,
-                                    display: 'block',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    textAlign: 'right'
-                                }}>
-                                    {e.title}
+                            )}
+                        </Box>
+                    ) : (
+                        <Box
+                            aria-label={monthEvents.length ? `${monthEvents.length} אירועים` : 'אין אירועים'}
+                            sx={{ mt: 1.25, px: 1, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.6 }}
+                        >
+                            {monthEvents.slice(0, 8).map((event, index) => (
+                                <Box
+                                    key={event.id || index}
+                                    title={event.center || event.title}
+                                    sx={{ width: '9px', height: '9px', bgcolor: getEventColor(event, index), borderRadius: '2px' }}
+                                />
+                            ))}
+                            {monthEvents.length > 8 && (
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-muted)', lineHeight: 1 }}>
+                                    +{monthEvents.length - 8}
                                 </Typography>
-                            </Box>
-                                );
-                            })
-                        )}
-                        {monthEvents.length > 3 && (
-                            <Typography variant="caption" sx={{
-                                textAlign: 'center',
-                                fontWeight: 'bold',
-                                color: 'var(--color-primary-dark)'
-                            }}>...</Typography>
-                        )}
-                    </Box>
+                            )}
+                        </Box>
+                    )}
                 </Box>
             );
         }
@@ -151,7 +140,6 @@ const EventCalendar = ({ events, userName }) => {
                     {dayEvents.map((e, i) => (
                         <Tooltip
                             key={i}
-                            interactive
                             placement="top"
                             arrow
                             slotProps={{
@@ -159,8 +147,8 @@ const EventCalendar = ({ events, userName }) => {
                                     sx: {
                                         bgcolor: '#ffffff',
                                         color: '#0f172a',
-                                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                                        borderRadius: '16px',
+                                        boxShadow: 'var(--shadow-md)',
+                                        borderRadius: 'var(--radius-md)',
                                         p: 2.5,
                                         minWidth: '280px',
                                         border: '1px solid #e2e8f0',
@@ -169,26 +157,26 @@ const EventCalendar = ({ events, userName }) => {
                             }}
                             title={
                                 <Box sx={{ textAlign: 'right', direction: 'rtl' }}>
-                                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5, color: '#003b8b' }}>
+                                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5, color: 'var(--color-text)' }}>
                                         {e.title}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ mb: 0.5, color: '#475569' }}>
+                                    <Typography variant="body2" sx={{ mb: 0.5, color: 'var(--color-text-muted)' }}>
                                         <strong>שעה: </strong>{e.time}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ mb: 2.5, color: '#475569' }}>
+                                    <Typography variant="body2" sx={{ mb: 2.5, color: 'var(--color-text-muted)' }}>
                                         <strong>מיקום: </strong>{e.location}
                                     </Typography>
                                     <Button
                                         size="medium"
                                         variant="contained"
                                         sx={{
-                                            borderRadius: '99px',
-                                            bgcolor: '#003b8b',
-                                            color: '#fff',
+                                            borderRadius: 'var(--radius-md)',
+                                            bgcolor: 'var(--color-accent)',
+                                            color: 'var(--color-text)',
                                             width: '100%',
                                             fontWeight: 700,
                                             boxShadow: 'none',
-                                            '&:hover': { bgcolor: '#002863' }
+                                            '&:hover': { bgcolor: 'var(--color-accent-hover)' }
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -201,20 +189,17 @@ const EventCalendar = ({ events, userName }) => {
                             }
                         >
                             <Box sx={{
-                                bgcolor: '#ffffff',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                                borderRadius: '8px',
-                                p: '4px 8px',
+                                bgcolor: 'var(--color-surface)',
+                                borderRadius: 'var(--radius-sm)',
+                                p: '3px 5px',
+                                border: '1px solid var(--color-border)',
                                 borderRight: `3px solid ${getEventColor(e, i)}`,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.1)'
-                                }
+                                transition: 'var(--t)',
+                                '&:hover': { borderColor: getEventColor(e, i) }
                             }}>
                                 <Typography variant="caption" sx={{
-                                    color: getEventColor(e, i),
+                                    color: 'var(--color-text)',
                                     fontWeight: 700,
                                     display: 'block',
                                     overflow: 'hidden',
@@ -235,48 +220,61 @@ const EventCalendar = ({ events, userName }) => {
     };
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#f8fafc' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', bgcolor: 'var(--color-surface)' }}>
 
             {/* ── HEADER ── */}
-           <Box sx={{
+            <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: '220px 1fr 300px 80px',
+                flexDirection: 'column',
                 alignItems: 'center',
-                px: 2,
+                px: { xs: 1.25, sm: 2 },
                 py: 1.5,
                 gap: 1,
                 direction: 'rtl',
-                bgcolor: 'var(--color-surface)',
+                bgcolor: 'var(--color-bg)',
                 borderBottom: '1px solid var(--color-border)',
-                zIndex: 10,
-
-                '@media (max-width: 900px)': {
-                    gridTemplateColumns: '1fr',
-                    justifyItems: 'center',
-                    gap: 1.5
-                }
+                zIndex: 10
             }}>
-                <Typography variant="h6" fontWeight={700}>שלום, {userName}</Typography>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight={700}>
-                        {viewMode === 'year'
-                            ? activeDate.getFullYear()
-                            : activeDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+                <Box sx={{
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'minmax(72px, 1fr) auto minmax(64px, 1fr)', sm: '1fr auto 1fr' },
+                    alignItems: 'center',
+                    columnGap: { xs: 0.5, sm: 1.25 }
+                }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ color: 'var(--color-text)', textAlign: 'right', whiteSpace: 'nowrap', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                        לוח אירועים
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'ltr', minWidth: { xs: '132px', sm: '190px' } }}>
+                        <Button onClick={handlePrev} aria-label="התקופה הקודמת" sx={{ minWidth: '30px', width: '30px', height: '30px', p: 0, color: 'var(--color-text)' }}>&lt;</Button>
+                        <Typography fontWeight={800} sx={{ color: 'var(--color-text)', textAlign: 'center', flex: 1, whiteSpace: 'nowrap', fontSize: { xs: '0.85rem', sm: '1rem' } }}>
+                            {viewMode === 'year'
+                                ? activeDate.getFullYear()
+                                : activeDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+                        </Typography>
+                        <Button onClick={handleNext} aria-label="התקופה הבאה" sx={{ minWidth: '30px', width: '30px', height: '30px', p: 0, color: 'var(--color-text)' }}>&gt;</Button>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text)', minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
+                        שלום, {userName}
                     </Typography>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button onClick={handlePrev}>&lt;</Button>
-
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto 1fr',
+                    width: '100%',
+                    alignItems: 'center',
+                    direction: 'ltr'
+                }}>
                     <Paper
                         elevation={0}
                         sx={{
+                            gridColumn: 2,
                             display: 'flex',
-                            p: '4px',
-                            bgcolor: '#f8fafc',
-                            borderRadius: '99px',
-                            border: '1px solid #f1f5f9',
+                            p: '2px',
+                            bgcolor: 'var(--color-surface)',
+                            borderRadius: 0,
+                            border: '1px solid var(--color-border)',
                             overflow: 'hidden',
                             gap: 0,
                             direction: 'rtl'
@@ -285,21 +283,19 @@ const EventCalendar = ({ events, userName }) => {
                         <Button
                             onClick={() => setViewMode('month')}
                             sx={{
-                                minWidth: '68px',
-                                px: 2,
-                                py: 0.8,
-                                borderRadius: '0 99px 99px 0',
+                                minWidth: '58px',
+                                px: 1.25,
+                                py: 0.25,
+                                borderRadius: 'var(--radius-sm)',
                                 fontWeight: viewMode === 'month' ? '700' : '500',
-                                color: viewMode === 'month'
-                                    ? 'var(--color-primary-dark)'
-                                    : 'var(--color-text-muted)',
-                                bgcolor: viewMode === 'month' ? '#ffffff' : 'transparent',
-                                boxShadow: viewMode === 'month'
-                                    ? '0 2px 8px rgba(15, 23, 42, 0.06)'
-                                    : 'none',
+                                color: 'var(--color-text)',
+                                bgcolor: viewMode === 'month'
+                                    ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)'
+                                    : 'transparent',
+                                boxShadow: 'none',
                                 '&:hover': {
-                                    bgcolor: viewMode === 'month' ? '#ffffff' : '#eef2f7',
-                                    borderRadius: '0 99px 99px 0'
+                                    bgcolor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                                    borderRadius: 'var(--radius-sm)'
                                 }
                             }}
                         >
@@ -309,21 +305,19 @@ const EventCalendar = ({ events, userName }) => {
                         <Button
                             onClick={() => setViewMode('year')}
                             sx={{
-                                minWidth: '68px',
-                                px: 2,
-                                py: 0.8,
-                                borderRadius: '99px 0 0 99px',
+                                minWidth: '58px',
+                                px: 1.25,
+                                py: 0.25,
+                                borderRadius: 'var(--radius-sm)',
                                 fontWeight: viewMode === 'year' ? '700' : '500',
-                                color: viewMode === 'year'
-                                    ? 'var(--color-primary-dark)'
-                                    : 'var(--color-text-muted)',
-                                bgcolor: viewMode === 'year' ? '#ffffff' : 'transparent',
-                                boxShadow: viewMode === 'year'
-                                    ? '0 2px 8px rgba(15, 23, 42, 0.06)'
-                                    : 'none',
+                                color: 'var(--color-text)',
+                                bgcolor: viewMode === 'year'
+                                    ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)'
+                                    : 'transparent',
+                                boxShadow: 'none',
                                 '&:hover': {
-                                    bgcolor: viewMode === 'year' ? '#ffffff' : '#eef2f7',
-                                    borderRadius: '99px 0 0 99px'
+                                    bgcolor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                                    borderRadius: 'var(--radius-sm)'
                                 }
                             }}
                         >
@@ -331,64 +325,91 @@ const EventCalendar = ({ events, userName }) => {
                         </Button>
                     </Paper>
 
-                    <Button onClick={handleNext}>&gt;</Button>
+                    <Button
+                        onClick={handleToday}
+                        size="small"
+                        sx={{
+                            gridColumn: 1,
+                            gridRow: 1,
+                            justifySelf: 'start',
+                            minWidth: '52px',
+                            py: 0.25,
+                            color: 'var(--color-text)'
+                        }}
+                    >
+                        היום
+                    </Button>
                 </Box>
-
-                <Button onClick={handleToday}>היום</Button>
             </Box>
 
             {/* ── CALENDAR ── */}
             <Box sx={{
-                flexGrow: 1,
-                px: 2,
-                pb: 3,
-                pt: 2,
+                px: { xs: 1, sm: 1.75 },
+                pb: 2,
+                pt: 1.5,
                 display: 'flex',
                 flexDirection: 'column',
-                '& .react-calendar': { width: '100%', display: 'flex', height: '100%', border: 'none', bgcolor: 'transparent' },
+                '& .react-calendar': { width: '100%', border: 'none', bgcolor: 'transparent' },
                 '& .react-calendar__navigation': { display: 'none !important' },
 
-                // YEAR VIEW — 4-column grid
+                // YEAR VIEW
                 '& .react-calendar__year-view__months': {
                     display: 'grid !important',
-                    gridTemplateColumns: 'repeat(4, 1fr) !important',
-                    gap: '8px',
-                    padding: '8px',
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr)) !important',
+                    gridTemplateRows: 'repeat(3, 136px) !important',
+                    gridAutoRows: '136px !important',
+                    gap: '6px',
+                    padding: '3px',
+                    height: '426px',
+                    minHeight: '426px',
+                    maxHeight: '426px',
+                    overflow: 'visible',
                 },
                 '& .react-calendar__year-view__months__month': {
                     alignItems: 'center',
                     justifyContent: 'flex-start',
-                    minHeight: '130px',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '38px',
-                    height: '100% !important',
+                    borderRadius: 0,
+                    padding: '25px 4px 4px',
+                    height: '136px !important',
+                    minHeight: '136px !important',
+                    maxHeight: '136px !important',
                     border: '1px solid var(--color-border)',
                     backgroundColor: 'var(--color-surface)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                    transition: 'all 0.2s',
+                    boxShadow: 'none',
+                    transition: 'var(--t)',
                     margin: '0 !important',
                     flex: 'none !important',
                     maxWidth: '100% !important',
-                    '&:hover': { borderColor: 'var(--color-primary)', transform: 'translateY(-2px)' },
+                    overflow: 'hidden',
+                    '&:hover': { borderColor: 'var(--color-accent)' },
                 },
                 '& .react-calendar__year-view__months__month.react-calendar__tile--now': {
                     background: 'var(--color-surface) !important',
                     border: '2px solid var(--color-primary) !important',
-                    color: 'var(--color-primary-dark) !important',
+                    color: 'var(--color-text) !important',
+                    transform: 'none',
+                    zIndex: 1,
                 },
                 '& .react-calendar__year-view__months__month.react-calendar__tile--now abbr': {
-                    color: 'var(--color-primary-dark) !important',
+                    color: 'var(--color-text) !important',
+                    fontWeight: '800',
                 },
 
                 // MONTH VIEW — daily squares
                 '& .react-calendar__tile': {
-                    minHeight: viewMode === 'month' ? '120px' : 'auto',
+                    minHeight: viewMode === 'month' ? '72px' : 'auto',
+                    padding: viewMode === 'month' ? '9px 3px' : undefined,
                     borderRight: '1px solid var(--color-border)',
                     borderBottom: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
                 },
                 '& .react-calendar__tile--now': {
-                    background: 'var(--color-primary) !important',
-                    color: '#ffffff !important',
+                    background: 'var(--color-accent-soft) !important',
+                    color: 'var(--color-text) !important',
+                },
+                '& .react-calendar__tile--active': {
+                    background: 'var(--color-brand-dark) !important',
+                    color: 'var(--color-surface) !important',
                 },
 
                 // Remove weekday underline
