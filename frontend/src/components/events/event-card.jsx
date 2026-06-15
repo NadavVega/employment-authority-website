@@ -175,13 +175,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
 
             <div 
                 className="event-card-bottom">
-                <div className="bottom-date-area standard-numbers">
-                    <p className="bottom-date-big">{dayMonth}</p>
-                </div>
-                <div className="bottom-title-area">
-                    <p className="bottom-title">{event.title}</p>
-                </div>
-                <div className="event-center-logo" title={centerName || 'מרכז תעסוקה'}>
+                <div className="event-center-logo event-logo-container" title={centerName || 'מרכז תעסוקה'}>
                     {centerIcon ? (
                         <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
                     ) : (
@@ -189,6 +183,12 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                             <path d="M4 20h16M6 20V9l6-5 6 5v11M9 12h2v2H9zM13 12h2v2h-2zM9 16h2v2H9zM13 16h2v2h-2z" />
                         </svg>
                     )}
+                </div>
+                <div className="bottom-date-area standard-numbers">
+                    <p className="bottom-date-big">{dayMonth}</p>
+                </div>
+                <div className="bottom-title-area">
+                    <p className="bottom-title">{event.title}</p>
                 </div>
             </div>
         </div>

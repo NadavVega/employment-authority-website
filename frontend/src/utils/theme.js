@@ -2,21 +2,21 @@ import { createTheme } from '@mui/material/styles';
 
 /**
  * Jerusalem Employment Authority Custom Theme.
- * Gold is reserved for primary actions; navy remains the municipal brand color.
+ * Municipal blue is used for primary actions; gold remains an accent color.
  */
 const theme = createTheme({
   direction: 'rtl',
   palette: {
     primary: {
-      main: '#c99a2e',
-      light: '#f4e6c3',
-      dark: '#ad7f1f',
-      contrastText: '#1f2933',
-    },
-    secondary: {
       main: '#003b8b',
+      light: '#e6eef8',
       dark: '#002b66',
       contrastText: '#ffffff',
+    },
+    secondary: {
+      main: '#c99a2e',
+      dark: '#ad7f1f',
+      contrastText: '#1f2933',
     },
     background: {
       default: '#f7f7f4',
@@ -48,7 +48,12 @@ const theme = createTheme({
         },
         containedPrimary: {
           '&:hover': {
+            backgroundColor: '#002b66',
             boxShadow: '0 2px 6px rgba(31, 41, 51, 0.12)',
+          },
+          '&:focus-visible': {
+            outline: '3px solid rgba(0, 59, 139, 0.3)',
+            outlineOffset: 2,
           },
         },
       },

@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
     AppBar,
     Toolbar,
@@ -7,13 +6,11 @@ import {
     Button,
     CssBaseline,
     Slide,
-    useScrollTrigger,
-    IconButton
+    useScrollTrigger
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
-import SideNavigation from '../../features/slide-bar/slide-bar-menu';
+import { logoutUser } from '../../services/firebase/auth-service';
 
 // Logos
 import jerusalemLionLogo from '../../assets/images/logo-new2.svg';
@@ -33,8 +30,6 @@ const MainLayout = ({ children }) => {
     const { isAuthenticated, isAdmin } = useAuth();
     const navigate = useNavigate();
 
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
     const navBtnStyle = {
         fontWeight: 700,
         fontSize: '16px',
@@ -45,6 +40,16 @@ const MainLayout = ({ children }) => {
         transition: 'all 0.2s ease',
         '&:hover': {
             bgcolor: 'rgba(255, 255, 255, 0.15)'
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            localStorage.removeItem('DEV_BYPASS');
+            await logoutUser();
+            navigate('/');
+        } catch (error) {
+            console.error('Logout failed:', error);
         }
     };
 
@@ -70,24 +75,11 @@ const MainLayout = ({ children }) => {
                             px: { xs: 2, md: 5 },
                             py: 1,
                             background: 'linear-gradient(90deg, #001a40 0%, #003b8b 100%)',
-                            borderBottom: '4px solid #ffbc04'
+                            borderBottom: '4px solid var(--color-brand)'
                         }}
                     >
                         {/* Navigation buttons */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton
-                                color="inherit"
-                                onClick={() => setIsDrawerOpen(true)}
-                                sx={{
-                                    ml: 2,
-                                    '&:hover': {
-                                        bgcolor: 'rgba(255,255,255,0.1)'
-                                    }
-                                }}
-                            >
-                                <MenuIcon sx={{ fontSize: 28 }} />
-                            </IconButton>
-
                             <Button sx={navBtnStyle} onClick={() => navigate('/home')}>
                                 דף הבית
                             </Button>
@@ -111,6 +103,29 @@ const MainLayout = ({ children }) => {
 
                         {/* === LOGOS BOX === */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, height: '60px' }}>
+                            {isAuthenticated && (
+                                <Button
+                                    onClick={handleLogout}
+                                    sx={{
+                                        order: 1,
+                                        color: '#ffffff',
+                                        border: '1px solid rgba(255, 255, 255, 0.7)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        px: 2,
+                                        '&:hover': {
+                                            bgcolor: 'rgba(255, 255, 255, 0.12)',
+                                            borderColor: '#ffffff'
+                                        },
+                                        '&:focus-visible': {
+                                            outline: '2px solid #ffffff',
+                                            outlineOffset: '2px'
+                                        }
+                                    }}
+                                >
+                                    התנתקות
+                                </Button>
+                            )}
+
                             <Box
                                 sx={{
                                     bgcolor: '#ffffff',
@@ -157,12 +172,6 @@ const MainLayout = ({ children }) => {
                 </AppBar>
             </HideOnScroll>
 
-            {/* ================= SIDE NAVIGATION COMPONENT ================= */}
-            <SideNavigation
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
-            />
-
             {/* ================= MAIN CONTENT ================= */}
             <Box
                 component="main"
@@ -184,7 +193,7 @@ const MainLayout = ({ children }) => {
                     bgcolor: 'primary.dark',
                     color: 'white',
                     borderTop: '4px solid',
-                    borderColor: 'secondary.main'
+                    borderColor: 'primary.main'
                 }}
             >
                 <Typography variant="body2">

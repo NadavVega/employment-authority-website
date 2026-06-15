@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Box, Typography, Paper, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 import defaultPicture from '../../assets/images/default-event.jpg';
 import { resolveEventImage } from '../../utils/eventImageMap';
@@ -14,6 +15,7 @@ const formatEventDate = (dateValue) => {
 };
 
 const HeroCarousel = ({ events }) => {
+    const navigate = useNavigate();
     const [currentIndex, setCurrentIndex] = useState(0);
     const closestEvents = (events || []).slice(0, 5);
 
@@ -31,6 +33,11 @@ const HeroCarousel = ({ events }) => {
     const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? closestEvents.length - 1 : prev - 1));
 
     const currentSlide = closestEvents[currentIndex] || closestEvents[0];
+    const openEventDetails = () => {
+        if (currentSlide?.id) {
+            navigate(`/events?eventId=${encodeURIComponent(currentSlide.id)}`);
+        }
+    };
 
     // Same image logic as EventCard:
     // 1. predefined image from event.image
@@ -56,26 +63,37 @@ const HeroCarousel = ({ events }) => {
                 bgcolor: 'var(--color-surface)'
             }}
         >
-            <Box sx={{
-                minHeight: { xs: '180px', sm: '100%' },
-                backgroundImage: `linear-gradient(rgba(0, 43, 102, 0.08), rgba(0, 43, 102, 0.08)), url(${slideImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                order: { xs: -1, sm: 0 }
-            }} />
+            <Box
+                role="button"
+                tabIndex={0}
+                aria-label={`פתיחת פרטי האירוע ${currentSlide.title}`}
+                onClick={openEventDetails}
+                onKeyDown={(keyboardEvent) => {
+                    if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+                        keyboardEvent.preventDefault();
+                        openEventDetails();
+                    }
+                }}
+                sx={{
+                    minHeight: { xs: '180px', sm: '100%' },
+                    backgroundImage: `linear-gradient(rgba(0, 43, 102, 0.08), rgba(0, 43, 102, 0.08)), url(${slideImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    order: { xs: -1, sm: 0 },
+                    cursor: 'pointer',
+                    '&:focus-visible': {
+                        outline: '3px solid var(--color-accent)',
+                        outlineOffset: '-3px'
+                    }
+                }}
+            />
 
             <Box sx={{ p: { xs: 3, md: 3.5 }, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', minWidth: 0 }}>
                 <Box sx={{
                     width: '64px',
                     height: '48px',
                     mb: 2,
-                    border: '1px solid var(--color-border)',
-                    bgcolor: 'var(--color-bg)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                }}>
+                }} className="event-logo-container">
                     {centerIcon ? (
                         <Box component="img" src={centerIcon} alt={centerName || 'לוגו המרכז'} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (
@@ -114,6 +132,19 @@ const HeroCarousel = ({ events }) => {
                         {centerName}
                     </Typography>
                 )}
+
+                <Button
+                    variant="contained"
+                    onClick={openEventDetails}
+                    sx={{
+                        mt: 2.5,
+                        bgcolor: 'var(--color-brand)',
+                        fontWeight: 700,
+                        '&:hover': { bgcolor: 'var(--color-brand-dark)' }
+                    }}
+                >
+                    לפרטי האירוע
+                </Button>
 
                 <Box sx={{ display: 'flex', mt: 3, gap: 1 }}>
                     {closestEvents.map((event, index) => (

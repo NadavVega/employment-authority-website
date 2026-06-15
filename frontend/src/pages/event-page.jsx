@@ -29,24 +29,28 @@ export const EventsPage = () => {
 
     // State to hold all events fetched from Firestore
     const [realEvents, setRealEvents] = useState([]);
-    const [selectedEventModal, setSelectedEventModal] = useState(null);
+    const [manuallySelectedEvent, setSelectedEventModal] = useState(null);
 
     // Registration state
     const [registeredEventIds, setRegisteredEventIds] = useState([]);
     const [isRegistering, setIsRegistering] = useState(false);
     const [bitPaymentDetails, setBitPaymentDetails] = useState(null); // Controls the Bit popup
 
-    // Listen for calendar redirects and open the modal automatically
-    useEffect(() => {
-        if (location.state?.openEventId && realEvents.length > 0) {
-            const targetEvent = realEvents.find(e => e.id === location.state.openEventId);
-            if (targetEvent) {
-                setSelectedEventModal(targetEvent);
-                // Clear the state so it doesn't re-open on every page refresh
-                window.history.replaceState({}, document.title);
-            }
+    const requestedEventId =
+        new URLSearchParams(location.search).get('eventId') ||
+        location.state?.openEventId;
+    const routeSelectedEvent = requestedEventId
+        ? realEvents.find(event => event.id === requestedEventId) || null
+        : null;
+    const selectedEvent = manuallySelectedEvent || routeSelectedEvent;
+
+    const closeSelectedEvent = () => {
+        setSelectedEventModal(null);
+
+        if (requestedEventId) {
+            navigate(location.pathname, { replace: true, state: null });
         }
-    }, [location.state, realEvents]);
+    };
 
     // Fetch registered event IDs for the current user (if employer)
     useEffect(() => {
@@ -239,7 +243,7 @@ const handleRegisterClick = async (event) => {
         }
 
         console.log('Signup completed:', result);
-        setSelectedEventModal(null);
+        closeSelectedEvent();
 
     } catch (error) {
         console.error('Registration failed:', error);
@@ -268,20 +272,20 @@ const handleRegisterClick = async (event) => {
         return true;
     });
 
-    const selectedCenterIcon = getCenterIcon(selectedEventModal);
-    const selectedCenterName = getEventCenterName(selectedEventModal);
-    const selectedLocation = getEventLocation(selectedEventModal);
-    const selectedMapUrl = getMapSearchUrl(selectedEventModal);
-    const selectedEventIsCurrentUserOwned = selectedEventModal?.createdBy === currentUser?.uid;
+    const selectedCenterIcon = getCenterIcon(selectedEvent);
+    const selectedCenterName = getEventCenterName(selectedEvent);
+    const selectedLocation = getEventLocation(selectedEvent);
+    const selectedMapUrl = getMapSearchUrl(selectedEvent);
+    const selectedEventIsCurrentUserOwned = selectedEvent?.createdBy === currentUser?.uid;
     const selectedCreatorName =
-        selectedEventModal?.creatorName ||
-        selectedEventModal?.coordinatorName ||
+        selectedEvent?.creatorName ||
+        selectedEvent?.coordinatorName ||
         (selectedEventIsCurrentUserOwned
             ? currentUser?.displayName || currentUser?.fullName || currentUser?.profile?.fullName
             : '');
     const selectedCreatorEmail =
-        selectedEventModal?.creatorEmail ||
-        selectedEventModal?.coordinatorEmail ||
+        selectedEvent?.creatorEmail ||
+        selectedEvent?.coordinatorEmail ||
         (selectedEventIsCurrentUserOwned ? currentUser?.email : '');
     const filteredActiveEvents = activeEvents.filter(filterFunction);
     const filteredPastEvents = pastEvents.filter(filterFunction);
@@ -293,7 +297,7 @@ const handleRegisterClick = async (event) => {
         const centerName = getEventCenterName(event);
 
         return (
-            <div className={className} title={centerName || 'מרכז תעסוקה'}>
+            <div className={`${className} event-logo-container`} title={centerName || 'מרכז תעסוקה'}>
                 {icon ? (
                     <img src={icon} alt={centerName || 'לוגו המרכז'} />
                 ) : (
@@ -361,7 +365,9 @@ const handleRegisterClick = async (event) => {
         <div className="events-page-wrapper" dir="rtl">
             
             <header className="events-page-heading">
-                <img className="events-heading-logo" src={employmentLogo} alt="רשות התעסוקה ירושלים" />
+                <div className="events-heading-logo event-logo-container">
+                    <img src={employmentLogo} alt="רשות התעסוקה ירושלים" />
+                </div>
                 <div className="events-heading-copy">
                     <h1>אירועים ופעילויות</h1>
                     <p>ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
@@ -549,14 +555,14 @@ const handleRegisterClick = async (event) => {
             )}
 
             {/* ===== FULLSCREEN EVENT MODAL ===== */}
-            {selectedEventModal && (
-                <div className="event-modal-overlay" onClick={() => setSelectedEventModal(null)}>
+            {selectedEvent && (
+                <div className="event-modal-overlay" onClick={closeSelectedEvent}>
                     <div className="full-event-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <button className="event-modal-close" onClick={() => setSelectedEventModal(null)}>✖</button>
+                        <button className="event-modal-close" onClick={closeSelectedEvent}>✖</button>
                         
                         <div className="modal-header-banner">
                             <div className="modal-header-content">
-                                <div className="modal-center-logo" title={selectedCenterName || 'מרכז תעסוקה'}>
+                                <div className="modal-center-logo event-logo-container" title={selectedCenterName || 'מרכז תעסוקה'}>
                                     {selectedCenterIcon ? (
                                         <img src={selectedCenterIcon} alt={selectedCenterName || 'לוגו המרכז'} />
                                     ) : (
@@ -566,9 +572,9 @@ const handleRegisterClick = async (event) => {
                                     )}
                                 </div>
                                 <h2>
-                                    <span className="event-card-type">{selectedEventModal.type || 'אירוע'}</span>
+                                    <span className="event-card-type">{selectedEvent.type || 'אירוע'}</span>
                                     <span className="event-title-separator" aria-hidden="true">|</span>
-                                    <span>{selectedEventModal.title}</span>
+                                    <span>{selectedEvent.title}</span>
                                 </h2>
                             </div>
                         </div>
@@ -577,11 +583,11 @@ const handleRegisterClick = async (event) => {
                             <div className="modal-info-grid">
                                 <div className="modal-info-item">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                                    <span className="standard-numbers">{new Date(selectedEventModal.date?.toDate ? selectedEventModal.date.toDate() : selectedEventModal.date).toLocaleDateString('he-IL')}</span>
+                                    <span className="standard-numbers">{new Date(selectedEvent.date?.toDate ? selectedEvent.date.toDate() : selectedEvent.date).toLocaleDateString('he-IL')}</span>
                                 </div>
                                 <div className="modal-info-item">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                                    <span className="standard-numbers" dir="ltr">{selectedEventModal.time || 'טרם נקבע'}</span>
+                                    <span className="standard-numbers" dir="ltr">{selectedEvent.time || 'טרם נקבע'}</span>
                                 </div>
                                 <div className="modal-info-item">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
@@ -595,10 +601,10 @@ const handleRegisterClick = async (event) => {
                                 </div>
                                 <div className="modal-info-item">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                                    {(!selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה') ? (
+                                    {(!selectedEvent.capacity || selectedEvent.capacity === 'ללא הגבלה') ? (
                                         <span>ללא הגבלה</span>
                                     ) : (
-                                        <><span className="standard-numbers">{selectedEventModal.capacity}</span> מקומות</>
+                                        <><span className="standard-numbers">{selectedEvent.capacity}</span> מקומות</>
                                     )}
                                 </div>
                             </div>
@@ -607,7 +613,7 @@ const handleRegisterClick = async (event) => {
                             
                             <div className="modal-description">
                                 <h3>על האירוע</h3>
-                                <p>{selectedEventModal.description}</p>
+                                <p>{selectedEvent.description}</p>
                             </div>
 
                             <hr className="modal-divider"/>
@@ -618,8 +624,8 @@ const handleRegisterClick = async (event) => {
                                     {selectedCreatorName && (
                                         <p>{selectedCreatorName}</p>
                                     )}
-                                    {selectedEventModal.coordinatorPhone && (
-                                        <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEventModal.coordinatorPhone}</p>
+                                    {selectedEvent.coordinatorPhone && (
+                                        <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEvent.coordinatorPhone}</p>
                                     )}
                                     {selectedCreatorEmail && (
                                         <p>
@@ -630,26 +636,26 @@ const handleRegisterClick = async (event) => {
                                     )}
                                 </div>
                                 
-                                {selectedEventModal.isAccessible && (
+                                {selectedEvent.isAccessible && (
                                     <div>
                                         <h4>פרטי נגישות</h4>
-                                        <p>איש קשר: {selectedEventModal.accessibilityContactName}</p>
-                                        <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEventModal.accessibilityContactPhone}</p>
+                                        <p>איש קשר: {selectedEvent.accessibilityContactName}</p>
+                                        <p className="standard-numbers" dir="ltr" style={{textAlign: 'right'}}>{selectedEvent.accessibilityContactPhone}</p>
                                     </div>
                                 )}
                             </div>
 
                             {/* Payment Section */}
-                            {selectedEventModal.paymentMethod && selectedEventModal.paymentMethod !== 'none' && (
+                            {selectedEvent.paymentMethod && selectedEvent.paymentMethod !== 'none' && (
                                 <div className="modal-payment-section">
                                     <h4>פרטי תשלום והרשמה</h4>
-                                    <p><strong>מחיר:</strong> <span className="standard-numbers">{selectedEventModal.price}</span> ₪</p>
-                                    {selectedEventModal.discountDetails && <p><strong>הנחות:</strong> {selectedEventModal.discountDetails}</p>}
+                                    <p><strong>מחיר:</strong> <span className="standard-numbers">{selectedEvent.price}</span> ₪</p>
+                                    {selectedEvent.discountDetails && <p><strong>הנחות:</strong> {selectedEvent.discountDetails}</p>}
                                     <p>
                                         <strong>כיצד לשלם:</strong>{' '}
-                                        {selectedEventModal.paymentMethod === 'link' && <a href={selectedEventModal.paymentDetails} target="_blank" rel="noreferrer">לחץ כאן למעבר לתשלום</a>}
-                                        {selectedEventModal.paymentMethod === 'bit' && <span className="standard-numbers" dir="ltr">{selectedEventModal.paymentDetails}</span>}
-                                        {selectedEventModal.paymentMethod === 'other' && <span>{selectedEventModal.paymentDetails}</span>}
+                                        {selectedEvent.paymentMethod === 'link' && <a href={selectedEvent.paymentDetails} target="_blank" rel="noreferrer">לחץ כאן למעבר לתשלום</a>}
+                                        {selectedEvent.paymentMethod === 'bit' && <span className="standard-numbers" dir="ltr">{selectedEvent.paymentDetails}</span>}
+                                        {selectedEvent.paymentMethod === 'other' && <span>{selectedEvent.paymentDetails}</span>}
                                     </p>
                                 </div>
                             )}
@@ -657,15 +663,15 @@ const handleRegisterClick = async (event) => {
                         </div>
 
                         <div className="modal-footer">
-                            <button className="btn-cancel pill-btn" onClick={() => setSelectedEventModal(null)}>סגירה</button>
+                            <button className="btn-cancel pill-btn" onClick={closeSelectedEvent}>סגירה</button>
                             {/* --- DYNAMIC REGISTRATION BUTTON --- */}
-                            {!isGuest && !selectedEventModal.isExpired && userRole === 'employer' && (
+                            {!isGuest && !selectedEvent.isExpired && userRole === 'employer' && (
                                 (() => {
-                                    const isRegistered = registeredEventIds.includes(selectedEventModal.id);
+                                    const isRegistered = registeredEventIds.includes(selectedEvent.id);
                                     // Parse to integers just to be safe
-                                    const isUnlimited = !selectedEventModal.capacity || selectedEventModal.capacity === 'ללא הגבלה';
-                                    const capacity = parseInt(selectedEventModal.capacity) || 0;
-                                    const registeredCount = parseInt(selectedEventModal.registeredCount) || 0;
+                                    const isUnlimited = !selectedEvent.capacity || selectedEvent.capacity === 'ללא הגבלה';
+                                    const capacity = parseInt(selectedEvent.capacity) || 0;
+                                    const registeredCount = parseInt(selectedEvent.registeredCount) || 0;
                                     const isFull = !isUnlimited && (registeredCount >= capacity);
 
                                     if (isRegistered) {
@@ -677,7 +683,7 @@ const handleRegisterClick = async (event) => {
                                     return (
                                         <button 
                                             className="btn-primary pill-btn" 
-                                            onClick={() => handleRegisterClick(selectedEventModal)}
+                                            onClick={() => handleRegisterClick(selectedEvent)}
                                             disabled={isRegistering}
                                         >
                                             {isRegistering ? 'רושם...' : 'הרשמה לאירוע'}

@@ -27,6 +27,12 @@ const EventCalendar = ({ events, userName }) => {
         setViewMode('month');
     };
 
+    const openEventDetails = (eventId) => {
+        if (eventId) {
+            navigate(`/events?eventId=${encodeURIComponent(eventId)}`);
+        }
+    };
+
     // Returns events for a specific month that are >= today
     const getFutureEventsForMonth = (date) => {
         if (!events || events.length === 0) return [];
@@ -171,16 +177,20 @@ const EventCalendar = ({ events, userName }) => {
                                         variant="contained"
                                         sx={{
                                             borderRadius: 'var(--radius-md)',
-                                            bgcolor: 'var(--color-accent)',
-                                            color: 'var(--color-text)',
+                                            bgcolor: 'var(--color-primary)',
+                                            color: '#ffffff',
                                             width: '100%',
                                             fontWeight: 700,
                                             boxShadow: 'none',
-                                            '&:hover': { bgcolor: 'var(--color-accent-hover)' }
+                                            '&:hover': { bgcolor: 'var(--color-primary-dark)' },
+                                            '&:focus-visible': {
+                                                outline: '3px solid rgba(0, 59, 139, 0.3)',
+                                                outlineOffset: '2px'
+                                            }
                                         }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigate('/events', { state: { openEventId: e.id } });
+                                        onClick={(clickEvent) => {
+                                            clickEvent.stopPropagation();
+                                            openEventDetails(e.id);
                                         }}
                                     >
                                         לכל הפרטים
@@ -188,16 +198,36 @@ const EventCalendar = ({ events, userName }) => {
                                 </Box>
                             }
                         >
-                            <Box sx={{
-                                bgcolor: 'var(--color-surface)',
-                                borderRadius: 'var(--radius-sm)',
-                                p: '3px 5px',
-                                border: '1px solid var(--color-border)',
-                                borderRight: `3px solid ${getEventColor(e, i)}`,
-                                cursor: 'pointer',
-                                transition: 'var(--t)',
-                                '&:hover': { borderColor: getEventColor(e, i) }
-                            }}>
+                            <Box
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`פתיחת פרטי האירוע ${e.title}`}
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    openEventDetails(e.id);
+                                }}
+                                onKeyDown={(keyboardEvent) => {
+                                    if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+                                        keyboardEvent.preventDefault();
+                                        keyboardEvent.stopPropagation();
+                                        openEventDetails(e.id);
+                                    }
+                                }}
+                                sx={{
+                                    bgcolor: 'var(--color-surface)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    p: '3px 5px',
+                                    border: '1px solid var(--color-border)',
+                                    borderRight: `3px solid ${getEventColor(e, i)}`,
+                                    cursor: 'pointer',
+                                    transition: 'var(--t)',
+                                    '&:hover': { borderColor: getEventColor(e, i) },
+                                    '&:focus-visible': {
+                                        outline: '2px solid var(--color-brand)',
+                                        outlineOffset: '1px'
+                                    }
+                                }}
+                            >
                                 <Typography variant="caption" sx={{
                                     color: 'var(--color-text)',
                                     fontWeight: 700,
