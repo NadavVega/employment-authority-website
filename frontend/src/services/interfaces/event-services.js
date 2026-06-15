@@ -138,6 +138,11 @@ export const eventService = {
                 price: eventDetails.price || '',
                 discountDetails: eventDetails.discountDetails || '',
                 paymentDetails: eventDetails.paymentDetails || '',
+
+                image: eventDetails.image || '',
+                photoUrl: eventDetails.photoUrl || '',
+                photoPreview: eventDetails.photoPreview || null,
+                logoUrl: eventDetails.logoUrl || '',
                 
                 media: {
                     photoUrl: eventDetails.photoUrl || null,
