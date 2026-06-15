@@ -7,6 +7,8 @@ import { getEventColor } from '../../utils/centerColors';
 import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
+import { buildEventShareUrl } from '../../utils/eventShare';
+import { ShareMenu } from '../share/ShareMenu';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -175,13 +177,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
 
             <div 
                 className="event-card-bottom">
-                <div className="bottom-date-area standard-numbers">
-                    <p className="bottom-date-big">{dayMonth}</p>
-                </div>
-                <div className="bottom-title-area">
-                    <p className="bottom-title">{event.title}</p>
-                </div>
-                <div className="event-center-logo" title={centerName || 'מרכז תעסוקה'}>
+                <div className="event-center-logo event-logo-container" title={centerName || 'מרכז תעסוקה'}>
                     {centerIcon ? (
                         <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
                     ) : (
@@ -190,6 +186,13 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                         </svg>
                     )}
                 </div>
+                <div className="bottom-date-area standard-numbers">
+                    <p className="bottom-date-big">{dayMonth}</p>
+                </div>
+                <div className="bottom-title-area">
+                    <p className="bottom-title">{event.title}</p>
+                </div>
+
             </div>
         </div>
     );
