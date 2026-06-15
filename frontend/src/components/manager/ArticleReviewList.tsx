@@ -85,6 +85,20 @@ export const ArticleReviewList: React.FC = () => {
                             </a>
                         </div>
                         
+                        {article.imageUrl && (
+                            <img 
+                                src={article.imageUrl} 
+                                alt={article.title} 
+                                style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', marginBottom: '16px' }} 
+                            />
+                        )}
+                        
+                        {article.content && (
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>
+                                {article.content}
+                            </p>
+                        )}
+                        
                         <div className="article-actions">
                             <button 
                                 className="btn-reject-article" 

@@ -47,7 +47,7 @@ const cheerio = __importStar(require("cheerio"));
 class ScraperBot {
     db = admin.firestore();
     ARTICLES_COLLECTION = 'articles';
-    SOURCES = [
+    DEFAULT_SOURCES = [
         {
             name: 'Ynet Economy',
             url: 'https://www.ynet.co.il/economy',
@@ -55,23 +55,37 @@ class ScraperBot {
         },
         {
             name: 'Calcalist Career',
-            url: 'https://www.calcalist.co.il/career', // Updated to a broader URL
+            url: 'https://www.calcalist.co.il/career',
             selector: 'a'
         },
         {
             name: 'Maariv Business',
-            url: 'https://www.maariv.co.il/news/business', // Fixed case-sensitivity (lowercase)
+            url: 'https://www.maariv.co.il/news/business',
             selector: 'a'
         }
     ];
+    DEFAULT_KEYWORDS = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה', 'מעסיקים'];
+    async getBotConfig() {
+        const docRef = this.db.collection('settings').doc('bot_config');
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            const defaultConfig = { sources: this.DEFAULT_SOURCES, keywords: this.DEFAULT_KEYWORDS };
+            await docRef.set(defaultConfig);
+            return defaultConfig;
+        }
+        return doc.data();
+    }
     /**
      * Main entry point for the daily scraping job.
      */
     async executeDailyScrape() {
         console.log("--- Starting Scrape Cycle ---");
-        for (const source of this.SOURCES) {
+        const config = await this.getBotConfig();
+        const sources = config.sources || this.DEFAULT_SOURCES;
+        const keywords = config.keywords || this.DEFAULT_KEYWORDS;
+        for (const source of sources) {
             try {
-                const foundArticles = await this.scrapeSource(source.url, source.name, source.selector);
+                const foundArticles = await this.scrapeSource(source.url, source.name, source.selector, keywords);
                 if (foundArticles.length > 0) {
                     await this.persistArticles(foundArticles);
                     console.log(`Successfully persisted ${foundArticles.length} articles from ${source.name}.`);
@@ -87,7 +101,7 @@ class ScraperBot {
     /**
      * Fetches and parses a specific source URL to find relevant employment content.
      */
-    async scrapeSource(url, sourceName, selector) {
+    async scrapeSource(url, sourceName, selector, keywords) {
         const { data } = await axios_1.default.get(url, {
             headers: {
                 // Enhanced headers to prevent 403 Forbidden from Akamai/Cloudflare
@@ -107,7 +121,6 @@ class ScraperBot {
             // Heuristic: Ensure the title is descriptive enough and relevant to Jerusalem employment
             if (href && title.length > 30) {
                 const fullUrl = href.startsWith('http') ? href : new URL(href, url).href;
-                const keywords = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה', 'מעסיקים'];
                 const isRelevant = keywords.some(keyword => title.includes(keyword) || fullUrl.includes(keyword));
                 if (isRelevant) {
                     articles.push({
@@ -120,7 +133,32 @@ class ScraperBot {
                 }
             }
         });
-        return articles.slice(0, 10);
+        const topArticles = articles.slice(0, 10);
+        // Perform a secondary fetch to grab rich metadata (og:image, description) for the found articles
+        for (const article of topArticles) {
+            if (!article.url)
+                continue;
+            try {
+                const { data: articleHtml } = await axios_1.default.get(article.url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept-Language': 'he-IL,he;q=0.9'
+                    },
+                    timeout: 5000
+                });
+                const $article = cheerio.load(articleHtml);
+                const imageUrl = $article('meta[property="og:image"]').attr('content') || $article('meta[name="twitter:image"]').attr('content');
+                const description = $article('meta[property="og:description"]').attr('content') || $article('meta[name="description"]').attr('content');
+                if (imageUrl)
+                    article.imageUrl = imageUrl;
+                if (description)
+                    article.content = description.substring(0, 300); // Limit length
+            }
+            catch (e) {
+                console.warn(`Failed to fetch rich metadata for ${article.url}`);
+            }
+        }
+        return topArticles;
     }
     /**
      * Saves articles to Firestore using a batch write for atomicity and performance.

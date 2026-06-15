@@ -11,4 +11,6 @@ export interface IArticle {
   status: string; // 'pending' | 'approved' | 'rejected'
   publishedAt?: admin.firestore.Timestamp | admin.firestore.FieldValue;
   approvedBy?: string;
+  imageUrl?: string;
+  content?: string;
 }

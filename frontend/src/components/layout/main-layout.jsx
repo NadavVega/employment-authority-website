@@ -95,9 +95,14 @@ const MainLayout = ({ children }) => {
                             )}
 
                             {isAdmin && (
-                                <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
-                                    ניהול תוכן
-                                </Button>
+                                <>
+                                    <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
+                                        ניהול תוכן
+                                    </Button>
+                                    <Button sx={navBtnStyle} onClick={() => navigate('/admin/dashboard')}>
+                                        דשבורד מנהלים
+                                    </Button>
+                                </>
                             )}
                         </Box>
 
