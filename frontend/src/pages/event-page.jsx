@@ -14,6 +14,8 @@ import '../design/event-page.css';
 import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
 import { getEventColor } from '../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
+import { buildEventShareUrl } from '../utils/eventShare';
+import { ShareMenu } from '../components/share/ShareMenu';
 import eventsDecoration from '../assets/images/city-view.png';
 import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
@@ -576,6 +578,20 @@ const handleRegisterClick = async (event) => {
                                     <span className="event-title-separator" aria-hidden="true">|</span>
                                     <span>{selectedEvent.title}</span>
                                 </h2>
+                                <ShareMenu
+                                    title={selectedEvent.title}
+                                    url={buildEventShareUrl(selectedEvent.id)}
+                                    ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
+                                    buttonClassName="modal-share-action"
+                                    buttonSx={{
+                                        flex: '0 0 auto',
+                                        color: 'var(--color-brand)',
+                                        border: '1px solid var(--color-brand)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontFamily: 'inherit',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                />
                             </div>
                         </div>
                         

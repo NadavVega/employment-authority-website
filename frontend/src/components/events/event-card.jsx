@@ -7,6 +7,8 @@ import { getEventColor } from '../../utils/centerColors';
 import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
+import { buildEventShareUrl } from '../../utils/eventShare';
+import { ShareMenu } from '../share/ShareMenu';
 
 const formatShortAddress = (address) => {
     if (!address) return 'מקוון';
@@ -190,6 +192,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                 <div className="bottom-title-area">
                     <p className="bottom-title">{event.title}</p>
                 </div>
+
             </div>
         </div>
     );
