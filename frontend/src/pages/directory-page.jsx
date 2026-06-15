@@ -864,6 +864,32 @@ const DirectoryPage = () => {
         כאן ניתן לצפות באנשי קשר, מעסיקים וגורמים רלוונטיים ברשות התעסוקה.
       </p>
 
+      {userRole === "coordinator" && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <button
+            onClick={() => navigate("/directory/new")}
+            style={{
+              padding: "12px 22px",
+              border: "none",
+              borderRadius: "999px",
+              background: "#0f766e",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            הוספת מעסיק חדש
+          </button>
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",

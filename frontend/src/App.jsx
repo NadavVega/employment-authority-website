@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/auth-context';
 import MainLayout from './components/layout/main-layout';
 import DirectoryPage from './pages/directory-page';
 import EmployerProfilePage from './pages/employer-profile-page';
+import EmployerContactFormPage from './pages/employer-contact-form-page';
 import PrivacyRequestsPage from './pages/privacy-requests-page';
 
 // Import design files
@@ -19,16 +20,6 @@ import AddEventPage from './pages/add-event-page';
 import { EditEventPage } from './pages/edit-event-page';
 import ContentManagementPage from './pages/content-management-page';
 
-/**
- * ProtectedRoute Guard Component
- * Enforces authentication by redirecting unauthenticated users to the login root.
- *
- * Important:
- * We wait for AuthContext loading to finish before redirecting.
- * Otherwise, after Firebase login, the app may navigate to /home before
- * AuthContext has updated isAuthenticated, and ProtectedRoute sends the user
- * back to the login page.
- */
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -107,11 +98,33 @@ function App() {
             />
 
             <Route
+              path="/directory/new"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <EmployerContactFormPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/directory/:employerId"
               element={
                 <ProtectedRoute>
                   <MainLayout>
                     <EmployerProfilePage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/directory/:employerId/edit"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <EmployerContactFormPage />
                   </MainLayout>
                 </ProtectedRoute>
               }
