@@ -5,6 +5,7 @@ import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
 import { Navigate } from 'react-router-dom';
 import PromotionalContentManager from '../features/promotional-content/promotional-content-manager';
+import BotSettingsDialog from '../components/manager/bot-settings-dialog';
 
 import '../design/content-management.css';
 
@@ -14,6 +15,7 @@ const ContentManagementPage = () => {
         title: '', sourceName: '', category: 'general', url: '', content: '', imageUrl: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
 
     if (!isAdmin) {
         return <Navigate to="/home" replace />;
@@ -113,7 +115,7 @@ const ContentManagementPage = () => {
                                 <h2>אישור כתבות שנאספו מהרשת</h2>
                                 <p>רשימת כתבות שנאספו על ידי הבוט וממתינות לאישור מנהל</p>
                             </div>
-                            <button className="btn-secondary pill-btn" onClick={() => alert("מסך ניהול בוט ייבנה בקרוב.")}>
+                            <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
                                 ⚙️ ניהול הגדרות בוט
                             </button>
                         </div>
@@ -129,6 +131,7 @@ const ContentManagementPage = () => {
             </Box>
 
             <PromotionalContentManager currentUser={currentUser} />
+            <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />
         </Box>
     );
 };

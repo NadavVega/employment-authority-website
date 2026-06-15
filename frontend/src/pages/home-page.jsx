@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Typography, Box, Paper, Card, CardContent, Button } from '@mui/material';
+import { Typography, Box, Paper, Card, CardContent, CardMedia, Button } from '@mui/material';
 import { useAuth } from '../context/auth-context';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 
 import EventCalendar from '../features/calendar/home-page-calendar';
@@ -196,7 +196,7 @@ const getEventDate = (dateValue) => {
 
 const HomePage = () => {
     const { isAuthenticated, currentUser, userRole } = useAuth();
-    const [articles] = useState([]);
+    const [articles, setArticles] = useState([]);
     const [events, setEvents] = useState([]);
     const [promotionalSlides, setPromotionalSlides] = useState(DEFAULT_PROMOTIONAL_SLIDES);
 
@@ -224,6 +224,24 @@ const HomePage = () => {
                 .sort((a, b) => getEventDate(a.date) - getEventDate(b.date));
 
             setEvents(upcoming);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        const q = query(collection(db, 'articles'), where('status', '==', 'approved'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const sortedArticles = fetchedArticles.sort((a, b) => {
+                const dateA = a.publishedAt?.toDate ? a.publishedAt.toDate() : new Date(0);
+                const dateB = b.publishedAt?.toDate ? b.publishedAt.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            
+            setArticles(sortedArticles.slice(0, 10)); // Display top 10 latest articles
         });
 
         return () => unsubscribe();
@@ -290,10 +308,25 @@ const HomePage = () => {
                         <SectionTitle title="כתבות ועדכונים" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>} />
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
                             {articles.length > 0 ? articles.map(article => (
-                                <Card key={article.id} elevation={0} sx={{ border: '1px solid var(--color-border)', borderRight: '3px solid var(--color-accent)', bgcolor: 'var(--color-surface)', borderRadius: 0, transition: 'var(--t)', '&:hover': { boxShadow: 'var(--shadow-sm)', borderColor: 'var(--color-accent)' } }}>
-                                    <CardContent sx={{ p: '16px !important' }}>
+                                <Card key={article.id} elevation={0} sx={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--color-border)', borderRight: '3px solid var(--color-accent)', bgcolor: 'var(--color-surface)', borderRadius: 0, transition: 'var(--t)', '&:hover': { boxShadow: 'var(--shadow-sm)', borderColor: 'var(--color-accent)' } }}>
+                                    {article.imageUrl && (
+                                        <CardMedia
+                                            component="img"
+                                            height="140"
+                                            image={article.imageUrl}
+                                            alt={article.title}
+                                            sx={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
+                                            onClick={() => window.open(article.url, '_blank')}
+                                        />
+                                    )}
+                                    <CardContent sx={{ p: '16px !important', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                                         <Typography variant="caption" fontWeight="700" sx={{ color: 'var(--color-primary-dark)', display: 'block', mb: 0.5 }}>{article.sourceName}</Typography>
-                                        <Typography variant="body1" fontWeight="500" sx={{ color: 'var(--color-text-main)', lineHeight: 1.5, cursor: 'pointer' }} onClick={() => window.open(article.url, '_blank')}>{article.title}</Typography>
+                                        <Typography variant="body1" fontWeight="500" sx={{ color: 'var(--color-text-main)', lineHeight: 1.5, cursor: 'pointer', mb: article.content ? 1 : 0 }} onClick={() => window.open(article.url, '_blank')}>{article.title}</Typography>
+                                        {article.content && (
+                                            <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', mt: 'auto', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                {article.content}
+                                            </Typography>
+                                        )}
                                     </CardContent>
                                 </Card>
                             )) : (

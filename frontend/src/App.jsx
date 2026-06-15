@@ -18,6 +18,7 @@ import HomePage from './pages/home-page';
 import AddEventPage from './pages/add-event-page';
 import { EditEventPage } from './pages/edit-event-page';
 import ContentManagementPage from './pages/content-management-page';
+import AdminDashboardPage from './pages/admin-dashboard-page';
 
 /**
  * ProtectedRoute Guard Component
@@ -90,6 +91,17 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <ContentManagementPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <AdminDashboardPage />
                   </MainLayout>
                 </ProtectedRoute>
               }

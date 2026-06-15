@@ -13,11 +13,14 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+import { getFunctions } from "firebase/functions";
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const functions = getFunctions(app, 'us-central1'); // Default region
 
 // Export the auth, db and storage instances for use in other parts of the application
-export { auth, db, storage };
+export { auth, db, storage, functions };

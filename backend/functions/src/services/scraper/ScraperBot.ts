@@ -11,7 +11,7 @@ export class ScraperBot {
   private readonly db = admin.firestore();
   private readonly ARTICLES_COLLECTION = 'articles';
 
-  private readonly SOURCES = [
+  private readonly DEFAULT_SOURCES = [
   { 
     name: 'Ynet Economy', 
     url: 'https://www.ynet.co.il/economy', 
@@ -19,15 +19,30 @@ export class ScraperBot {
   },
   { 
     name: 'Calcalist Career', 
-    url: 'https://www.calcalist.co.il/career', // Updated to a broader URL
+    url: 'https://www.calcalist.co.il/career', 
     selector: 'a' 
   },
   { 
     name: 'Maariv Business', 
-    url: 'https://www.maariv.co.il/news/business', // Fixed case-sensitivity (lowercase)
+    url: 'https://www.maariv.co.il/news/business', 
     selector: 'a' 
   }
 ];
+
+  private readonly DEFAULT_KEYWORDS = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה', 'מעסיקים'];
+
+  private async getBotConfig(): Promise<{ sources: any[], keywords: string[] }> {
+    const docRef = this.db.collection('settings').doc('bot_config');
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      const defaultConfig = { sources: this.DEFAULT_SOURCES, keywords: this.DEFAULT_KEYWORDS };
+      await docRef.set(defaultConfig);
+      return defaultConfig;
+    }
+    
+    return doc.data() as { sources: any[], keywords: string[] };
+  }
 
   /**
    * Main entry point for the daily scraping job.
@@ -35,9 +50,13 @@ export class ScraperBot {
   public async executeDailyScrape(): Promise<void> {
     console.log("--- Starting Scrape Cycle ---");
     
-    for (const source of this.SOURCES) {
+    const config = await this.getBotConfig();
+    const sources = config.sources || this.DEFAULT_SOURCES;
+    const keywords = config.keywords || this.DEFAULT_KEYWORDS;
+
+    for (const source of sources) {
       try {
-        const foundArticles = await this.scrapeSource(source.url, source.name, source.selector);
+        const foundArticles = await this.scrapeSource(source.url, source.name, source.selector, keywords);
         
         if (foundArticles.length > 0) {
           await this.persistArticles(foundArticles);
@@ -54,7 +73,7 @@ export class ScraperBot {
   /**
    * Fetches and parses a specific source URL to find relevant employment content.
    */
-  private async scrapeSource(url: string, sourceName: string, selector: string): Promise<Partial<IArticle>[]> {
+  private async scrapeSource(url: string, sourceName: string, selector: string, keywords: string[]): Promise<Partial<IArticle>[]> {
   const { data } = await axios.get(url, {
     headers: { 
       // Enhanced headers to prevent 403 Forbidden from Akamai/Cloudflare
@@ -77,7 +96,6 @@ export class ScraperBot {
       // Heuristic: Ensure the title is descriptive enough and relevant to Jerusalem employment
       if (href && title.length > 30) {
         const fullUrl = href.startsWith('http') ? href : new URL(href, url).href;
-        const keywords = ['עבודה', 'שכר', 'משק', 'כלכלה', 'גיוס', 'עובדים', 'תעסוקה', 'מעסיקים'];
         const isRelevant = keywords.some(keyword => title.includes(keyword) || fullUrl.includes(keyword));
 
         if (isRelevant) {
@@ -92,7 +110,32 @@ export class ScraperBot {
       }
     });
 
-    return articles.slice(0, 10);
+    const topArticles = articles.slice(0, 10);
+    
+    // Perform a secondary fetch to grab rich metadata (og:image, description) for the found articles
+    for (const article of topArticles) {
+      if (!article.url) continue;
+      try {
+        const { data: articleHtml } = await axios.get(article.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'he-IL,he;q=0.9'
+          },
+          timeout: 5000
+        });
+        const $article = cheerio.load(articleHtml);
+        
+        const imageUrl = $article('meta[property="og:image"]').attr('content') || $article('meta[name="twitter:image"]').attr('content');
+        const description = $article('meta[property="og:description"]').attr('content') || $article('meta[name="description"]').attr('content');
+        
+        if (imageUrl) article.imageUrl = imageUrl;
+        if (description) article.content = description.substring(0, 300); // Limit length
+      } catch (e) {
+        console.warn(`Failed to fetch rich metadata for ${article.url}`);
+      }
+    }
+
+    return topArticles;
   }
 
   /**
