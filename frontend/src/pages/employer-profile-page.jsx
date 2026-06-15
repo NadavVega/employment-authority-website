@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { directoryService } from "../services/interfaces/directory-service";
 import { privacyService } from "../services/interfaces/privacy-service";
@@ -9,6 +9,7 @@ import "../design/global-theme.css";
 
 const EmployerProfilePage = () => {
   const { employerId } = useParams();
+  const navigate = useNavigate();
   const { currentUser, userRole } = useAuth();
 
   const [employer, setEmployer] = useState(null);
@@ -40,6 +41,14 @@ const EmployerProfilePage = () => {
 
   const canAssignEmployer =
     isCoordinator && isEmployerContact && !employer?.assignedCoordinatorEmail;
+
+  const canEditEmployer =
+    isCoordinator &&
+    isEmployerContact &&
+    employer?.assignedCoordinatorEmail &&
+    currentUser?.email &&
+    employer.assignedCoordinatorEmail.toLowerCase() ===
+      currentUser.email.toLowerCase();
 
   const displayRole = (role) => {
     if (role === "employer") return "מעסיק";
@@ -399,6 +408,28 @@ const EmployerProfilePage = () => {
             {assignmentLoading
               ? "משייך מעסיק..."
               : "אני מרכז/ת את הקשר עם מעסיק זה"}
+          </button>
+        )}
+
+        {canEditEmployer && (
+          <button
+            onClick={() =>
+              navigate(`/directory/${encodeURIComponent(employer.email)}/edit`)
+            }
+            style={{
+              marginTop: "12px",
+              marginRight: "12px",
+              padding: "10px 18px",
+              border: "none",
+              borderRadius: "999px",
+              background: "#1976d2",
+              color: "white",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontWeight: 700,
+            }}
+          >
+            עריכת פרטי מעסיק
           </button>
         )}
 
