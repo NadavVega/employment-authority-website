@@ -10,14 +10,14 @@ import BotSettingsDialog from '../components/manager/bot-settings-dialog';
 import '../design/content-management.css';
 
 const ContentManagementPage = () => {
-    const { currentUser, isAdmin } = useAuth();
+    const { currentUser, isAdmin, isCoordinator } = useAuth();
     const [formData, setFormData] = useState({
         title: '', sourceName: '', category: 'general', url: '', content: '', imageUrl: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
 
-    if (!isAdmin) {
+    if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
     }
 
@@ -115,9 +115,11 @@ const ContentManagementPage = () => {
                                 <h2>אישור כתבות שנאספו מהרשת</h2>
                                 <p>רשימת כתבות שנאספו על ידי הבוט וממתינות לאישור מנהל</p>
                             </div>
-                            <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
-                                ⚙️ ניהול הגדרות בוט
-                            </button>
+                            {isAdmin && (
+                                <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
+                                    ⚙️ ניהול הגדרות בוט
+                                </button>
+                            )}
                         </div>
                         
                         <Divider sx={{ mb: 3, borderColor: 'var(--color-border)' }} />
@@ -130,8 +132,8 @@ const ContentManagementPage = () => {
 
             </Box>
 
-            <PromotionalContentManager currentUser={currentUser} />
-            <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />
+            {isAdmin && <PromotionalContentManager currentUser={currentUser} />}
+            {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
         </Box>
     );
 };

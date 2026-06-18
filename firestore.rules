@@ -581,14 +581,7 @@ service cloud.firestore {
 
     function canReadEvent(eventData) {
       return isAdmin()
-        || (
-          isCoordinator()
-          && (
-            eventIsPublished(eventData)
-            || eventIsOwnedByCurrentUser(eventData)
-            || eventHasPassed(eventData)
-          )
-        )
+        || isCoordinator()
         || (
           isEmployer()
           && eventIsPublished(eventData)

@@ -26,7 +26,7 @@ import { db } from '../services/firebase/config';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a28CFE'];
 
 const AdminDashboardPage = () => {
-    const { isAdmin } = useAuth();
+    const { isAdmin, isCoordinator } = useAuth();
     const [events, setEvents] = useState([]);
 
     useEffect(() => {
@@ -41,7 +41,7 @@ const AdminDashboardPage = () => {
         return () => unsubscribe();
     }, []);
 
-    if (!isAdmin) {
+    if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
     }
 

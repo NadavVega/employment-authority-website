@@ -27,7 +27,7 @@ function HideOnScroll({ children }) {
 }
 
 const MainLayout = ({ children }) => {
-    const { isAuthenticated, isAdmin } = useAuth();
+    const { isAuthenticated, isAdmin, isCoordinator } = useAuth();
     const navigate = useNavigate();
 
     const navBtnStyle = {
@@ -94,7 +94,7 @@ const MainLayout = ({ children }) => {
                                 </Button>
                             )}
 
-                            {isAdmin && (
+                            {(isAdmin || isCoordinator) && (
                                 <>
                                     <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
                                         ניהול תוכן
