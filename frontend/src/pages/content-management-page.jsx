@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Typography, Box, Divider } from '@mui/material';
+import { Typography, Box, Divider, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
+import { ApprovedArticleList } from '../components/manager/ApprovedArticleList';
 import { Navigate } from 'react-router-dom';
 import PromotionalContentManager from '../features/promotional-content/promotional-content-manager';
 import BotSettingsDialog from '../components/manager/bot-settings-dialog';
@@ -16,6 +17,7 @@ const ContentManagementPage = () => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
 
     if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
@@ -114,18 +116,27 @@ const ContentManagementPage = () => {
                             
                             <div className="bot-header-controls">
                                 <div className="bot-header-text">
-                                    <h2>אישור כתבות שנאספו מהרשת</h2>
-                                    <p>רשימת כתבות שנאספו על ידי הבוט וממתינות לאישור מנהל</p>
+                                    <h2>ניהול כתבות</h2>
+                                    <p>רשימת כתבות שנאספו על ידי הבוט או פורסמו</p>
                                 </div>
                                 <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
                                     ⚙️ ניהול הגדרות בוט
                                 </button>
                             </div>
                             
-                            <Divider sx={{ mb: 3, borderColor: 'var(--color-border)' }} />
+                            <Tabs 
+                                value={activeTab} 
+                                onChange={(e, newValue) => setActiveTab(newValue)} 
+                                centered
+                                sx={{ mb: 2, borderBottom: '1px solid var(--color-border)' }}
+                            >
+                                <Tab label="ממתינות לאישור" />
+                                <Tab label="כתבות מאושרות" />
+                            </Tabs>
                             
                             <Box sx={{ flexGrow: 1 }}>
-                                <ArticleReviewList />
+                                {activeTab === 0 && <ArticleReviewList />}
+                                {activeTab === 1 && <ApprovedArticleList />}
                             </Box>
                         </div>
                     </Box>
