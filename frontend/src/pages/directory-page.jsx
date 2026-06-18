@@ -434,6 +434,19 @@ const getContactFieldClassification = (contact) => {
   return getFieldClassification(contact.field);
 };
 
+const normalizeCompanyValue = (value) => {
+  return String(value || "").toLowerCase().trim();
+};
+
+const getContactCompany = (contact) => {
+  return (
+    contact?.rawData?.profile?.company ||
+    contact?.rawData?.company ||
+    contact?.organization ||
+    ""
+  );
+};
+
 const DirectoryPage = () => {
   const navigate = useNavigate();
   const { currentUser, userRole } = useAuth();
@@ -552,12 +565,36 @@ const DirectoryPage = () => {
     (contact) => contact.role === "coordinator"
   );
 
+  const currentUserContact = contacts.find(
+    (contact) =>
+      contact.email?.toLowerCase().trim() === currentUserEmail
+  );
+
+  const currentEmployerCompany = getContactCompany(currentUserContact);
+
   const employerContacts = filteredContacts.filter((contact) => {
     if (contact.role !== "employer") return false;
 
     const assignedCoordinatorEmail = contact.assignedCoordinatorEmail
       ? contact.assignedCoordinatorEmail.toLowerCase().trim()
       : "";
+
+    if (userRole === "admin") {
+      return true;
+    }
+
+    if (userRole === "employer") {
+      const isSelf =
+        contact.email?.toLowerCase().trim() === currentUserEmail;
+
+      const sameCompany =
+        normalizeCompanyValue(currentEmployerCompany) &&
+        normalizeCompanyValue(getContactCompany(contact)) &&
+        normalizeCompanyValue(currentEmployerCompany) ===
+          normalizeCompanyValue(getContactCompany(contact));
+
+      return isSelf || sameCompany;
+    }
 
     if (userRole !== "coordinator") return true;
 
