@@ -380,13 +380,21 @@ const EmployerProfilePage = () => {
         )}
 
         {isEmployerContact && (isCoordinator || isAdmin) && (
-          <p>
-            <strong>שיוך רכז:</strong>{" "}
-            {employer.assignedCoordinatorEmail
+          <>
+            <p>
+              <strong>רכז משויך:</strong>{" "}
+              {employer.assignedCoordinatorEmail
               ? employer.assignedCoordinatorEmail
               : "טרם שויך למרכז"}
+            </p>
+
+          {isVisibleValue(employer.assignedCoordinatorName) && (
+           <p>
+             <strong>שם רכז:</strong> {employer.assignedCoordinatorName}
           </p>
-        )}
+      )}
+  </>
+)}
 
         {canAssignEmployer && (
           <button

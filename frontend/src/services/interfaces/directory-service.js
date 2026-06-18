@@ -38,6 +38,26 @@ export const directoryService = {
 
     const snapshot = await getDocs(usersQuery);
 
+    const coordinatorMap = {};
+
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const profile = data.profile || {};
+      const role = data.role || profile.role || "";
+
+      if (role === "coordinator") {
+        coordinatorMap[docSnap.id.toLowerCase().trim()] = {
+          name: profile.fullName || data.fullName || "לא צוין",
+          centerName:
+            profile.centerName ||
+            data.centerName ||
+            profile.center ||
+            data.center ||
+            "",
+        };
+      }
+    });
+
     return snapshot.docs
       .map((docSnap) => {
         const data = docSnap.data();
@@ -79,6 +99,11 @@ export const directoryService = {
           profile.assignedCoordinatorEmail ||
           "";
 
+        const assignedCoordinatorData =
+          assignedCoordinatorEmail
+            ? coordinatorMap[assignedCoordinatorEmail.toLowerCase().trim()]
+            : null;
+
         return {
           id: docSnap.id,
           email: docSnap.id,
@@ -103,6 +128,8 @@ export const directoryService = {
 
           // Employer-to-coordinator assignment
           assignedCoordinatorEmail,
+          assignedCoordinatorName: assignedCoordinatorData?.name || "",
+          assignedCoordinatorCenterName: assignedCoordinatorData?.centerName || "",
 
           // Employer CRM fields
           status: profile.status || data.status || "",
@@ -180,6 +207,33 @@ export const directoryService = {
       data.assignedCoordinatorEmail ||
       profile.assignedCoordinatorEmail ||
       "";
+    let assignedCoordinatorName = "";
+    let assignedCoordinatorCenterName = "";
+
+    if (assignedCoordinatorEmail) {
+    const coordinatorRef = doc(
+    db,
+    "users",
+    assignedCoordinatorEmail.toLowerCase().trim()
+  );
+
+  const coordinatorSnap = await getDoc(coordinatorRef);
+
+  if (coordinatorSnap.exists()) {
+    const coordinatorData = coordinatorSnap.data();
+    const coordinatorProfile = coordinatorData.profile || {};
+
+    assignedCoordinatorName =
+      coordinatorProfile.fullname || coordinatorData.fullname || "";
+
+      assignedCoordinatorCenterName =
+      coordinatorProfile.centerName ||
+      coordinatorData.centerName ||
+      coordinatorProfile.center ||
+      coordinatorData.center ||
+      "";
+  }
+}  
 
     return {
       id: contactSnap.id,
@@ -205,6 +259,8 @@ export const directoryService = {
 
       // Employer-to-coordinator assignment
       assignedCoordinatorEmail,
+      assignedCoordinatorName,
+      assignedCoordinatorCenterName,
 
       // Employer CRM fields
       status: profile.status || data.status || "",
@@ -411,9 +467,8 @@ export const directoryService = {
 
     const company = String(formData.company || "").trim();
     const address = String(formData.address || "").trim();
-    const inputPhone = String(formData.phone || "").trim(); // הטלפון שמגיע מהטופס
+    const inputPhone = String(formData.phone || "").trim();
 
-    // הורדנו את הטלפון מחובה, כדי לא להכשיל שמירה אם הטופס נטען ריק
     if (!company || !address) {
       throw new Error("שם חברה וכתובת חברה הם שדות חובה.");
     }
@@ -455,7 +510,6 @@ export const directoryService = {
 
       if (privateInfoSnap.exists()) {
         const existingData = privateInfoSnap.data();
-        // שומר על הטלפון הקיים אם לא הוזן טלפון חדש
         const finalPhone = inputPhone || existingData.phone || "";
 
         await setDoc(
@@ -491,7 +545,7 @@ export const directoryService = {
    * Fetch strictly the private info (like phone number) for a user.
    * Useful for pre-filling edit forms for coordinators.
    * * @param {string} contactEmail
-   * @returns {Promise<Object|null>}
+   * * @returns {Promise<Object|null>}
    */
   async getPrivateContactInfo(contactEmail) {
     try {
