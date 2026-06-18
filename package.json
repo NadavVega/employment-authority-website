@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "npm-run-all2": "^7.0.2"
+  },
+  "dependencies": {
+    "recharts": "^3.8.1"
   }
 }
