@@ -57,11 +57,12 @@ const ContentManagementPage = () => {
                 width: '100%'
             }}>
                 
-                {/* RIGHT COLUMN: Form (40% width) */}
+                {/* RIGHT COLUMN: Form (40% width for admin, 100% for coordinator) */}
                 <Box sx={{ 
-                    flex: { xs: '1 1 100%', lg: '0 0 40%' }, 
+                    flex: isAdmin ? { xs: '1 1 100%', lg: '0 0 40%' } : '1 1 100%', 
+                    maxWidth: isAdmin ? 'none' : '800px',
+                    margin: isAdmin ? '0' : '0 auto',
                     width: '100%'
-                    /* Removed position: 'sticky' so it can stretch fully */
                 }}>
                     {/* Added height: '100%' to the wrapper */}
                     <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
@@ -102,33 +103,33 @@ const ContentManagementPage = () => {
                     </div>
                 </Box>
 
-                {/* LEFT COLUMN: List (60% width) */}
-                <Box sx={{ 
-                    flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
-                    width: '100%'
-                }}>
-                    {/* Added height: '100%' to the wrapper */}
-                    <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-                        
-                        <div className="bot-header-controls">
-                            <div className="bot-header-text">
-                                <h2>אישור כתבות שנאספו מהרשת</h2>
-                                <p>רשימת כתבות שנאספו על ידי הבוט וממתינות לאישור מנהל</p>
-                            </div>
-                            {isAdmin && (
+                {/* LEFT COLUMN: List (60% width) - ONLY FOR ADMIN */}
+                {isAdmin && (
+                    <Box sx={{ 
+                        flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
+                        width: '100%'
+                    }}>
+                        {/* Added height: '100%' to the wrapper */}
+                        <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                            
+                            <div className="bot-header-controls">
+                                <div className="bot-header-text">
+                                    <h2>אישור כתבות שנאספו מהרשת</h2>
+                                    <p>רשימת כתבות שנאספו על ידי הבוט וממתינות לאישור מנהל</p>
+                                </div>
                                 <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
                                     ⚙️ ניהול הגדרות בוט
                                 </button>
-                            )}
+                            </div>
+                            
+                            <Divider sx={{ mb: 3, borderColor: 'var(--color-border)' }} />
+                            
+                            <Box sx={{ flexGrow: 1 }}>
+                                <ArticleReviewList />
+                            </Box>
                         </div>
-                        
-                        <Divider sx={{ mb: 3, borderColor: 'var(--color-border)' }} />
-                        
-                        <Box sx={{ flexGrow: 1 }}>
-                            <ArticleReviewList />
-                        </Box>
-                    </div>
-                </Box>
+                    </Box>
+                )}
 
             </Box>
 
