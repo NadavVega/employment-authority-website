@@ -640,7 +640,7 @@ const DirectoryPage = () => {
           <table
             style={{
               width: "100%",
-              minWidth: isCoordinatorTable ? "900px" : "1550px",
+              minWidth: isCoordinatorTable ? "900px" : "1400px",
               borderCollapse: "collapse",
               fontSize: "15px",
               textAlign: "right",
@@ -667,7 +667,6 @@ const DirectoryPage = () => {
                   </>
                 ) : (
                   <>
-                    <th style={{ padding: "14px 12px" }}>סוג</th>
                     <th style={{ padding: "14px 12px" }}>תחום</th>
                     <th style={{ padding: "14px 12px" }}>תת־תחום</th>
                     <th style={{ padding: "14px 12px" }}>סטטוס קשר</th>
@@ -733,10 +732,6 @@ const DirectoryPage = () => {
                     ) : (
                       <>
                         <td style={{ padding: "13px 12px" }}>
-                          {displayRole(contact.role)}
-                        </td>
-
-                        <td style={{ padding: "13px 12px" }}>
                           {isVisibleValue(mainCategory) ? mainCategory : "לא צוין"}
                         </td>
 
@@ -750,17 +745,36 @@ const DirectoryPage = () => {
                             : "לא צוין"}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "13px 12px",
-                            direction: "ltr",
-                            textAlign: "right",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {isVisibleValue(contact.assignedCoordinatorEmail)
-                            ? contact.assignedCoordinatorEmail
-                            : "לא משויך"}
+                        <td style={{ padding: "13px 12px" }}>
+                          {isVisibleValue(contact.assignedCoordinatorEmail) ? (
+                            <>
+                              <div
+                                style={{
+                                  direction: "ltr",
+                                  unicodeBidi: "plaintext",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                <strong>רכז משויך:</strong>{" "}
+                                {contact.assignedCoordinatorEmail}
+                              </div>
+
+                              {isVisibleValue(contact.assignedCoordinatorName) && (
+                                <div
+                                  style={{
+                                    marginTop: "4px",
+                                    color: "#555",
+                                    fontSize: "13px",
+                                  }}
+                                >
+                                  <strong>שם רכז:</strong>{" "}
+                                  {contact.assignedCoordinatorName}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            "לא משויך"
+                          )}
                         </td>
 
                         <td
