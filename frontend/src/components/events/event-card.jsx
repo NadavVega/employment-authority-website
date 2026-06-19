@@ -32,7 +32,7 @@ const getReadableTextColor = (backgroundColor) => {
     return luminance > 155 ? '#172033' : '#ffffff';
 };
 
-export const EventCard = ({ event, isExpired, isFeatured, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -68,7 +68,7 @@ export const EventCard = ({ event, isExpired, isFeatured, onOpenDetails, onAppro
 
     return (
         <div
-            className={`event-card ${isExpired ? 'event-card-expired' : ''} ${isFeatured ? 'event-card-featured' : ''}`}
+            className={`event-card ${isExpired ? 'event-card-expired' : ''} ${isFeatured ? 'event-card-featured' : ''} ${isCompact ? 'event-card-compact' : ''}`}
             style={{
                 '--event-center-color': centerColor,
                 '--event-center-text': getReadableTextColor(centerColor),

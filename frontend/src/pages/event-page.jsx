@@ -500,6 +500,7 @@ const handleRegisterClick = async (event) => {
                                                 event={event}
                                                 index={index + 1}
                                                 isGuest={isGuest}
+                                                isCompact={true}
                                                 isRegistered={registeredEventIds.includes(event.id)}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
@@ -551,6 +552,7 @@ const handleRegisterClick = async (event) => {
                                                         index={index}
                                                         isGuest={isGuest}
                                                         isExpired={true}
+                                                        isCompact={true}
                                                         onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                         onApprove={handleApproveEvent}
                                                         onDelete={handleDeleteEvent}
@@ -593,6 +595,7 @@ const handleRegisterClick = async (event) => {
                                                 index={index}
                                                 isGuest={isGuest}
                                                 isExpired={true}
+                                                isCompact={true}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
                                                 onDelete={handleDeleteEvent}
