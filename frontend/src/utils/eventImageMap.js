@@ -32,5 +32,7 @@ export const resolveEventImage = (event) => {
     // Supports old/custom-upload preview data if it exists in Firestore
     if (event.photoPreview) return event.photoPreview;
 
+    if (event.media?.photoUrl) return event.media.photoUrl;
+
     return null;
 };

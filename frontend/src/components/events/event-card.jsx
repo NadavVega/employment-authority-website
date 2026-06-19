@@ -126,23 +126,31 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                     </div>
                 </div>
 
-                {canEdit && (
-                    isExpired ? (
-                        <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
-                                <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
-                                <path d="M10 13h4"></path>
-                            </svg>
-                        </button>
-                    ) : (
-                        <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                            </svg>
-                        </button>
-                    )
-                )}
+                <div className="card-image-actions">
+                    <ShareMenu
+                        title={event.title}
+                        url={buildEventShareUrl(event.id)}
+                        ariaLabel={`שיתוף האירוע ${event.title}`}
+                        buttonClassName="edit-pencil-btn-new card-share-action"
+                    />
+                    {canEdit && (
+                        isExpired ? (
+                            <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
+                                    <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
+                                    <path d="M10 13h4"></path>
+                                </svg>
+                            </button>
+                        ) : (
+                            <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
+                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                </svg>
+                            </button>
+                        )
+                    )}
+                </div>
 
                 <div className="event-card-overlay">
                     <div className="overlay-meta-grid">

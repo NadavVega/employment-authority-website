@@ -336,7 +336,7 @@
 .card-badges-container {
     position: absolute;
     top: 12px;
-    left: 56px;
+    left: 96px;
     right: 12px;
     display: flex;
     justify-content: space-between;
@@ -350,14 +350,24 @@
     width: 48px;
     height: 34px;
     margin-inline-start: 6px;
-    color: var(--color-text-muted);
+    color: #ffffff;
     font-weight: 800;
+    background: var(--event-center-color, #64748b);
+    border: 0;
+    box-shadow: none;
 }
 
-.card-edit-action {
+.card-image-actions {
     position: absolute;
     top: 12px;
     left: 12px;
+    z-index: 11;
+    display: flex;
+    gap: 8px;
+}
+
+.card-image-actions .card-edit-action {
+    position: static;
 }
 
 .event-card-bottom .event-center-logo img {
@@ -374,6 +384,10 @@
     fill: none;
     stroke: var(--color-text-muted);
     stroke-width: 1.7;
+}
+
+.event-card-bottom .event-center-logo svg {
+    stroke: #ffffff;
 }
 
 .badge-free {
@@ -425,6 +439,14 @@
     cursor: pointer;
     transition: all 0.2s;
     z-index: 11;
+}
+
+.edit-pencil-btn-new.MuiIconButton-root {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    color: white;
 }
 
 .edit-pencil-btn-new:hover {
@@ -529,8 +551,8 @@
 
 /* --- Card Bottom Info --- */
 .event-card-bottom {
-    background: var(--event-center-color, #64748b);
-    color: var(--event-center-text, #ffffff);
+    background: #ffffff;
+    color: var(--color-text);
     padding: 10px 14px;
     display: flex;
     justify-content: space-between;
@@ -548,8 +570,7 @@
     flex: 1;
     padding-left: 8px;
     text-align: right; 
-    border-right: 2px solid currentColor;
-    border-right-color: color-mix(in srgb, currentColor 34%, transparent);
+    border-right: 2px solid var(--color-border);
     padding-right: 10px;
 }
 
@@ -618,7 +639,6 @@
 .events-grid-compact > .event-card:first-child {
     grid-column: auto;
     grid-row: auto;
-    height: 280px;
 }
 
 .events-rows {
@@ -722,7 +742,7 @@
 }
 
 .event-card-expired .event-card-bottom {
-    background: var(--event-center-color, #64748b);
+    background: #ffffff;
 }
 
 /* --- 4. Modals (Event Details & Bit Dialog) --- */
@@ -773,10 +793,11 @@
 }
 
 .modal-header-content {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 24px;
-    padding-left: 42px;
+    padding-left: 60px;
 }
 
 .modal-center-logo {
@@ -801,6 +822,17 @@
     align-items: baseline;
     flex-wrap: wrap;
     gap: 10px;
+    min-width: 0;
+    flex: 1;
+    padding-left: 8px;
+}
+
+.modal-share-action.MuiIconButton-root,
+.modal-share-action.MuiButton-root {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .event-title-separator {
@@ -1013,7 +1045,7 @@
     .modal-header-content {
         align-items: flex-start;
         gap: 14px;
-        padding-left: 34px;
+        padding-left: 48px;
     }
 
     .modal-center-logo {

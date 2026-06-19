@@ -33,6 +33,26 @@ const parsePhoneString = (phoneStr) => {
   });
 };
 
+const normalizeEventImageFields = (data) => {
+  const image = data.image || '';
+  const photoUrl = data.photoUrl || '';
+  const photoPreview = data.photoPreview || '';
+  const logoUrl = data.logoUrl || '';
+
+  return {
+    image,
+    photoUrl,
+    photoPreview,
+    logoUrl,
+    media: {
+      ...(data.media || {}),
+      photoUrl: photoUrl || photoPreview || '',
+      logoUrl,
+      videoUrl: data.videoUrl || data.media?.videoUrl || '',
+    },
+  };
+};
+
 export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel }) => {
   const { currentUser, userRole, isAdmin } = useAuth();
 
@@ -240,6 +260,7 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
       const combinedAccPhones = formData.isAccessible ? accessibilityPhones.map(p => `${p.prefix}-${p.number}`).join(', ') : '';
       const formattedData = {
         ...formData,
+        ...normalizeEventImageFields(formData),
         coordinatorName: formData.coordinatorName,
         capacity: isCapacityUnlimited ? '' : formData.capacity,
         time: `${formData.startTime}-${formData.endTime}`,

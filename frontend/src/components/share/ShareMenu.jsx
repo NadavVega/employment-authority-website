@@ -8,7 +8,7 @@ import {
     MenuItem,
     Snackbar,
 } from '@mui/material';
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import IosShareOutlinedIcon from '@mui/icons-material/IosShareOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
@@ -65,7 +65,7 @@ export const ShareMenu = ({
             className={buttonClassName}
             type="button"
             onClick={handleOpen}
-            startIcon={<ShareOutlinedIcon fontSize="small" />}
+            startIcon={<IosShareOutlinedIcon fontSize="small" />}
             aria-label={ariaLabel}
             aria-haspopup="menu"
             aria-expanded={isOpen}
@@ -84,7 +84,7 @@ export const ShareMenu = ({
             size="small"
             sx={buttonSx}
         >
-            <ShareOutlinedIcon fontSize="small" />
+            <IosShareOutlinedIcon fontSize="small" />
         </IconButton>
     );
 
