@@ -351,6 +351,15 @@ const EmployerProfilePage = () => {
             <strong>אוכלוסייה:</strong> {employer.population}
           </p>
         )}
+        {isCoordinatorContact && isVisibleValue(displayEmail) && (
+          <p>
+              <strong>אימייל:</strong>{" "}
+              <span dir="ltr" style={ltrValueStyle}>
+                {displayEmail}
+              </span>
+          </p>
+        )}
+
 
         {isCoordinatorContact && isVisibleValue(displayPhone) && (
           <p>
