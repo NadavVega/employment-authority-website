@@ -54,6 +54,11 @@ export const EventsPage = () => {
         }
     };
 
+    const handleSelectedEventEdit = () => {
+        if (!selectedEvent?.id) return;
+        navigate(`/edit-event/${selectedEvent.id}`);
+    };
+
     // Fetch registered event IDs for the current user (if employer)
     useEffect(() => {
         if (currentUser?.uid && userRole === 'employer') {
@@ -279,6 +284,7 @@ const handleRegisterClick = async (event) => {
     const selectedLocation = getEventLocation(selectedEvent);
     const selectedMapUrl = getMapSearchUrl(selectedEvent);
     const selectedEventIsCurrentUserOwned = selectedEvent?.createdBy === currentUser?.uid;
+    const canEditSelectedEvent = isAdmin || selectedEventIsCurrentUserOwned;
     const selectedCreatorName =
         selectedEvent?.creatorName ||
         selectedEvent?.coordinatorName ||
@@ -578,20 +584,35 @@ const handleRegisterClick = async (event) => {
                                     <span className="event-title-separator" aria-hidden="true">|</span>
                                     <span>{selectedEvent.title}</span>
                                 </h2>
-                                <ShareMenu
-                                    title={selectedEvent.title}
-                                    url={buildEventShareUrl(selectedEvent.id)}
-                                    ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
-                                    buttonClassName="modal-share-action"
-                                    buttonSx={{
-                                        flex: '0 0 auto',
-                                        color: 'var(--color-brand)',
-                                        border: '1px solid var(--color-brand)',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontFamily: 'inherit',
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                />
+                                <div className="modal-header-actions">
+                                    {canEditSelectedEvent && (
+                                        <button
+                                            type="button"
+                                            className="modal-edit-action"
+                                            onClick={handleSelectedEventEdit}
+                                            aria-label={`עריכת האירוע ${selectedEvent.title}`}
+                                            title="עריכת אירוע"
+                                        >
+                                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                            </svg>
+                                        </button>
+                                    )}
+                                    <ShareMenu
+                                        title={selectedEvent.title}
+                                        url={buildEventShareUrl(selectedEvent.id)}
+                                        ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
+                                        buttonClassName="modal-share-action"
+                                        buttonSx={{
+                                            flex: '0 0 auto',
+                                            color: 'var(--color-brand)',
+                                            border: '1px solid var(--color-brand)',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontFamily: 'inherit',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                         

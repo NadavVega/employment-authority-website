@@ -43,8 +43,11 @@
 .card-image-actions { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 11; }
 .edit-pencil-btn-new { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 11; }
 .edit-pencil-btn-new.MuiIconButton-root { width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; }
+.card-image-actions .card-share-action.MuiIconButton-root { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; box-shadow: none; }
 .edit-pencil-btn-new:hover { background: var(--color-primary); transform: scale(1.1); }
+.card-image-actions .card-share-action.MuiIconButton-root:hover { background: var(--color-primary); transform: scale(1.1); }
 .edit-pencil-btn-new svg { width: 16px; height: 16px; stroke: white; }
+.card-image-actions .card-share-action.MuiIconButton-root svg { width: 16px; height: 16px; color: white; }
 
 .event-card-overlay { position: absolute; inset: 0; background: rgba(0, 24, 64, 0.85); color: white; display: flex; flex-direction: column; padding: 30px 16px 16px 16px; opacity: 0; transition: opacity 0.3s ease; z-index: 5; }
 .event-card:hover .event-card-overlay { opacity: 1; }
