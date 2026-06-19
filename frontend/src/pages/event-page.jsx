@@ -26,6 +26,8 @@ export const EventsPage = () => {
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('cards');
+    const [showAllUpcomingEvents, setShowAllUpcomingEvents] = useState(false);
+    const [showPastEvents, setShowPastEvents] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -299,6 +301,11 @@ const handleRegisterClick = async (event) => {
     const filteredPastEvents = pastEvents.filter(filterFunction);
     const featuredEvent = filteredActiveEvents[0] || null;
     const secondaryActiveEvents = filteredActiveEvents.slice(1);
+    const visibleSecondaryEvents = showAllUpcomingEvents
+        ? secondaryActiveEvents
+        : secondaryActiveEvents.slice(0, 8);
+    const hasHiddenSecondaryEvents = secondaryActiveEvents.length > 8;
+    const canViewPastEvents = isAdmin || isCoordinator;
 
     const renderCenterLogo = (event, className) => {
         const icon = getCenterIcon(event);
@@ -463,6 +470,7 @@ const handleRegisterClick = async (event) => {
                                 event={featuredEvent}
                                 index={0}
                                 isGuest={isGuest}
+                                isFeatured={true}
                                 isRegistered={registeredEventIds.includes(featuredEvent.id)}
                                 onOpenDetails={(event) => setSelectedEventModal(event)}
                                 onApprove={handleApproveEvent}
@@ -471,7 +479,10 @@ const handleRegisterClick = async (event) => {
                         </div>
                     </aside>
 
-                    <section className="events-secondary-area" aria-label="אירועים נוספים">
+                    <section
+                        className={`events-secondary-area ${showAllUpcomingEvents ? 'events-secondary-area-expanded' : ''}`}
+                        aria-label="אירועים נוספים"
+                    >
                         <div className="events-secondary-heading">
                             <div>
                                 <h2>אירועים נוספים</h2>
@@ -483,7 +494,7 @@ const handleRegisterClick = async (event) => {
                             {secondaryActiveEvents.length > 0 ? (
                                 viewMode === 'cards' ? (
                                     <div className="events-grid events-secondary-grid">
-                                        {secondaryActiveEvents.map((event, index) => (
+                                        {visibleSecondaryEvents.map((event, index) => (
                                             <EventCard
                                                 key={event.id}
                                                 event={event}
@@ -496,35 +507,58 @@ const handleRegisterClick = async (event) => {
                                             />
                                         ))}
                                     </div>
-                                ) : renderEventRows(secondaryActiveEvents)
+                                ) : renderEventRows(visibleSecondaryEvents)
                             ) : (
                                 <div className="no-results-message no-secondary-events">
                                     <p>אין אירועים קרובים נוספים.</p>
                                 </div>
                             )}
 
-                            {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                            {hasHiddenSecondaryEvents && (
+                                <div className="events-expand-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-secondary pill-btn events-toggle-btn"
+                                        onClick={() => setShowAllUpcomingEvents(prev => !prev)}
+                                        aria-expanded={showAllUpcomingEvents}
+                                    >
+                                        {showAllUpcomingEvents ? 'הצג פחות' : 'הצג את כל האירועים'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {canViewPastEvents && filteredPastEvents.length > 0 && (
                                 <div className="past-events-section">
-                                    <div className="section-divider">
+                                    <div className="section-divider section-divider-with-action">
                                         <h2>אירועים שנגמרו</h2>
                                         <hr/>
+                                        <button
+                                            type="button"
+                                            className="btn-secondary pill-btn events-toggle-btn"
+                                            onClick={() => setShowPastEvents(prev => !prev)}
+                                            aria-expanded={showPastEvents}
+                                        >
+                                            {showPastEvents ? 'הסתר אירועים שהסתיימו' : 'הצג אירועים שהסתיימו'}
+                                        </button>
                                     </div>
-                                    {viewMode === 'cards' ? (
-                                        <div className="events-grid events-secondary-grid events-grid-compact">
-                                            {filteredPastEvents.map((event, index) => (
-                                                <EventCard
-                                                    key={event.id}
-                                                    event={event}
-                                                    index={index}
-                                                    isGuest={isGuest}
-                                                    isExpired={true}
-                                                    onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
-                                                    onApprove={handleApproveEvent}
-                                                    onDelete={handleDeleteEvent}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : renderEventRows(filteredPastEvents, true)}
+                                    {showPastEvents && (
+                                        viewMode === 'cards' ? (
+                                            <div className="events-grid events-secondary-grid events-grid-compact">
+                                                {filteredPastEvents.map((event, index) => (
+                                                    <EventCard
+                                                        key={event.id}
+                                                        event={event}
+                                                        index={index}
+                                                        isGuest={isGuest}
+                                                        isExpired={true}
+                                                        onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                        onApprove={handleApproveEvent}
+                                                        onDelete={handleDeleteEvent}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : renderEventRows(filteredPastEvents, true)
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -535,28 +569,38 @@ const handleRegisterClick = async (event) => {
                     <div className="no-results-message">
                         <p>לא נמצאו אירועים קרובים.</p>
                     </div>
-                    {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                    {canViewPastEvents && filteredPastEvents.length > 0 && (
                         <section className="past-events-section past-events-standalone" aria-label="אירועים שנגמרו">
-                            <div className="section-divider">
+                            <div className="section-divider section-divider-with-action">
                                 <h2>אירועים שנגמרו</h2>
                                 <hr/>
+                                <button
+                                    type="button"
+                                    className="btn-secondary pill-btn events-toggle-btn"
+                                    onClick={() => setShowPastEvents(prev => !prev)}
+                                    aria-expanded={showPastEvents}
+                                >
+                                    {showPastEvents ? 'הסתר אירועים שהסתיימו' : 'הצג אירועים שהסתיימו'}
+                                </button>
                             </div>
-                            {viewMode === 'cards' ? (
-                                <div className="events-grid events-secondary-grid events-grid-compact">
-                                    {filteredPastEvents.map((event, index) => (
-                                        <EventCard
-                                            key={event.id}
-                                            event={event}
-                                            index={index}
-                                            isGuest={isGuest}
-                                            isExpired={true}
-                                            onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
-                                            onApprove={handleApproveEvent}
-                                            onDelete={handleDeleteEvent}
-                                        />
-                                    ))}
-                                </div>
-                            ) : renderEventRows(filteredPastEvents, true)}
+                            {showPastEvents && (
+                                viewMode === 'cards' ? (
+                                    <div className="events-grid events-secondary-grid events-grid-compact">
+                                        {filteredPastEvents.map((event, index) => (
+                                            <EventCard
+                                                key={event.id}
+                                                event={event}
+                                                index={index}
+                                                isGuest={isGuest}
+                                                isExpired={true}
+                                                onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                onApprove={handleApproveEvent}
+                                                onDelete={handleDeleteEvent}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : renderEventRows(filteredPastEvents, true)
+                            )}
                         </section>
                     )}
                 </>

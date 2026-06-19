@@ -258,6 +258,10 @@
     min-width: 0;
 }
 
+.events-secondary-area-expanded {
+    grid-column: 1 / -1;
+}
+
 .events-secondary-heading {
     justify-content: space-between;
 }
@@ -269,8 +273,8 @@
 }
 
 .events-secondary-scroll {
-    max-height: min(650px, calc(100vh - 220px));
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     overflow-x: hidden;
     padding: 2px 8px 8px;
     scrollbar-gutter: stable;
@@ -281,7 +285,7 @@
 }
 
 .events-secondary-grid {
-    grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: var(--space-4);
     align-items: center;
 }
@@ -624,6 +628,88 @@
     opacity: 0.8;
 }
 
+.event-card-featured .event-card-bottom {
+    align-items: stretch;
+    gap: 14px;
+    min-height: 118px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--color-accent-soft) 100%);
+    border-top: 4px solid var(--event-center-color, var(--color-brand));
+}
+
+.event-card-featured .event-center-logo {
+    width: 64px;
+    height: 48px;
+    align-self: center;
+}
+
+.event-card-featured .bottom-date-area {
+    justify-content: center;
+    min-width: 72px;
+}
+
+.event-card-featured .bottom-date-big {
+    font-size: 28px;
+}
+
+.event-card-featured .bottom-title-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.event-card-featured .bottom-title {
+    font-size: 20px;
+}
+
+.featured-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+}
+
+.featured-card-meta span {
+    max-width: 100%;
+}
+
+.featured-card-details-btn {
+    align-self: center;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    background: var(--color-brand);
+    color: #ffffff;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--t), transform var(--t);
+}
+
+.featured-card-details-btn:hover,
+.featured-card-details-btn:focus-visible {
+    background: var(--color-brand-dark);
+    transform: translateY(-1px);
+}
+
+.events-expand-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-5);
+}
+
+.events-toggle-btn {
+    font: inherit;
+    cursor: pointer;
+}
+
 /* --- 3. Expired Events Section --- */
 .past-events-section { 
     margin-top: var(--space-8);
@@ -652,6 +738,10 @@
     flex-grow: 1; 
     border: none; 
     border-top: 2px dashed var(--color-border); 
+}
+
+.section-divider-with-action {
+    flex-wrap: wrap;
 }
 
 .past-events-section .events-grid {
@@ -1012,9 +1102,8 @@
         min-height: 0;
     }
 
-    .events-secondary-scroll {
-        max-height: none;
-        overflow: visible;
+    .events-secondary-area-expanded {
+        grid-column: auto;
     }
 }
 

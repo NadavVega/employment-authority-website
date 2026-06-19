@@ -32,7 +32,7 @@ const getReadableTextColor = (backgroundColor) => {
     return luminance > 155 ? '#172033' : '#ffffff';
 };
 
-export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isExpired, isFeatured, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -68,7 +68,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
 
     return (
         <div
-            className={`event-card ${isExpired ? 'event-card-expired' : ''}`}
+            className={`event-card ${isExpired ? 'event-card-expired' : ''} ${isFeatured ? 'event-card-featured' : ''}`}
             style={{
                 '--event-center-color': centerColor,
                 '--event-center-text': getReadableTextColor(centerColor),
@@ -183,8 +183,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                 </div>
             </div>
 
-            <div 
-                className="event-card-bottom">
+            <div className="event-card-bottom">
                 <div className="event-center-logo event-logo-container" title={centerName || 'מרכז תעסוקה'}>
                     {centerIcon ? (
                         <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
@@ -199,7 +198,26 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                 </div>
                 <div className="bottom-title-area">
                     <p className="bottom-title">{event.title}</p>
+                    {isFeatured && (
+                        <div className="featured-card-meta">
+                            <span className="standard-numbers">{fullDate}</span>
+                            <span className="standard-numbers" dir="ltr">{event.time || 'טרם נקבע'}</span>
+                            <span>{shortLocation}</span>
+                        </div>
+                    )}
                 </div>
+                {isFeatured && (
+                    <button
+                        type="button"
+                        className="featured-card-details-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenDetails(event);
+                        }}
+                    >
+                        הרשמה / פרטים
+                    </button>
+                )}
 
             </div>
         </div>
