@@ -107,11 +107,10 @@ export const ApprovedArticleList: React.FC = () => {
                             </p>
                         )}
                         
-                        <div className="article-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div className="article-actions">
                             <button 
-                                className="btn-reject-article" 
+                                className="btn-delete-article" 
                                 onClick={() => article.id && handleDelete(article.id)}
-                                style={{ backgroundColor: '#dc3545', color: 'white' }}
                             >
                                 מחק לצמיתות
                             </button>

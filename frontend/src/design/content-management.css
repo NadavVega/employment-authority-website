@@ -23,6 +23,10 @@
     font-size: var(--text-sm);
 }
 
+.modern-layout-wrapper .form-contrast-wrapper {
+    border-radius: 0;
+}
+
 /* --- Article Review Cards --- */
 .article-review-list {
     display: flex;
@@ -34,7 +38,7 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-right: 4px solid var(--color-gold); /* Jerusalem Gold Accent */
-    border-radius: var(--radius-md);
+    border-radius: 0;
     padding: var(--space-5);
     transition: all var(--t);
     box-shadow: var(--shadow-sm);
@@ -81,20 +85,33 @@
     gap: var(--space-3);
     margin-top: auto;
     justify-content: flex-end; /* Align buttons to the left (in RTL) */
+    flex-wrap: wrap;
     padding-top: var(--space-4);
     border-top: 1px dashed var(--color-border);
+}
+
+.btn-approve-article,
+.btn-reject-article,
+.btn-delete-article {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 20px;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all var(--t);
+    box-sizing: border-box;
 }
 
 .btn-approve-article {
     background: #10b981; /* Success Green */
     color: white;
-    border: none;
-    padding: 8px 20px;
-    border-radius: var(--radius-md);
-    font-weight: 700;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: all var(--t);
+    border: 1px solid #10b981;
 }
 
 .btn-approve-article:hover { 
@@ -105,15 +122,20 @@
 .btn-reject-article {
     background: transparent;
     color: #ef4444; /* Danger Red */
-    border: 2px solid #ef4444;
-    padding: 6px 20px;
-    border-radius: var(--radius-md);
-    font-weight: 700;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: all var(--t);
+    border: 1px solid #ef4444;
 }
 
 .btn-reject-article:hover { 
     background: rgba(239, 68, 68, 0.1); 
+}
+
+.btn-delete-article {
+    background: #dc3545;
+    color: #ffffff;
+    border: 1px solid #dc3545;
+}
+
+.btn-delete-article:hover {
+    background: #b02a37;
+    border-color: #b02a37;
 }
