@@ -847,6 +847,140 @@ service cloud.firestore {
         && eventAfter.registeredUids.hasAny([request.auth.uid]);
     }
 
+    // In-app notifications / messages
+    function userExistsByEmail(userEmail) {
+      return userEmail is string
+        && userEmail == userEmail.lower()
+        && exists(userPath(userEmail));
+    }
+
+    function canReadUserByEmail(userEmail) {
+      return userExistsByEmail(userEmail)
+        && (
+          userEmail == authenticatedEmail()
+          || isAdmin()
+          || isApplicationUser()
+        );
+    }
+
+    function canChooseNotificationRecipient(recipientEmail) {
+      return canReadUserByEmail(recipientEmail)
+        && recipientEmail != authenticatedEmail();
+    }
+
+    function isNotificationRecipient(data) {
+      return isApplicationUser()
+        && data.keys().hasAll(['recipientEmail'])
+        && data.recipientEmail == authenticatedEmail();
+    }
+
+    function validBaseNotificationCreate(data) {
+      return isApplicationUser()
+        && data.keys().hasOnly([
+          'recipientEmail',
+          'recipientUid',
+          'senderEmail',
+          'senderUid',
+          'senderName',
+          'type',
+          'title',
+          'body',
+          'message',
+          'eventId',
+          'requestId',
+          'link',
+          'isRead',
+          'createdAt',
+          'readAt'
+        ])
+        && data.keys().hasAll([
+          'recipientEmail',
+          'senderEmail',
+          'senderUid',
+          'type',
+          'title',
+          'body',
+          'link',
+          'isRead',
+          'createdAt'
+        ])
+        && data.recipientEmail is string
+        && data.recipientEmail == data.recipientEmail.lower()
+        && data.senderEmail == authenticatedEmail()
+        && data.senderUid == request.auth.uid
+        && data.type is string
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 120
+        && data.body is string
+        && data.body.size() > 0
+        && data.body.size() <= 500
+        && data.link is string
+        && data.link.size() > 0
+        && data.link.size() <= 300
+        && data.isRead == false
+        && data.createdAt == request.time
+        && (
+          !data.keys().hasAny(['senderName'])
+          || data.senderName is string
+        )
+        && (
+          !data.keys().hasAny(['message'])
+          || (
+            data.message is string
+            && data.message.size() <= 500
+          )
+        )
+        && (
+          !data.keys().hasAny(['recipientUid'])
+          || data.recipientUid is string
+        )
+        && (
+          !data.keys().hasAny(['readAt'])
+          || data.readAt == null
+        )
+        && canChooseNotificationRecipient(data.recipientEmail);
+    }
+
+    function validEventNotificationCreate(data) {
+      let eventData = get(eventPath(data.eventId)).data;
+
+      return validBaseNotificationCreate(data)
+        && data.type in [
+          'event_message',
+          'event_created',
+          'event_updated'
+        ]
+        && data.keys().hasAll(['eventId'])
+        && data.eventId is string
+        && exists(eventPath(data.eventId))
+        && eventIsPublished(eventData)
+        && eventHasNotPassed(eventData)
+        && data.link == '/events?eventId=' + data.eventId;
+    }
+
+    function validPrivateDetailsNotificationCreate(data) {
+      let requestData = getAfter(privacyRequestPath(data.requestId)).data;
+
+      return validBaseNotificationCreate(data)
+        && data.type == 'private_details_request'
+        && data.keys().hasAll(['requestId'])
+        && data.requestId is string
+        && existsAfter(privacyRequestPath(data.requestId))
+        && requestData.requesterEmail == authenticatedEmail()
+        && requestData.targetEmail == data.recipientEmail;
+    }
+
+    function validNotificationReadUpdate() {
+      return isNotificationRecipient(resource.data)
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['isRead', 'readAt'])
+        && request.resource.data.isRead == true
+        && request.resource.data.readAt == request.time;
+    }
+
     function validPromotionalContent(data) {
       return data.keys().hasOnly([
           'title',
@@ -1014,6 +1148,17 @@ service cloud.firestore {
       allow create: if validPrivacyRequestCreate();
       allow update: if validPrivacyRequestUpdate();
       allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isNotificationRecipient(resource.data);
+
+      allow create: if validEventNotificationCreate(request.resource.data)
+        || validPrivateDetailsNotificationCreate(request.resource.data);
+
+      allow update: if validNotificationReadUpdate();
+
+      allow delete: if isNotificationRecipient(resource.data);
     }
 
     // Preserve the current admin-managed article moderation workflow.
