@@ -195,11 +195,16 @@ export const EventMessageDialog = ({
             onClose={isSending ? undefined : handleClose}
             onClick={(clickEvent) => clickEvent.stopPropagation()}
             fullWidth
-            maxWidth="md"
+            maxWidth="sm"
+            sx={{
+                zIndex: 1700,
+            }}
             slotProps={{
                 paper: {
                     sx: {
                         direction: 'rtl',
+                        width: 'min(92vw, 560px)',
+                        maxWidth: '560px',
                         borderRadius: 3,
                         overflow: 'hidden',
                     },
