@@ -33,6 +33,17 @@ const buildEventMedia = (eventDetails) => {
     };
 };
 
+const EVENT_OWNERSHIP_FIELDS = [
+    'createdBy',
+    'createdByEmail',
+    'createdByUid',
+    'creatorEmail',
+    'creatorUid',
+    'ownerEmail',
+    'ownerUid',
+    'coordinatorEmail',
+];
+
 const getUserDocIdFromEmail = (email) => {
     return String(email || '').trim().toLowerCase();
 };
@@ -161,6 +172,8 @@ export const eventService = {
                 
                 status: eventStatus, 
                 createdBy: (currentUser && currentUser.uid) || (currentUser && currentUser.email) || 'demo_user',
+                createdByUid: (currentUser && currentUser.uid) || '',
+                createdByEmail: (currentUser && currentUser.email) || '',
                 createdAt: serverTimestamp(),
 
                 registeredCount: 0,
@@ -196,9 +209,19 @@ export const eventService = {
     async updateEvent(eventId, updatedData) {
         try {
             const docRef = doc(db, 'events', eventId);
+            const existingSnap = await getDoc(docRef);
+            const existingData = existingSnap.exists() ? existingSnap.data() : {};
             const payload = { ...updatedData };
 
             delete payload.id;
+
+            EVENT_OWNERSHIP_FIELDS.forEach((field) => {
+                if (Object.prototype.hasOwnProperty.call(existingData, field)) {
+                    payload[field] = existingData[field];
+                } else {
+                    delete payload[field];
+                }
+            });
 
             if (payload.date && payload.time) {
                 Object.assign(

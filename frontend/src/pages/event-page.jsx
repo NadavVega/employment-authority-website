@@ -19,6 +19,7 @@ import { getEventColor } from '../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 import { buildEventShareUrl } from '../utils/eventShare';
 import { buildGoogleCalendarUrl, buildOutlookCalendarUrl } from '../utils/calendarLinks';
+import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
 import { ShareMenu } from '../components/share/ShareMenu';
 import { EventMessageDialog } from '../components/share/EventMessageDialog';
 import eventsDecoration from '../assets/images/city-view.png';
@@ -395,7 +396,7 @@ const handleRegisterClick = async (event) => {
     const selectedCenterName = getEventCenterName(selectedEvent);
     const selectedLocation = getEventLocation(selectedEvent);
     const selectedMapUrl = getMapSearchUrl(selectedEvent);
-    const selectedEventIsCurrentUserOwned = selectedEvent?.createdBy === currentUser?.uid;
+    const selectedEventIsCurrentUserOwned = isEventCreatedByCurrentCoordinator(selectedEvent, currentUser);
     const canEditSelectedEvent = isAdmin || selectedEventIsCurrentUserOwned;
     const canViewSelectedEventParticipants = canViewEventParticipants(selectedEvent);
     const selectedCreatorName =
