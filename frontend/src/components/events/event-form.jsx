@@ -24,6 +24,16 @@ const markerIcon = new L.Icon({
 
 const JERUSALEM_COORDS = { lat: 31.7683, lng: 35.2137 };
 const ISRAELI_PREFIXES = ['050', '051', '052', '053', '054', '055', '058', '059', '02', '03', '04', '08', '09', '072', '073', '077'];
+const EVENT_OWNERSHIP_FIELDS = [
+  'createdBy',
+  'createdByEmail',
+  'createdByUid',
+  'creatorEmail',
+  'creatorUid',
+  'ownerEmail',
+  'ownerUid',
+  'coordinatorEmail',
+];
 
 const parsePhoneString = (phoneStr) => {
   if (!phoneStr) return [{ prefix: '050', number: '' }];
@@ -268,13 +278,17 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
         accessibilityContactPhone: combinedAccPhones
       };
       if (isEditMode) {
-        if (Object.prototype.hasOwnProperty.call(initialData, 'createdBy')) {
-          formattedData.createdBy = initialData.createdBy;
-        } else {
-          delete formattedData.createdBy;
-        }
+        EVENT_OWNERSHIP_FIELDS.forEach((field) => {
+          if (Object.prototype.hasOwnProperty.call(initialData || {}, field)) {
+            formattedData[field] = initialData[field];
+          } else {
+            delete formattedData[field];
+          }
+        });
       } else {
         formattedData.createdBy = currentUser.uid;
+        formattedData.createdByUid = currentUser.uid;
+        formattedData.createdByEmail = currentUser.email || '';
       }
       formattedData.status = 'published';
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 20000));

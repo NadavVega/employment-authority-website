@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { EventForm } from '../components/events/event-form';
 import { eventService } from '../services/interfaces/event-services';
+import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
 
 export const EditEventPage = () => {
     const { id } = useParams();
@@ -31,7 +32,7 @@ export const EditEventPage = () => {
 
                 if (
                     userRole === 'coordinator' &&
-                    (!currentUser?.uid || !data?.createdBy || data.createdBy !== currentUser.uid)
+                    !isEventCreatedByCurrentCoordinator(data, currentUser)
                 ) {
                     console.warn("Unauthorized access attempt. Redirecting to /events");
                     navigate('/events');

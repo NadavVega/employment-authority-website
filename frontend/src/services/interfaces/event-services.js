@@ -33,6 +33,17 @@ const buildEventMedia = (eventDetails) => {
     };
 };
 
+const EVENT_OWNERSHIP_FIELDS = [
+    'createdBy',
+    'createdByEmail',
+    'createdByUid',
+    'creatorEmail',
+    'creatorUid',
+    'ownerEmail',
+    'ownerUid',
+    'coordinatorEmail',
+];
+
 const getUserDocIdFromEmail = (email) => {
     return String(email || '').trim().toLowerCase();
 };
@@ -161,6 +172,8 @@ export const eventService = {
                 
                 status: eventStatus, 
                 createdBy: (currentUser && currentUser.uid) || (currentUser && currentUser.email) || 'demo_user',
+                createdByUid: (currentUser && currentUser.uid) || '',
+                createdByEmail: (currentUser && currentUser.email) || '',
                 createdAt: serverTimestamp(),
 
                 registeredCount: 0,
@@ -196,9 +209,19 @@ export const eventService = {
     async updateEvent(eventId, updatedData) {
         try {
             const docRef = doc(db, 'events', eventId);
+            const existingSnap = await getDoc(docRef);
+            const existingData = existingSnap.exists() ? existingSnap.data() : {};
             const payload = { ...updatedData };
 
             delete payload.id;
+
+            EVENT_OWNERSHIP_FIELDS.forEach((field) => {
+                if (Object.prototype.hasOwnProperty.call(existingData, field)) {
+                    payload[field] = existingData[field];
+                } else {
+                    delete payload[field];
+                }
+            });
 
             if (payload.date && payload.time) {
                 Object.assign(
@@ -295,6 +318,36 @@ export const eventService = {
 
     getEmployerRegistrationProfile: async (currentUser) => {
         return buildEmployerProfileFromFirestore(currentUser);
+    },
+
+    getEventRegistrations: async (eventId) => {
+        if (!eventId) return [];
+
+        const registrationsRef = collection(db, 'events', eventId, 'registrations');
+        const snapshot = await getDocs(registrationsRef);
+
+        return snapshot.docs.map((docSnapshot) => {
+            const data = docSnapshot.data() || {};
+
+            return {
+                id: docSnapshot.id,
+                email: cleanValue(data.email),
+                name: cleanValue(data.name) || cleanValue(data.employerName) || cleanValue(data.displayName),
+                fullName: cleanValue(data.fullName) || cleanValue(data.displayName) || cleanValue(data.employerName),
+                displayName: cleanValue(data.displayName),
+                companyName: cleanValue(data.companyName),
+                phone: cleanValue(data.phone),
+                phoneNumber: cleanValue(data.phoneNumber),
+                mobile: cleanValue(data.mobile),
+                registeredAt: data.registeredAt || data.createdAt || data.signedAt || data.registeredAtISO || '',
+                createdAt: data.createdAt || '',
+                signedAt: data.signedAt || '',
+                centerName: cleanValue(data.centerName),
+                center: cleanValue(data.center),
+                userCenter: cleanValue(data.userCenter),
+                status: cleanValue(data.status),
+            };
+        });
     },
 
     getUserRegisteredEventIds: async (uid) => {

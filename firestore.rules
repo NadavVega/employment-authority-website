@@ -566,8 +566,37 @@ service cloud.firestore {
 
     function eventIsOwnedByCurrentUser(eventData) {
       return isAuthenticated()
-        && eventData.keys().hasAll(['createdBy'])
-        && eventData.createdBy == request.auth.uid;
+        && (
+          eventData.get('createdBy', '') == request.auth.uid
+          || eventData.get('createdByUid', '') == request.auth.uid
+          || eventData.get('creatorUid', '') == request.auth.uid
+          || eventData.get('ownerUid', '') == request.auth.uid
+          || (
+            hasAuthenticatedEmail()
+            && (
+              (
+                eventData.get('createdByEmail', '') is string
+                && eventData.get('createdByEmail', '').lower() == authenticatedEmail()
+              )
+              || (
+                eventData.get('creatorEmail', '') is string
+                && eventData.get('creatorEmail', '').lower() == authenticatedEmail()
+              )
+              || (
+                eventData.get('ownerEmail', '') is string
+                && eventData.get('ownerEmail', '').lower() == authenticatedEmail()
+              )
+              || (
+                eventData.get('coordinatorEmail', '') is string
+                && eventData.get('coordinatorEmail', '').lower() == authenticatedEmail()
+              )
+              || (
+                eventData.get('createdBy', '') is string
+                && eventData.get('createdBy', '').lower() == authenticatedEmail()
+              )
+            )
+          )
+        );
     }
 
     function eventIsPublished(eventData) {
@@ -663,6 +692,8 @@ service cloud.firestore {
         'photoPreview',
         'status',
         'createdBy',
+        'createdByUid',
+        'createdByEmail',
         'createdAt',
         'registeredCount',
         'registeredUids'
@@ -686,6 +717,18 @@ service cloud.firestore {
           'registeredUids'
         ])
         && request.resource.data.createdBy == request.auth.uid
+        && (
+          !request.resource.data.keys().hasAny(['createdByUid'])
+          || request.resource.data.createdByUid == request.auth.uid
+        )
+        && (
+          !request.resource.data.keys().hasAny(['createdByEmail'])
+          || (
+            hasAuthenticatedEmail()
+            && request.resource.data.createdByEmail is string
+            && request.resource.data.createdByEmail.lower() == authenticatedEmail()
+          )
+        )
         && request.resource.data.status == 'published'
         && request.resource.data.createdAt == request.time
         && eventHasSecureTimeRange(request.resource.data)
@@ -696,9 +739,14 @@ service cloud.firestore {
     }
 
     function eventUpdateKeepsOwnership() {
-      return resource.data.keys().hasAll(['createdBy'])
-        && request.resource.data.keys().hasAll(['createdBy'])
-        && request.resource.data.createdBy == resource.data.createdBy;
+      return request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null)
+        && request.resource.data.get('createdByEmail', null) == resource.data.get('createdByEmail', null)
+        && request.resource.data.get('createdByUid', null) == resource.data.get('createdByUid', null)
+        && request.resource.data.get('creatorEmail', null) == resource.data.get('creatorEmail', null)
+        && request.resource.data.get('creatorUid', null) == resource.data.get('creatorUid', null)
+        && request.resource.data.get('ownerEmail', null) == resource.data.get('ownerEmail', null)
+        && request.resource.data.get('ownerUid', null) == resource.data.get('ownerUid', null)
+        && request.resource.data.get('coordinatorEmail', null) == resource.data.get('coordinatorEmail', null);
     }
 
     function coordinatorEventFieldsAreAllowed() {

@@ -19,6 +19,7 @@ import { getEventColor } from '../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 import { buildEventShareUrl } from '../utils/eventShare';
 import { buildGoogleCalendarUrl, buildOutlookCalendarUrl } from '../utils/calendarLinks';
+import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
 import { ShareMenu } from '../components/share/ShareMenu';
 import { EventMessageDialog } from '../components/share/EventMessageDialog';
 import eventsDecoration from '../assets/images/city-view.png';
@@ -46,6 +47,10 @@ export const EventsPage = () => {
     const [bitPaymentDetails, setBitPaymentDetails] = useState(null); // Controls the Bit popup
     const [calendarMenuAnchorEl, setCalendarMenuAnchorEl] = useState(null);
     const [isEventMessageDialogOpen, setIsEventMessageDialogOpen] = useState(false);
+    const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
+    const [eventParticipants, setEventParticipants] = useState([]);
+    const [isLoadingParticipants, setIsLoadingParticipants] = useState(false);
+    const [participantsError, setParticipantsError] = useState('');
 
     const requestedEventId =
         new URLSearchParams(location.search).get('eventId') ||
@@ -58,6 +63,7 @@ export const EventsPage = () => {
     const closeSelectedEvent = () => {
         setCalendarMenuAnchorEl(null);
         setIsEventMessageDialogOpen(false);
+        setIsParticipantsPanelOpen(false);
         setSelectedEventModal(null);
 
         if (requestedEventId) {
@@ -103,6 +109,28 @@ export const EventsPage = () => {
         setIsEventMessageDialogOpen(false);
     };
 
+    const canViewEventParticipants = (event) => {
+        if (isAdmin || userRole === 'admin') return true;
+        if (userRole !== 'coordinator') return false;
+
+        const currentUid = currentUser?.uid || '';
+        const creatorUid = String(event?.createdBy || '').trim();
+
+        return Boolean(currentUid && creatorUid && currentUid === creatorUid);
+    };
+
+    const handleParticipantsPanelOpen = (event) => {
+        event.stopPropagation();
+        setEventParticipants([]);
+        setParticipantsError('');
+        setIsParticipantsPanelOpen(true);
+    };
+
+    const handleParticipantsPanelClose = (event) => {
+        event?.stopPropagation();
+        setIsParticipantsPanelOpen(false);
+    };
+
     // Fetch registered event IDs for the current user (if employer)
     useEffect(() => {
         if (currentUser?.uid && userRole === 'employer') {
@@ -132,6 +160,47 @@ export const EventsPage = () => {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        let isActive = true;
+
+        if (!isParticipantsPanelOpen || !selectedEvent?.id) {
+            return () => {
+                isActive = false;
+            };
+        }
+
+        const fetchParticipants = async () => {
+            setIsLoadingParticipants(true);
+            setParticipantsError('');
+            setEventParticipants([]);
+
+            try {
+                const registrations = await eventService.getEventRegistrations(selectedEvent.id);
+
+                if (isActive) {
+                    setEventParticipants(registrations);
+                }
+            } catch (error) {
+                console.error('Failed to load event participants:', error);
+
+                if (isActive) {
+                    setParticipantsError('לא ניתן לטעון משתתפים');
+                    setEventParticipants([]);
+                }
+            } finally {
+                if (isActive) {
+                    setIsLoadingParticipants(false);
+                }
+            }
+        };
+
+        fetchParticipants();
+
+        return () => {
+            isActive = false;
+        };
+    }, [isParticipantsPanelOpen, selectedEvent?.id]);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -327,8 +396,9 @@ const handleRegisterClick = async (event) => {
     const selectedCenterName = getEventCenterName(selectedEvent);
     const selectedLocation = getEventLocation(selectedEvent);
     const selectedMapUrl = getMapSearchUrl(selectedEvent);
-    const selectedEventIsCurrentUserOwned = selectedEvent?.createdBy === currentUser?.uid;
+    const selectedEventIsCurrentUserOwned = isEventCreatedByCurrentCoordinator(selectedEvent, currentUser);
     const canEditSelectedEvent = isAdmin || selectedEventIsCurrentUserOwned;
+    const canViewSelectedEventParticipants = canViewEventParticipants(selectedEvent);
     const selectedCreatorName =
         selectedEvent?.creatorName ||
         selectedEvent?.coordinatorName ||
@@ -348,6 +418,19 @@ const handleRegisterClick = async (event) => {
         : secondaryActiveEvents.slice(0, 8);
     const hasHiddenSecondaryEvents = secondaryActiveEvents.length > 8;
     const canViewPastEvents = isAdmin || isCoordinator;
+
+    const formatRegistrationDate = (value) => {
+        const registrationDate = value?.toDate ? value.toDate() : new Date(value);
+
+        if (!value || Number.isNaN(registrationDate.getTime())) {
+            return '';
+        }
+
+        return registrationDate.toLocaleString('he-IL', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+        });
+    };
 
     const renderCenterLogo = (event, className) => {
         const icon = getCenterIcon(event);
@@ -409,9 +492,24 @@ const handleRegisterClick = async (event) => {
                                 <span>{locationText || 'מקוון'}</span>
                             )}
                         </div>
-                        <button type="button" className="event-row-action btn-primary pill-btn" onClick={() => setSelectedEventModal(event)}>
-                            לפרטים
-                        </button>
+                        <div className="event-row-actions">
+                            <ShareMenu
+                                title={event.title}
+                                url={buildEventShareUrl(event.id)}
+                                ariaLabel={`שיתוף האירוע ${event.title}`}
+                                buttonClassName="event-row-share-action"
+                            />
+                            <button
+                                type="button"
+                                className="event-row-action btn-primary pill-btn"
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setSelectedEventModal(event);
+                                }}
+                            >
+                                לפרטים
+                            </button>
+                        </div>
                     </article>
                 );
             })}
@@ -674,6 +772,17 @@ const handleRegisterClick = async (event) => {
                                     <span>{selectedEvent.title}</span>
                                 </h2>
                                 <div className="modal-header-actions">
+                                    {canViewSelectedEventParticipants && (
+                                        <button
+                                            type="button"
+                                            className="modal-participants-action"
+                                            onClick={handleParticipantsPanelOpen}
+                                            aria-expanded={isParticipantsPanelOpen}
+                                            aria-controls="event-participants-panel"
+                                        >
+                                            משתתפים
+                                        </button>
+                                    )}
                                     {canEditSelectedEvent && (
                                         <button
                                             type="button"
@@ -766,7 +875,7 @@ const handleRegisterClick = async (event) => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="modal-body-content">
                             <div className="modal-info-grid">
                                 <div className="modal-info-item">
@@ -881,6 +990,106 @@ const handleRegisterClick = async (event) => {
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {selectedEvent && isParticipantsPanelOpen && canViewSelectedEventParticipants && (
+                <div className="event-participants-modal-overlay" onClick={handleParticipantsPanelClose}>
+                    <section
+                        id="event-participants-panel"
+                        className="event-participants-modal"
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label="משתתפים באירוע"
+                        role="dialog"
+                        aria-modal="true"
+                    >
+                        <div className="event-participants-header">
+                            <div>
+                                <h3>משתתפים באירוע</h3>
+                                {selectedEvent.title && (
+                                    <p>{selectedEvent.title}</p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="event-participants-close"
+                                onClick={handleParticipantsPanelClose}
+                                aria-label="סגירת משתתפים"
+                            >
+                                סגור
+                            </button>
+                        </div>
+
+                        {isLoadingParticipants ? (
+                            <p className="event-participants-state">טוען משתתפים...</p>
+                        ) : participantsError ? (
+                            <p className="event-participants-state event-participants-error">
+                                {participantsError}
+                            </p>
+                        ) : eventParticipants.length === 0 ? (
+                            <p className="event-participants-state">אין משתתפים רשומים עדיין</p>
+                        ) : (
+                            <div className="event-participants-table-wrap">
+                                <table className="event-participants-table">
+                                    <thead>
+                                        <tr>
+                                            <th>שם</th>
+                                            <th>אימייל</th>
+                                            <th>מספר טלפון</th>
+                                            <th>תאריך ושעת הרשמה</th>
+                                            <th>מרכז</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {eventParticipants.map((participant) => {
+                                            const participantName =
+                                                participant.name ||
+                                                participant.fullName ||
+                                                participant.displayName ||
+                                                'לא צוין';
+                                            const participantPhone =
+                                                participant.phone ||
+                                                participant.phoneNumber ||
+                                                participant.mobile ||
+                                                'לא צוין';
+                                            const registrationDate = formatRegistrationDate(
+                                                participant.registeredAt ||
+                                                participant.createdAt ||
+                                                participant.signedAt
+                                            );
+                                            const participantCenter =
+                                                participant.centerName ||
+                                                participant.center ||
+                                                participant.userCenter ||
+                                                'לא צוין';
+
+                                            return (
+                                                <tr key={participant.id}>
+                                                    <td>{participantName}</td>
+                                                    <td>
+                                                        {participant.email ? (
+                                                            <a href={`mailto:${participant.email}`}>
+                                                                {participant.email}
+                                                            </a>
+                                                        ) : (
+                                                            'לא צוין'
+                                                        )}
+                                                    </td>
+                                                    <td className="standard-numbers" dir="ltr">
+                                                        {participantPhone}
+                                                    </td>
+                                                    <td className="standard-numbers">
+                                                        {registrationDate || 'לא צוין'}
+                                                    </td>
+                                                    <td>{participantCenter}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
                 </div>
             )}
 

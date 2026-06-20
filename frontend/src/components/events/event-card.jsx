@@ -8,6 +8,7 @@ import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
 import { resolveEventImage } from '../../utils/eventImageMap';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 import { buildEventShareUrl } from '../../utils/eventShare';
+import { isEventCreatedByCurrentCoordinator } from '../../utils/eventOwnership';
 import { ShareMenu } from '../share/ShareMenu';
 
 const formatShortAddress = (address) => {
@@ -36,7 +37,7 @@ export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetai
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
-    const isCreator = event.createdBy === currentUser?.uid;
+    const isCreator = isEventCreatedByCurrentCoordinator(event, currentUser);
     const canEdit = isAdmin || isCreator;
     const isPending = event.status === 'pending';
 
