@@ -409,9 +409,24 @@ const handleRegisterClick = async (event) => {
                                 <span>{locationText || 'מקוון'}</span>
                             )}
                         </div>
-                        <button type="button" className="event-row-action btn-primary pill-btn" onClick={() => setSelectedEventModal(event)}>
-                            לפרטים
-                        </button>
+                        <div className="event-row-actions">
+                            <ShareMenu
+                                title={event.title}
+                                url={buildEventShareUrl(event.id)}
+                                ariaLabel={`שיתוף האירוע ${event.title}`}
+                                buttonClassName="event-row-share-action"
+                            />
+                            <button
+                                type="button"
+                                className="event-row-action btn-primary pill-btn"
+                                onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    setSelectedEventModal(event);
+                                }}
+                            >
+                                לפרטים
+                            </button>
+                        </div>
                     </article>
                 );
             })}

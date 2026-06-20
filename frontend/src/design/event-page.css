@@ -864,6 +864,29 @@
     text-underline-offset: 3px;
 }
 
+.event-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.event-row-share-action.MuiIconButton-root {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-md);
+    color: var(--color-brand);
+    background: transparent;
+}
+
+.event-row-share-action.MuiIconButton-root:hover {
+    background: rgba(0, 59, 139, 0.08);
+}
+
 .event-row-action {
     padding: 9px 18px;
     font: inherit;
