@@ -297,6 +297,36 @@ export const eventService = {
         return buildEmployerProfileFromFirestore(currentUser);
     },
 
+    getEventRegistrations: async (eventId) => {
+        if (!eventId) return [];
+
+        const registrationsRef = collection(db, 'events', eventId, 'registrations');
+        const snapshot = await getDocs(registrationsRef);
+
+        return snapshot.docs.map((docSnapshot) => {
+            const data = docSnapshot.data() || {};
+
+            return {
+                id: docSnapshot.id,
+                email: cleanValue(data.email),
+                name: cleanValue(data.name) || cleanValue(data.employerName) || cleanValue(data.displayName),
+                fullName: cleanValue(data.fullName) || cleanValue(data.displayName) || cleanValue(data.employerName),
+                displayName: cleanValue(data.displayName),
+                companyName: cleanValue(data.companyName),
+                phone: cleanValue(data.phone),
+                phoneNumber: cleanValue(data.phoneNumber),
+                mobile: cleanValue(data.mobile),
+                registeredAt: data.registeredAt || data.createdAt || data.signedAt || data.registeredAtISO || '',
+                createdAt: data.createdAt || '',
+                signedAt: data.signedAt || '',
+                centerName: cleanValue(data.centerName),
+                center: cleanValue(data.center),
+                userCenter: cleanValue(data.userCenter),
+                status: cleanValue(data.status),
+            };
+        });
+    },
+
     getUserRegisteredEventIds: async (uid) => {
     if (!uid) return [];
 
