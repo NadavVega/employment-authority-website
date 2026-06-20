@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
 import { logoutUser } from '../../services/firebase/auth-service';
+import NotificationsBell from '../notifications/NotificationsBell';
 
 // Logos
 import jerusalemLionLogo from '../../assets/images/logo-new2.svg';
@@ -109,26 +110,29 @@ const MainLayout = ({ children }) => {
                         {/* === LOGOS BOX === */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, height: '60px' }}>
                             {isAuthenticated && (
-                                <Button
-                                    onClick={handleLogout}
-                                    sx={{
-                                        order: 1,
-                                        color: '#ffffff',
-                                        border: '1px solid rgba(255, 255, 255, 0.7)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        px: 2,
-                                        '&:hover': {
-                                            bgcolor: 'rgba(255, 255, 255, 0.12)',
-                                            borderColor: '#ffffff'
-                                        },
-                                        '&:focus-visible': {
-                                            outline: '2px solid #ffffff',
-                                            outlineOffset: '2px'
-                                        }
-                                    }}
-                                >
-                                    התנתקות
-                                </Button>
+                                <>
+                                    <NotificationsBell />
+                                    <Button
+                                        onClick={handleLogout}
+                                        sx={{
+                                            order: 1,
+                                            color: '#ffffff',
+                                            border: '1px solid rgba(255, 255, 255, 0.7)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            px: 2,
+                                            '&:hover': {
+                                                bgcolor: 'rgba(255, 255, 255, 0.12)',
+                                                borderColor: '#ffffff'
+                                            },
+                                            '&:focus-visible': {
+                                                outline: '2px solid #ffffff',
+                                                outlineOffset: '2px'
+                                            }
+                                        }}
+                                    >
+                                        התנתקות
+                                    </Button>
+                                </>
                             )}
 
                             <Box
