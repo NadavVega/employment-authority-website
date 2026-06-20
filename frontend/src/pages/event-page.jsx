@@ -94,7 +94,8 @@ export const EventsPage = () => {
     };
 
     const handleEventMessageDialogOpen = (event) => {
-        event.stopPropagation();
+        event?.stopPropagation();
+        setSelectedEventModal(selectedEvent);
         setIsEventMessageDialogOpen(true);
     };
 
@@ -725,7 +726,7 @@ const handleRegisterClick = async (event) => {
                                             <IconButton
                                                 type="button"
                                                 className="modal-message-action"
-                                                onClick={handleEventMessageDialogOpen}
+                                                onClick={(event) => handleEventMessageDialogOpen(event)}
                                                 aria-label={`שליחה בהודעות של האירוע ${selectedEvent.title}`}
                                                 size="small"
                                                 sx={{

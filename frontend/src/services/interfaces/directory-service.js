@@ -12,6 +12,136 @@ import {
 
 import { db } from "../firebase/config";
 
+const VALID_APPLICATION_ROLES = ["admin", "coordinator", "employer"];
+const MESSAGE_ROLE_ORDER = {
+  admin: 0,
+  coordinator: 1,
+  employer: 2,
+};
+
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const normalizeRole = (role) => {
+  const value = String(role || "").trim().toLowerCase();
+
+  if (value === "admin" || value === "manager" || value === "מנהל" || value === "מנהלת") {
+    return "admin";
+  }
+
+  if (value === "coordinator" || value === "רכז" || value === "רכזת") {
+    return "coordinator";
+  }
+
+  if (value === "employer" || value === "מעסיק" || value === "מעסיקה") {
+    return "employer";
+  }
+
+  return value;
+};
+
+const getUserRole = (data = {}) => String(
+  data.role ||
+  data.profile?.role ||
+  ""
+).trim();
+
+const getIsWhitelisted = (data = {}) => (
+  data.isWhitelisted === true ||
+  data.isWhiteListed === true ||
+  data.contactHistory?.isWhitelisted === true ||
+  data.contactHistory?.isWhiteListed === true
+);
+
+const mapMessageRecipient = (docSnap) => {
+  const data = docSnap.data() || {};
+  const profile = data.profile || {};
+  const contactHistory = data.contactHistory || {};
+
+  const email = normalizeEmail(
+    data.email ||
+    profile.email ||
+    docSnap.id
+  );
+
+  const role = normalizeRole(
+    data.role ||
+    profile.role
+  );
+
+  const isWhitelisted =
+    data.isWhitelisted === true ||
+    data.isWhiteListed === true ||
+    profile.isWhitelisted === true ||
+    profile.isWhiteListed === true ||
+    contactHistory.isWhitelisted === true ||
+    contactHistory.isWhiteListed === true;
+
+  const hasExplicitWhitelistFalse =
+    !isWhitelisted &&
+    (
+      data.isWhitelisted === false ||
+      data.isWhiteListed === false ||
+      profile.isWhitelisted === false ||
+      profile.isWhiteListed === false ||
+      contactHistory.isWhitelisted === false ||
+      contactHistory.isWhiteListed === false
+    );
+
+  return {
+    id: docSnap.id,
+    uid: data.uid || data.authUid || data.userId || "",
+    email,
+    name:
+      data.displayName ||
+      data.fullName ||
+      data.name ||
+      profile.displayName ||
+      profile.fullName ||
+      profile.name ||
+      data.companyName ||
+      data.company ||
+      profile.company ||
+      email,
+    role,
+    companyName:
+      data.companyName ||
+      data.company ||
+      data.organization ||
+      profile.company ||
+      profile.organization ||
+      "",
+    centerName:
+      data.centerName ||
+      data.center ||
+      profile.centerName ||
+      profile.center ||
+      "",
+    isWhitelisted,
+    hasExplicitWhitelistFalse,
+  };
+};
+
+const isValidApplicationUser = (user) => (
+  Boolean(user.email) &&
+  VALID_APPLICATION_ROLES.includes(user.role) &&
+  user.hasExplicitWhitelistFalse !== true
+);
+
+const sortMessageRecipients = (first, second) => {
+  const roleDifference =
+    (MESSAGE_ROLE_ORDER[first.role] ?? 99) -
+    (MESSAGE_ROLE_ORDER[second.role] ?? 99);
+
+  if (roleDifference !== 0) {
+    return roleDifference;
+  }
+
+  const firstLabel = first.name || first.email || "";
+  const secondLabel = second.name || second.email || "";
+
+  return firstLabel.localeCompare(secondLabel, "he", { sensitivity: "base" });
+};
+
 /**
  * directoryService handles employer/coordinator directory data.
  *
@@ -41,12 +171,14 @@ export const directoryService = {
     const coordinatorMap = {};
 
     snapshot.docs.forEach((docSnap) => {
-      const data = docSnap.data();
+      const data = docSnap.data() || {};
       const profile = data.profile || {};
-      const role = data.role || profile.role || "";
+      const role = getUserRole(data);
 
       if (role === "coordinator") {
-        coordinatorMap[docSnap.id.toLowerCase().trim()] = {
+        const coordinatorEmail = normalizeEmail(data.email || profile.email || docSnap.id);
+
+        coordinatorMap[coordinatorEmail] = {
           name: profile.fullName || data.fullName || "לא צוין",
           centerName:
             profile.centerName ||
@@ -60,10 +192,11 @@ export const directoryService = {
 
     return snapshot.docs
       .map((docSnap) => {
-        const data = docSnap.data();
+        const data = docSnap.data() || {};
         const profile = data.profile || {};
 
-        const role = data.role || profile.role || "";
+        const email = normalizeEmail(data.email || profile.email || docSnap.id);
+        const role = getUserRole(data);
 
         const centerName =
           profile.centerName ||
@@ -101,19 +234,15 @@ export const directoryService = {
 
         const assignedCoordinatorData =
           assignedCoordinatorEmail
-            ? coordinatorMap[assignedCoordinatorEmail.toLowerCase().trim()]
+            ? coordinatorMap[normalizeEmail(assignedCoordinatorEmail)]
             : null;
 
         return {
           id: docSnap.id,
-          email: docSnap.id,
+          email,
 
           role,
-          isWhitelisted:
-            data.isWhitelisted === true ||
-            data.isWhiteListed === true ||
-            data.contactHistory?.isWhitelisted === true ||
-            data.contactHistory?.isWhiteListed === true,
+          isWhitelisted: getIsWhitelisted(data),
 
           name: profile.fullName || data.fullName || "לא צוין",
           organization,
@@ -150,87 +279,72 @@ export const directoryService = {
   },
 
   /**
-   * Fetch only safe public recipient fields from contacts the current user
-   * can already see in the directory.
+   * Fetch only safe public recipient fields from public user documents.
    *
    * @param {Object} currentUser
    * @param {string} userRole
    * @returns {Promise<Array>}
    */
   async getPermittedMessageRecipients(currentUser, userRole) {
-    const currentUserEmail = currentUser?.email
-      ? currentUser.email.toLowerCase().trim()
-      : "";
+    const currentUserEmail = normalizeEmail(currentUser?.email);
+    const normalizedUserRole = normalizeRole(
+      userRole ||
+      currentUser?.role ||
+      currentUser?.profile?.role
+    );
 
     if (!currentUserEmail) {
       return [];
     }
 
-    const contacts = await this.getDirectoryContacts();
-    const currentUserContact = contacts.find(
-      (contact) => contact.email?.toLowerCase().trim() === currentUserEmail
-    );
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const allUsers = usersSnapshot.docs
+      .map(mapMessageRecipient)
+      .filter(isValidApplicationUser);
+    const currentUserContact = allUsers.find((user) => user.email === currentUserEmail);
+    const users = allUsers.filter((user) => user.email !== currentUserEmail);
+
+    if (normalizedUserRole === "admin" || normalizedUserRole === "coordinator") {
+      return users.sort(sortMessageRecipients);
+    }
+
     const currentEmployerCompany = String(
-      currentUserContact?.rawData?.profile?.company ||
-      currentUserContact?.rawData?.company ||
-      currentUserContact?.organization ||
+      currentUser?.companyName ||
+      currentUser?.company ||
+      currentUser?.organization ||
+      currentUser?.profile?.company ||
+      currentUser?.profile?.organization ||
+      currentUserContact?.companyName ||
       ""
-    )
-      .toLowerCase()
-      .trim();
+    ).toLowerCase().trim();
 
-    const permittedContacts = contacts.filter((contact) => {
-      const contactEmail = contact.email?.toLowerCase().trim();
+    if (normalizedUserRole === "employer") {
+      return users.filter((user) => {
+        if (user.role === "admin" || user.role === "coordinator") {
+          return true;
+        }
 
-      if (!contactEmail || contactEmail === currentUserEmail) {
-        return false;
-      }
+        if (user.role !== "employer") {
+          return false;
+        }
 
-      if (contact.role === "coordinator") {
-        return true;
-      }
-
-      if (contact.role !== "employer") {
-        return false;
-      }
-
-      if (userRole === "admin" || userRole === "coordinator") {
-        return true;
-      }
-
-      if (userRole === "employer") {
-        const contactCompany = String(
-          contact.rawData?.profile?.company ||
-          contact.rawData?.company ||
-          contact.organization ||
-          ""
-        )
-          .toLowerCase()
-          .trim();
+        const contactCompany = String(user.companyName || "").toLowerCase().trim();
 
         return Boolean(
           currentEmployerCompany &&
           contactCompany &&
           currentEmployerCompany === contactCompany
         );
+      }).sort(sortMessageRecipients);
+    }
+
+    return users.filter((user) => {
+      if (user.role === "admin" || user.role === "coordinator") {
+        return true;
       }
 
       return false;
-    });
-
-    return permittedContacts.map((contact) => ({
-      id: contact.id,
-      uid: contact.rawData?.uid || contact.rawData?.userId || null,
-      email: contact.email,
-      name: contact.name,
-      role: contact.role,
-      companyName:
-        contact.organization ||
-        contact.centerName ||
-        contact.rawData?.profile?.company ||
-        contact.rawData?.company ||
-        "",
-    }));
+    }).sort(sortMessageRecipients);
   },
 
   /**

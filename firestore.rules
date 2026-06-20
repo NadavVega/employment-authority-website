@@ -1151,7 +1151,11 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow get, list: if isNotificationRecipient(resource.data);
+      allow get: if isNotificationRecipient(resource.data);
+
+      allow list: if isApplicationUser()
+        && resource.data.keys().hasAll(['recipientEmail'])
+        && resource.data.recipientEmail == authenticatedEmail();
 
       allow create: if validEventNotificationCreate(request.resource.data)
         || validPrivateDetailsNotificationCreate(request.resource.data);

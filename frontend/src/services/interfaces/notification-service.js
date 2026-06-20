@@ -18,13 +18,23 @@ const COLLECTION_NAME = 'notifications';
 const NOTIFICATION_LIMIT = 15;
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const noop = () => {};
 
 export const subscribeToMyNotifications = (currentUser, callback) => {
     const recipientEmail = normalizeEmail(currentUser?.email);
+    const safeCallback = typeof callback === 'function'
+        ? (notifications) => {
+            try {
+                callback(notifications);
+            } catch (error) {
+                console.error('NotificationService Error: callback failed', error);
+            }
+        }
+        : noop;
 
     if (!recipientEmail) {
-        callback([]);
-        return () => {};
+        safeCallback([]);
+        return noop;
     }
 
     const notificationsQuery = query(
@@ -34,19 +44,25 @@ export const subscribeToMyNotifications = (currentUser, callback) => {
         limit(NOTIFICATION_LIMIT)
     );
 
-    return onSnapshot(
-        notificationsQuery,
-        (snapshot) => {
-            callback(snapshot.docs.map((notificationDoc) => ({
-                id: notificationDoc.id,
-                ...notificationDoc.data(),
-            })));
-        },
-        (error) => {
-            console.error('NotificationService Error: subscription failed', error);
-            callback([]);
-        }
-    );
+    try {
+        return onSnapshot(
+            notificationsQuery,
+            (snapshot) => {
+                safeCallback(snapshot.docs.map((notificationDoc) => ({
+                    id: notificationDoc.id,
+                    ...notificationDoc.data(),
+                })));
+            },
+            (error) => {
+                console.error('NotificationService Error: subscription failed', error);
+                safeCallback([]);
+            }
+        );
+    } catch (error) {
+        console.error('NotificationService Error: subscription setup failed', error);
+        safeCallback([]);
+        return noop;
+    }
 };
 
 export const markNotificationRead = async (notificationId) => {
@@ -101,9 +117,8 @@ export const createEventMessageNotification = async ({
         throw new Error('Missing event message notification data.');
     }
 
-    return addDoc(collection(db, COLLECTION_NAME), {
+    const notificationData = {
         recipientEmail,
-        recipientUid: recipient?.uid || null,
         senderEmail,
         senderUid: sender.uid,
         senderName,
@@ -113,12 +128,18 @@ export const createEventMessageNotification = async ({
         body: `${senderName || senderEmail} שלח לך אירוע`,
         message: String(message || '').trim(),
         eventId,
-        link: `/events?eventId=${encodeURIComponent(eventId)}`,
+        link: `/events?eventId=${eventId}`,
 
         isRead: false,
         createdAt: serverTimestamp(),
         readAt: null,
-    });
+    };
+
+    if (recipient?.uid) {
+        notificationData.recipientUid = recipient.uid;
+    }
+
+    return addDoc(collection(db, COLLECTION_NAME), notificationData);
 };
 
 export const notificationService = {
