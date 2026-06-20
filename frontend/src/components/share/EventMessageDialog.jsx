@@ -295,14 +295,28 @@ export const EventMessageDialog = ({
                         }}
                     >
                         {isLoadingRecipients ? (
-                            <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ minHeight: 200 }}>
+                            <Stack
+                                spacing={1.5}
+                                sx={{
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: 200,
+                                }}
+                            >
                                 <CircularProgress size={28} />
                                 <Typography color="text.secondary">
                                     טוען משתמשים...
                                 </Typography>
                             </Stack>
                         ) : filteredRecipients.length === 0 ? (
-                            <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 200, textAlign: 'center' }}>
+                            <Stack
+                                sx={{
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: 200,
+                                    textAlign: 'center',
+                                }}
+                            >
                                 <Typography color="text.secondary">
                                     לא נמצאו משתמשים זמינים לשליחה
                                 </Typography>
@@ -337,7 +351,11 @@ export const EventMessageDialog = ({
                                                 },
                                             }}
                                         >
-                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                            <Stack
+                                                direction="row"
+                                                spacing={1.5}
+                                                sx={{ alignItems: 'center' }}
+                                            >
                                                 <Avatar
                                                     sx={{
                                                         bgcolor: isSelected ? 'primary.main' : 'grey.200',
@@ -351,8 +369,10 @@ export const EventMessageDialog = ({
                                                     <Stack
                                                         direction={{ xs: 'column', sm: 'row' }}
                                                         spacing={1}
-                                                        alignItems={{ xs: 'flex-start', sm: 'center' }}
-                                                        justifyContent="space-between"
+                                                        sx={{
+                                                            alignItems: { xs: 'flex-start', sm: 'center' },
+                                                            justifyContent: 'space-between',
+                                                        }}
                                                     >
                                                         <Typography sx={{ fontWeight: 800 }} noWrap>
                                                             {getRecipientName(recipient)}

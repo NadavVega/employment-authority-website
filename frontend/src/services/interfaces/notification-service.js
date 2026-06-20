@@ -142,9 +142,121 @@ export const createEventMessageNotification = async ({
     return addDoc(collection(db, COLLECTION_NAME), notificationData);
 };
 
+export const createPrivateDetailsRequestNotification = async ({
+    recipient,
+    recipientEmail: directRecipientEmail,
+    recipientUid: directRecipientUid,
+    sender,
+    senderEmail: directSenderEmail,
+    senderName: directSenderName,
+    senderUid: directSenderUid,
+    requestId,
+}) => {
+    const recipientEmail = normalizeEmail(directRecipientEmail || recipient?.email);
+    const senderEmail = normalizeEmail(directSenderEmail || sender?.email);
+    const senderName = String(
+        directSenderName ||
+        sender?.displayName ||
+        sender?.profile?.fullName ||
+        sender?.fullName ||
+        senderEmail ||
+        ''
+    ).trim();
+    const senderUid = directSenderUid || sender?.uid || '';
+    const recipientUid = directRecipientUid || recipient?.uid || '';
+
+    if (!recipientEmail || !senderEmail || !requestId) {
+        throw new Error('Missing private details request notification data.');
+    }
+
+    const notificationData = {
+        recipientEmail,
+        senderEmail,
+        senderName,
+
+        type: 'private_details_request',
+        title: 'בקשה לצפייה בפרטים האישיים',
+        body: `${senderName || senderEmail} ביקש גישה לפרטים האישיים שלך`,
+        message: '',
+        requestId,
+        link: '/privacy-requests',
+
+        isRead: false,
+        createdAt: serverTimestamp(),
+        readAt: null,
+    };
+
+    if (senderUid) {
+        notificationData.senderUid = senderUid;
+    }
+
+    if (recipientUid) {
+        notificationData.recipientUid = recipientUid;
+    }
+
+    return addDoc(collection(db, COLLECTION_NAME), notificationData);
+};
+
+export const createPrivateDetailsCoordinatorApprovalNotification = async ({
+    recipient,
+    recipientEmail: directRecipientEmail,
+    recipientUid: directRecipientUid,
+    sender,
+    senderEmail: directSenderEmail,
+    senderName: directSenderName,
+    senderUid: directSenderUid,
+    requestId,
+}) => {
+    const recipientEmail = normalizeEmail(directRecipientEmail || recipient?.email);
+    const senderEmail = normalizeEmail(directSenderEmail || sender?.email);
+    const senderName = String(
+        directSenderName ||
+        sender?.displayName ||
+        sender?.profile?.fullName ||
+        sender?.fullName ||
+        senderEmail ||
+        ''
+    ).trim();
+    const senderUid = directSenderUid || sender?.uid || '';
+    const recipientUid = directRecipientUid || recipient?.uid || '';
+
+    if (!recipientEmail || !senderEmail || !requestId) {
+        throw new Error('Missing private details coordinator approval notification data.');
+    }
+
+    const notificationData = {
+        recipientEmail,
+        senderEmail,
+        senderName,
+
+        type: 'private_details_coordinator_approval',
+        title: 'בקשת גישה דורשת אישור רכז',
+        body: `${senderName || senderEmail} ביקש גישה לפרטי מעסיק המשויך אליך`,
+        message: '',
+        requestId,
+        link: '/privacy-requests',
+
+        isRead: false,
+        createdAt: serverTimestamp(),
+        readAt: null,
+    };
+
+    if (senderUid) {
+        notificationData.senderUid = senderUid;
+    }
+
+    if (recipientUid) {
+        notificationData.recipientUid = recipientUid;
+    }
+
+    return addDoc(collection(db, COLLECTION_NAME), notificationData);
+};
+
 export const notificationService = {
     subscribeToMyNotifications,
     markNotificationRead,
     markAllNotificationsRead,
     createEventMessageNotification,
+    createPrivateDetailsRequestNotification,
+    createPrivateDetailsCoordinatorApprovalNotification,
 };

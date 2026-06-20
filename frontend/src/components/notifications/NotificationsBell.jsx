@@ -21,6 +21,9 @@ import {
     markNotificationRead,
     subscribeToMyNotifications,
 } from '../../services/interfaces/notification-service';
+import { privacyService } from '../../services/interfaces/privacy-service';
+
+const DERIVED_PENDING_APPROVAL_TYPE = 'private_details_coordinator_approval_pending';
 
 const formatNotificationDate = (createdAt) => {
     const date = createdAt?.toDate?.() || null;
@@ -35,11 +38,37 @@ const formatNotificationDate = (createdAt) => {
     }).format(date);
 };
 
+const getCreatedAtMillis = (createdAt) => {
+    const date = createdAt?.toDate?.() || null;
+
+    return date ? date.getTime() : 0;
+};
+
+const isDerivedPendingApproval = (notification) => (
+    notification?.type === DERIVED_PENDING_APPROVAL_TYPE
+);
+
+const mapPendingApprovalToNotification = (request) => {
+    const requesterNameOrEmail = request.requesterName || request.requesterEmail || '';
+
+    return {
+        id: `privacy-request-${request.id}`,
+        type: DERIVED_PENDING_APPROVAL_TYPE,
+        title: 'בקשת גישה ממתינה לאישור שלך',
+        body: `${requesterNameOrEmail} ביקש גישה לפרטי מעסיק המשויך אליך`,
+        link: '/privacy-requests',
+        isRead: false,
+        createdAt: request.createdAt,
+        requestId: request.id,
+    };
+};
+
 const NotificationsBell = () => {
     const { currentUser, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const [notifications, setNotifications] = useState([]);
+    const [pendingApprovals, setPendingApprovals] = useState([]);
     const [isUpdating, setIsUpdating] = useState(false);
     const userEmail = currentUser?.email || '';
 
@@ -51,9 +80,32 @@ const NotificationsBell = () => {
         return subscribeToMyNotifications({ email: userEmail }, setNotifications);
     }, [isAuthenticated, userEmail]);
 
+    useEffect(() => {
+        if (!isAuthenticated || !userEmail) {
+            return undefined;
+        }
+
+        return privacyService.subscribeToPendingCoordinatorApprovals(
+            { email: userEmail },
+            setPendingApprovals
+        );
+    }, [isAuthenticated, userEmail]);
+
     const visibleNotifications = useMemo(
-        () => (userEmail ? notifications : []),
-        [notifications, userEmail]
+        () => {
+            if (!userEmail) {
+                return [];
+            }
+
+            const pendingApprovalItems = pendingApprovals.map(mapPendingApprovalToNotification);
+
+            return [...notifications, ...pendingApprovalItems].sort(
+                (first, second) => (
+                    getCreatedAtMillis(second.createdAt) - getCreatedAtMillis(first.createdAt)
+                )
+            );
+        },
+        [notifications, pendingApprovals, userEmail]
     );
 
     const unreadCount = useMemo(
@@ -81,7 +133,7 @@ const NotificationsBell = () => {
         }
 
         try {
-            if (!notification.isRead) {
+            if (!notification.isRead && !isDerivedPendingApproval(notification)) {
                 await markNotificationRead(notification.id);
             }
         } catch (error) {
@@ -99,7 +151,11 @@ const NotificationsBell = () => {
         setIsUpdating(true);
 
         try {
-            await markAllNotificationsRead(visibleNotifications);
+            await markAllNotificationsRead(
+                visibleNotifications.filter(
+                    (notification) => !isDerivedPendingApproval(notification)
+                )
+            );
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
         } finally {
@@ -154,7 +210,14 @@ const NotificationsBell = () => {
                 }}
             >
                 <Box sx={{ p: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2}>
+                    <Stack
+                        direction="row"
+                        gap={2}
+                        sx={{
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                        }}
+                    >
                         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
                             הודעות
                         </Typography>
@@ -182,9 +245,9 @@ const NotificationsBell = () => {
                             return (
                                 <ListItemButton
                                     key={notification.id}
-                                    alignItems="flex-start"
                                     onClick={() => handleNotificationClick(notification)}
                                     sx={{
+                                        alignItems: 'flex-start',
                                         gap: 1.5,
                                         borderBottom: '1px solid',
                                         borderColor: 'divider',
@@ -219,8 +282,7 @@ const NotificationsBell = () => {
                                             direction="row"
                                             spacing={1}
                                             useFlexGap
-                                            flexWrap="wrap"
-                                            sx={{ mt: 0.75 }}
+                                            sx={{ mt: 0.75, flexWrap: 'wrap' }}
                                         >
                                             {notification.senderName && (
                                                 <Typography variant="caption" color="text.secondary">
