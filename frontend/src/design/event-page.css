@@ -990,7 +990,8 @@
 }
 
 .modal-share-action.MuiIconButton-root,
-.modal-share-action.MuiButton-root {
+.modal-share-action.MuiButton-root,
+.modal-calendar-action.MuiIconButton-root {
     position: static;
 }
 
@@ -1080,6 +1081,8 @@
 .modal-footer {
     padding: 24px 32px; background: #f8fafc;
     border-top: 1px solid var(--color-border); display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     justify-content: flex-end; gap: 16px;
     border-radius: 0;
 }
