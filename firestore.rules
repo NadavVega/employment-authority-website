@@ -263,6 +263,7 @@ service cloud.firestore {
           'targetEmployerContactName',
           'targetEmployerRole',
           'assignedCoordinatorEmail',
+          'targetAssignedCoordinatorEmail',
           'requiresCoordinatorApproval',
           'employerApprovalStatus',
           'coordinatorApprovalStatus',
@@ -281,6 +282,7 @@ service cloud.firestore {
           'requesterRole',
           'targetEmail',
           'assignedCoordinatorEmail',
+          'targetAssignedCoordinatorEmail',
           'requiresCoordinatorApproval',
           'employerApprovalStatus',
           'coordinatorApprovalStatus',
@@ -298,6 +300,7 @@ service cloud.firestore {
         && dataHasRole(targetEmployerData(data.targetEmail), 'employer')
         && assignedEmail != authenticatedEmail()
         && data.assignedCoordinatorEmail == assignedEmail
+        && data.targetAssignedCoordinatorEmail == assignedEmail
         && data.requiresCoordinatorApproval == (assignedEmail != '')
         && data.employerApprovalStatus == 'pending'
         && data.coordinatorApprovalStatus
@@ -335,7 +338,12 @@ service cloud.firestore {
       return targetEmployerExists(data.targetEmail)
         && dataHasRole(targetEmployerData(data.targetEmail), 'employer')
         && assignedCoordinatorEmail(data.targetEmail)
-          == data.assignedCoordinatorEmail;
+          == data.assignedCoordinatorEmail
+        && (
+          !data.keys().hasAny(['targetAssignedCoordinatorEmail'])
+          || data.targetAssignedCoordinatorEmail
+            == data.assignedCoordinatorEmail
+        );
     }
 
     function privacyRequestStateIsValid(data) {
@@ -413,6 +421,11 @@ service cloud.firestore {
           || (
             isCoordinator()
             && data.assignedCoordinatorEmail == authenticatedEmail()
+          )
+          || (
+            isCoordinator()
+            && data.keys().hasAny(['targetAssignedCoordinatorEmail'])
+            && data.targetAssignedCoordinatorEmail == authenticatedEmail()
           )
         );
     }
@@ -847,6 +860,167 @@ service cloud.firestore {
         && eventAfter.registeredUids.hasAny([request.auth.uid]);
     }
 
+    // In-app notifications / messages
+    function userExistsByEmail(userEmail) {
+      return userEmail is string
+        && userEmail == userEmail.lower()
+        && exists(userPath(userEmail));
+    }
+
+    function canReadUserByEmail(userEmail) {
+      return userExistsByEmail(userEmail)
+        && (
+          userEmail == authenticatedEmail()
+          || isAdmin()
+          || isApplicationUser()
+        );
+    }
+
+    function canChooseNotificationRecipient(recipientEmail) {
+      return canReadUserByEmail(recipientEmail)
+        && recipientEmail != authenticatedEmail();
+    }
+
+    function isNotificationRecipient(data) {
+      return isApplicationUser()
+        && data.keys().hasAll(['recipientEmail'])
+        && data.recipientEmail == authenticatedEmail();
+    }
+
+    function validBaseNotificationCreate(data) {
+      return isApplicationUser()
+        && data.keys().hasOnly([
+          'recipientEmail',
+          'recipientUid',
+          'senderEmail',
+          'senderUid',
+          'senderName',
+          'type',
+          'title',
+          'body',
+          'message',
+          'eventId',
+          'requestId',
+          'link',
+          'isRead',
+          'createdAt',
+          'readAt'
+        ])
+        && data.keys().hasAll([
+          'recipientEmail',
+          'senderEmail',
+          'type',
+          'title',
+          'body',
+          'link',
+          'isRead',
+          'createdAt'
+        ])
+        && data.recipientEmail is string
+        && data.recipientEmail == data.recipientEmail.lower()
+        && data.senderEmail == authenticatedEmail()
+        && data.type is string
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 120
+        && data.body is string
+        && data.body.size() > 0
+        && data.body.size() <= 500
+        && data.link is string
+        && data.link.size() > 0
+        && data.link.size() <= 300
+        && data.isRead == false
+        && data.createdAt == request.time
+        && (
+          !data.keys().hasAny(['senderName'])
+          || data.senderName is string
+        )
+        && (
+          !data.keys().hasAny(['message'])
+          || (
+            data.message is string
+            && data.message.size() <= 500
+          )
+        )
+        && (
+          !data.keys().hasAny(['recipientUid'])
+          || data.recipientUid is string
+        )
+        && (
+          !data.keys().hasAny(['senderUid'])
+          || data.senderUid == request.auth.uid
+        )
+        && (
+          !data.keys().hasAny(['readAt'])
+          || data.readAt == null
+        )
+        && canChooseNotificationRecipient(data.recipientEmail);
+    }
+
+    function validEventNotificationCreate(data) {
+      let eventData = get(eventPath(data.eventId)).data;
+
+      return validBaseNotificationCreate(data)
+        && data.type in [
+          'event_message',
+          'event_created',
+          'event_updated'
+        ]
+        && data.keys().hasAll(['eventId'])
+        && data.keys().hasAll(['senderUid'])
+        && data.eventId is string
+        && exists(eventPath(data.eventId))
+        && eventIsPublished(eventData)
+        && eventHasNotPassed(eventData)
+        && data.link == '/events?eventId=' + data.eventId;
+    }
+
+    function validPrivateDetailsNotificationCreate(data) {
+      let requestData = get(privacyRequestPath(data.requestId)).data;
+      let coordinatorRecipient = requestData.keys().hasAny([
+        'targetAssignedCoordinatorEmail'
+      ])
+        ? requestData.targetAssignedCoordinatorEmail
+        : requestData.assignedCoordinatorEmail;
+
+      return validBaseNotificationCreate(data)
+        && data.type in [
+          'private_details_request',
+          'private_details_coordinator_approval'
+        ]
+        && data.keys().hasAll(['requestId'])
+        && data.requestId is string
+        && exists(privacyRequestPath(data.requestId))
+        && requestData.requesterEmail == authenticatedEmail()
+        && data.link == '/privacy-requests'
+        && data.readAt == null
+        && data.message == ''
+        && (
+          (
+            data.type == 'private_details_request'
+            && requestData.targetEmail == data.recipientEmail
+          )
+          || (
+            data.type == 'private_details_coordinator_approval'
+            && requestData.requiresCoordinatorApproval == true
+            && coordinatorRecipient == data.recipientEmail
+            && coordinatorRecipient != requestData.requesterEmail
+            && assignedCoordinatorEmail(requestData.targetEmail)
+              == coordinatorRecipient
+          )
+        );
+    }
+
+    function validNotificationReadUpdate() {
+      return isNotificationRecipient(resource.data)
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['isRead', 'readAt'])
+        && request.resource.data.isRead == true
+        && request.resource.data.readAt == request.time;
+    }
+
     function validPromotionalContent(data) {
       return data.keys().hasOnly([
           'title',
@@ -1014,6 +1188,21 @@ service cloud.firestore {
       allow create: if validPrivacyRequestCreate();
       allow update: if validPrivacyRequestUpdate();
       allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isNotificationRecipient(resource.data);
+
+      allow list: if isApplicationUser()
+        && resource.data.keys().hasAll(['recipientEmail'])
+        && resource.data.recipientEmail == authenticatedEmail();
+
+      allow create: if validEventNotificationCreate(request.resource.data)
+        || validPrivateDetailsNotificationCreate(request.resource.data);
+
+      allow update: if validNotificationReadUpdate();
+
+      allow delete: if isNotificationRecipient(resource.data);
     }
 
     // Preserve the current admin-managed article moderation workflow.

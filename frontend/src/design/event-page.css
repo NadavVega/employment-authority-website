@@ -906,14 +906,13 @@
     display: flex; 
     align-items: center; 
     justify-content: center;
-    z-index: 9999;
+    z-index: 1450;
 }
 
 .full-event-modal-content {
     background: white;
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
+    width: min(92vw, 980px);
+    max-height: 88vh;
     overflow-y: auto;
     border-radius: 0;
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
@@ -990,7 +989,9 @@
 }
 
 .modal-share-action.MuiIconButton-root,
-.modal-share-action.MuiButton-root {
+.modal-share-action.MuiButton-root,
+.modal-calendar-action.MuiIconButton-root,
+.modal-message-action.MuiIconButton-root {
     position: static;
 }
 
@@ -1080,6 +1081,8 @@
 .modal-footer {
     padding: 24px 32px; background: #f8fafc;
     border-top: 1px solid var(--color-border); display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     justify-content: flex-end; gap: 16px;
     border-radius: 0;
 }
@@ -1229,6 +1232,11 @@
         align-items: flex-start;
         gap: 14px;
         padding-left: 48px;
+    }
+
+    .full-event-modal-content {
+        width: 94vw;
+        max-height: 90vh;
     }
 
     .modal-center-logo {

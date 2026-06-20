@@ -7,6 +7,16 @@ import { privacyService } from "../services/interfaces/privacy-service";
 // Design files
 import "../design/global-theme.css";
 
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const getAssignedCoordinatorEmail = (contact) =>
+  normalizeEmail(
+    contact?.assignedCoordinatorEmail ||
+      contact?.profile?.assignedCoordinatorEmail ||
+      contact?.coordinatorEmail ||
+      contact?.profile?.coordinatorEmail
+  );
+
 const EmployerProfilePage = () => {
   const { employerId } = useParams();
   const navigate = useNavigate();
@@ -25,30 +35,35 @@ const EmployerProfilePage = () => {
 
   const isEmployerContact = employer?.role === "employer";
   const isCoordinatorContact = employer?.role === "coordinator";
+  const isOwnerEmployer =
+    isEmployerContact &&
+    currentUser?.email &&
+    normalizeEmail(employer.email) === normalizeEmail(currentUser.email);
 
   const isAssignedCoordinator =
     isCoordinator &&
-    employer?.assignedCoordinatorEmail &&
+    getAssignedCoordinatorEmail(employer) &&
     currentUser?.email &&
-    employer.assignedCoordinatorEmail.toLowerCase() ===
-      currentUser.email.toLowerCase();
+    getAssignedCoordinatorEmail(employer) === normalizeEmail(currentUser.email);
 
   const canRequestAccess =
     isCoordinator && isEmployerContact && !isAssignedCoordinator;
 
   const hasApprovedAccess =
-    accessStatus === "approved" || isAdmin || isAssignedCoordinator;
+    isOwnerEmployer ||
+    accessStatus === "approved" ||
+    isAdmin ||
+    isAssignedCoordinator;
 
   const canAssignEmployer =
-    isCoordinator && isEmployerContact && !employer?.assignedCoordinatorEmail;
+    isCoordinator && isEmployerContact && !getAssignedCoordinatorEmail(employer);
 
   const canEditEmployer =
     isCoordinator &&
     isEmployerContact &&
-    employer?.assignedCoordinatorEmail &&
+    getAssignedCoordinatorEmail(employer) &&
     currentUser?.email &&
-    employer.assignedCoordinatorEmail.toLowerCase() ===
-      currentUser.email.toLowerCase();
+    getAssignedCoordinatorEmail(employer) === normalizeEmail(currentUser.email);
 
   const displayRole = (role) => {
     if (role === "employer") return "מעסיק";
@@ -122,16 +137,22 @@ const EmployerProfilePage = () => {
         setEmployer(employerData);
 
         let status = "none";
+        const currentEmail = normalizeEmail(currentUser?.email);
+        const targetEmail = normalizeEmail(employerData.email);
+        const userIsOwnerEmployer =
+          employerData.role === "employer" &&
+          currentEmail &&
+          currentEmail === targetEmail;
         const coordinatorIsAssigned =
           userRole === "coordinator" &&
-          employerData.assignedCoordinatorEmail &&
-          currentUser?.email &&
-          employerData.assignedCoordinatorEmail.toLowerCase() ===
-            currentUser.email.toLowerCase();
+          getAssignedCoordinatorEmail(employerData) &&
+          currentEmail &&
+          getAssignedCoordinatorEmail(employerData) === currentEmail;
 
         if (
           currentUser &&
           !isAdmin &&
+          !userIsOwnerEmployer &&
           employerData.role === "employer" &&
           !coordinatorIsAssigned
         ) {
@@ -149,7 +170,10 @@ const EmployerProfilePage = () => {
 
         const shouldLoadPrivateDetails =
           employerData.role === "employer" &&
-          (isAdmin || status === "approved" || coordinatorIsAssigned);
+          (userIsOwnerEmployer ||
+            isAdmin ||
+            coordinatorIsAssigned ||
+            status === "approved");
 
         if (currentUser && shouldLoadPrivateDetails) {
           try {
@@ -160,10 +184,12 @@ const EmployerProfilePage = () => {
 
             setPrivateDetails(details);
           } catch (privateDetailsError) {
-            console.error(
-              "Failed to load private contact details:",
-              privateDetailsError
-            );
+            if (privateDetailsError?.code !== "permission-denied") {
+              console.error(
+                "Failed to load private contact details:",
+                privateDetailsError
+              );
+            }
 
             setPrivateDetails(null);
           }

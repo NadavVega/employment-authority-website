@@ -6,12 +6,17 @@ import {
   getDocs,
   getDoc,
   doc,
+  onSnapshot,
   updateDoc,
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+import {
+  createPrivateDetailsCoordinatorApprovalNotification,
+  createPrivateDetailsRequestNotification,
+} from "./notification-service";
 
 const getUserProfileByEmail = async (email) => {
   if (!email) {
@@ -44,6 +49,100 @@ const getUserProfileByEmail = async (email) => {
   };
 };
 
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const getPublicUserByEmail = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    return {};
+  }
+
+  const userSnap = await getDoc(doc(db, "users", normalizedEmail));
+
+  if (!userSnap.exists()) {
+    return {};
+  }
+
+  return {
+    id: userSnap.id,
+    ...userSnap.data(),
+    email: normalizedEmail,
+  };
+};
+
+const getAssignedCoordinatorEmail = (employer) => {
+  return normalizeEmail(
+    employer?.assignedCoordinatorEmail ||
+      employer?.profile?.assignedCoordinatorEmail ||
+      employer?.coordinatorEmail ||
+      employer?.profile?.coordinatorEmail
+  );
+};
+
+const noop = () => {};
+
+const mapPrivacyRequestDoc = (docSnap) => {
+  const data = docSnap.data();
+
+  return {
+    id: docSnap.id,
+
+    requesterEmail: data.requesterEmail || "",
+    requesterName: data.requesterName || "",
+    requesterCenterName: data.requesterCenterName || "",
+    requesterRole: data.requesterRole || "",
+
+    targetEmail: data.targetEmail || "",
+    targetEmployerName: data.targetEmployerName || "",
+    targetEmployerContactName: data.targetEmployerContactName || "",
+    targetEmployerRole: data.targetEmployerRole || "",
+
+    assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
+    targetAssignedCoordinatorEmail:
+      data.targetAssignedCoordinatorEmail || data.assignedCoordinatorEmail || "",
+    requiresCoordinatorApproval: data.requiresCoordinatorApproval === true,
+
+    employerApprovalStatus: data.employerApprovalStatus || "pending",
+    coordinatorApprovalStatus:
+      data.coordinatorApprovalStatus || "not_required",
+
+    status: data.status || "pending",
+
+    createdAt: data.createdAt || null,
+    updatedAt: data.updatedAt || null,
+
+    employerReviewedAt: data.employerReviewedAt || null,
+    employerReviewedBy: data.employerReviewedBy || null,
+
+    coordinatorReviewedAt: data.coordinatorReviewedAt || null,
+    coordinatorReviewedBy: data.coordinatorReviewedBy || null,
+
+    reviewedAt: data.reviewedAt || null,
+    reviewedBy: data.reviewedBy || null,
+  };
+};
+
+const isPendingCoordinatorApproval = (request, currentUserEmail) => {
+  const assignedEmail = normalizeEmail(
+    request.targetAssignedCoordinatorEmail || request.assignedCoordinatorEmail
+  );
+  const requesterEmail = normalizeEmail(request.requesterEmail);
+  const status = String(request.status || "").toLowerCase();
+  const coordinatorApprovalStatus = String(
+    request.coordinatorApprovalStatus || ""
+  ).toLowerCase();
+
+  return (
+    assignedEmail === currentUserEmail &&
+    requesterEmail !== currentUserEmail &&
+    !["approved", "rejected", "denied", "cancelled", "completed"].includes(
+      status
+    ) &&
+    coordinatorApprovalStatus === "pending"
+  );
+};
+
 export const privacyService = {
   async requestContactAccess(currentUser, targetEmployer) {
     if (!currentUser?.email) {
@@ -54,14 +153,15 @@ export const privacyService = {
       throw new Error("Target employer email is missing.");
     }
 
-    const requesterEmail = currentUser.email.toLowerCase().trim();
-    const targetEmail = targetEmployer.email.toLowerCase().trim();
+    const requesterEmail = normalizeEmail(currentUser.email);
+    const targetEmail = normalizeEmail(targetEmployer.email);
 
     const requesterProfile = await getUserProfileByEmail(requesterEmail);
+    const publicTargetEmployer = await getPublicUserByEmail(targetEmail);
+    const targetEmployerProfile = publicTargetEmployer.profile || {};
 
-    const assignedCoordinatorEmail = targetEmployer.assignedCoordinatorEmail
-      ? String(targetEmployer.assignedCoordinatorEmail).toLowerCase().trim()
-      : "";
+    const assignedCoordinatorEmail =
+      getAssignedCoordinatorEmail(publicTargetEmployer);
 
     const isRequesterAssignedCoordinator =
       assignedCoordinatorEmail && assignedCoordinatorEmail === requesterEmail;
@@ -99,11 +199,23 @@ export const privacyService = {
       requesterRole: requesterProfile.role || "coordinator",
 
       targetEmail,
-      targetEmployerName: targetEmployer.organization || "",
-      targetEmployerContactName: targetEmployer.name || "",
-      targetEmployerRole: targetEmployer.role || "",
+      targetEmployerName:
+        targetEmployerProfile.organization ||
+        publicTargetEmployer.organization ||
+        "",
+      targetEmployerContactName:
+        targetEmployerProfile.fullName ||
+        publicTargetEmployer.fullName ||
+        targetEmployerProfile.name ||
+        publicTargetEmployer.name ||
+        "",
+      targetEmployerRole:
+        publicTargetEmployer.role ||
+        targetEmployerProfile.role ||
+        "",
 
       assignedCoordinatorEmail,
+      targetAssignedCoordinatorEmail: assignedCoordinatorEmail,
       requiresCoordinatorApproval: Boolean(requiresCoordinatorApproval),
 
       employerApprovalStatus: "pending",
@@ -131,6 +243,42 @@ export const privacyService = {
       requestData
     );
 
+    const senderName = requesterProfile.fullName || currentUser.displayName || "";
+    const notificationRequests = [
+      createPrivateDetailsRequestNotification({
+        recipientEmail: targetEmail,
+        recipientUid: publicTargetEmployer.uid,
+        senderEmail: requesterEmail,
+        senderUid: currentUser.uid,
+        senderName,
+        requestId: docRef.id,
+      }),
+    ];
+
+    if (assignedCoordinatorEmail && assignedCoordinatorEmail !== requesterEmail) {
+      notificationRequests.push(
+        createPrivateDetailsCoordinatorApprovalNotification({
+          recipientEmail: assignedCoordinatorEmail,
+          senderEmail: requesterEmail,
+          senderUid: currentUser.uid,
+          senderName,
+          requestId: docRef.id,
+        })
+      );
+    }
+
+    const notificationResults = await Promise.allSettled(notificationRequests);
+    const failedNotification = notificationResults.find(
+      (result) => result.status === "rejected"
+    );
+
+    if (failedNotification) {
+      console.warn(
+        "Private details request notification failed:",
+        failedNotification.reason
+      );
+    }
+
     return {
       id: docRef.id,
       status: "pending",
@@ -149,9 +297,7 @@ export const privacyService = {
     const requesterEmail = currentUser.email.toLowerCase().trim();
     const targetEmail = targetEmployer.email.toLowerCase().trim();
 
-    const assignedCoordinatorEmail = targetEmployer.assignedCoordinatorEmail
-      ? String(targetEmployer.assignedCoordinatorEmail).toLowerCase().trim()
-      : "";
+    const assignedCoordinatorEmail = getAssignedCoordinatorEmail(targetEmployer);
 
     if (assignedCoordinatorEmail && assignedCoordinatorEmail === requesterEmail) {
       return "approved";
@@ -249,32 +395,7 @@ export const privacyService = {
 
     const snapshot = await getDocs(requestsQuery);
 
-    return snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-
-      return {
-        id: docSnap.id,
-
-        requesterEmail: data.requesterEmail || "",
-        requesterName: data.requesterName || "",
-        requesterCenterName: data.requesterCenterName || "",
-        requesterRole: data.requesterRole || "",
-
-        targetEmail: data.targetEmail || "",
-        targetEmployerName: data.targetEmployerName || "",
-        targetEmployerContactName: data.targetEmployerContactName || "",
-
-        assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
-        requiresCoordinatorApproval: data.requiresCoordinatorApproval === true,
-
-        employerApprovalStatus: data.employerApprovalStatus || "pending",
-        coordinatorApprovalStatus:
-          data.coordinatorApprovalStatus || "not_required",
-
-        status: data.status || "pending",
-        createdAt: data.createdAt || null,
-      };
-    });
+    return snapshot.docs.map(mapPrivacyRequestDoc);
   },
 
   async getPendingPrivacyRequests() {
@@ -285,45 +406,101 @@ export const privacyService = {
 
     const snapshot = await getDocs(pendingRequestsQuery);
 
-    return snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
+    return snapshot.docs.map(mapPrivacyRequestDoc);
+  },
 
-      return {
-        id: docSnap.id,
+  subscribeToPendingCoordinatorApprovals(currentUser, callback) {
+    const currentUserEmail = normalizeEmail(currentUser?.email);
+    const safeCallback =
+      typeof callback === "function"
+        ? (requests) => {
+            try {
+              callback(requests);
+            } catch (error) {
+              console.error(
+                "PrivacyService Error: pending approvals callback failed",
+                error
+              );
+            }
+          }
+        : noop;
 
-        requesterEmail: data.requesterEmail || "",
-        requesterName: data.requesterName || "",
-        requesterCenterName: data.requesterCenterName || "",
-        requesterRole: data.requesterRole || "",
+    if (!currentUserEmail) {
+      safeCallback([]);
+      return noop;
+    }
 
-        targetEmail: data.targetEmail || "",
-        targetEmployerName: data.targetEmployerName || "",
-        targetEmployerContactName: data.targetEmployerContactName || "",
-        targetEmployerRole: data.targetEmployerRole || "",
+    const targetRoutingQuery = query(
+      collection(db, "privacy_requests"),
+      where("targetAssignedCoordinatorEmail", "==", currentUserEmail)
+    );
+    const legacyAssignmentQuery = query(
+      collection(db, "privacy_requests"),
+      where("assignedCoordinatorEmail", "==", currentUserEmail)
+    );
+    const snapshotsBySource = {
+      targetRouting: [],
+      legacyAssignment: [],
+    };
+    const emitMergedRequests = () => {
+      const requestsById = new Map();
 
-        assignedCoordinatorEmail: data.assignedCoordinatorEmail || "",
-        requiresCoordinatorApproval:
-          data.requiresCoordinatorApproval === true,
+      [...snapshotsBySource.targetRouting, ...snapshotsBySource.legacyAssignment]
+        .filter((request) =>
+          isPendingCoordinatorApproval(request, currentUserEmail)
+        )
+        .forEach((request) => {
+          requestsById.set(request.id, request);
+        });
 
-        employerApprovalStatus: data.employerApprovalStatus || "pending",
-        coordinatorApprovalStatus:
-          data.coordinatorApprovalStatus || "not_required",
+      safeCallback(Array.from(requestsById.values()));
+    };
 
-        status: data.status || "pending",
+    try {
+      const unsubscribeTargetRouting = onSnapshot(
+        targetRoutingQuery,
+        (snapshot) => {
+          snapshotsBySource.targetRouting = snapshot.docs.map(mapPrivacyRequestDoc);
+          emitMergedRequests();
+        },
+        (error) => {
+          console.error(
+            "PrivacyService Error: pending approvals target routing subscription failed",
+            error
+          );
+          snapshotsBySource.targetRouting = [];
+          emitMergedRequests();
+        }
+      );
+      const unsubscribeLegacyAssignment = onSnapshot(
+        legacyAssignmentQuery,
+        (snapshot) => {
+          snapshotsBySource.legacyAssignment =
+            snapshot.docs.map(mapPrivacyRequestDoc);
+          emitMergedRequests();
+        },
+        (error) => {
+          console.error(
+            "PrivacyService Error: pending approvals assignment subscription failed",
+            error
+          );
+          snapshotsBySource.legacyAssignment = [];
+          emitMergedRequests();
+        }
+      );
 
-        createdAt: data.createdAt || null,
-        updatedAt: data.updatedAt || null,
-
-        employerReviewedAt: data.employerReviewedAt || null,
-        employerReviewedBy: data.employerReviewedBy || null,
-
-        coordinatorReviewedAt: data.coordinatorReviewedAt || null,
-        coordinatorReviewedBy: data.coordinatorReviewedBy || null,
-
-        reviewedAt: data.reviewedAt || null,
-        reviewedBy: data.reviewedBy || null,
+      return () => {
+        unsubscribeTargetRouting();
+        unsubscribeLegacyAssignment();
       };
-    });
+    } catch (error) {
+      console.error(
+        "PrivacyService Error: pending approvals subscription setup failed",
+        error
+      );
+      safeCallback([]);
+      return noop;
+    }
   },
 
   async approvePrivacyRequest(request, currentUser) {

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { EventCard } from '../components/events/event-card';
+import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
@@ -15,7 +18,9 @@ import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
 import { getEventColor } from '../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 import { buildEventShareUrl } from '../utils/eventShare';
+import { buildGoogleCalendarUrl, buildOutlookCalendarUrl } from '../utils/calendarLinks';
 import { ShareMenu } from '../components/share/ShareMenu';
+import { EventMessageDialog } from '../components/share/EventMessageDialog';
 import eventsDecoration from '../assets/images/city-view.png';
 import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
@@ -39,6 +44,8 @@ export const EventsPage = () => {
     const [registeredEventIds, setRegisteredEventIds] = useState([]);
     const [isRegistering, setIsRegistering] = useState(false);
     const [bitPaymentDetails, setBitPaymentDetails] = useState(null); // Controls the Bit popup
+    const [calendarMenuAnchorEl, setCalendarMenuAnchorEl] = useState(null);
+    const [isEventMessageDialogOpen, setIsEventMessageDialogOpen] = useState(false);
 
     const requestedEventId =
         new URLSearchParams(location.search).get('eventId') ||
@@ -49,6 +56,8 @@ export const EventsPage = () => {
     const selectedEvent = manuallySelectedEvent || routeSelectedEvent;
 
     const closeSelectedEvent = () => {
+        setCalendarMenuAnchorEl(null);
+        setIsEventMessageDialogOpen(false);
         setSelectedEventModal(null);
 
         if (requestedEventId) {
@@ -59,6 +68,39 @@ export const EventsPage = () => {
     const handleSelectedEventEdit = () => {
         if (!selectedEvent?.id) return;
         navigate(`/edit-event/${selectedEvent.id}`);
+    };
+
+    const handleCalendarMenuOpen = (event) => {
+        event.stopPropagation();
+        setCalendarMenuAnchorEl(event.currentTarget);
+    };
+
+    const handleCalendarMenuClose = (event) => {
+        event?.stopPropagation();
+        setCalendarMenuAnchorEl(null);
+    };
+
+    const handleCalendarTargetClick = (event, target) => {
+        event.stopPropagation();
+        const calendarUrl = target === 'google'
+            ? buildGoogleCalendarUrl(selectedEvent)
+            : buildOutlookCalendarUrl(selectedEvent);
+
+        if (calendarUrl) {
+            window.open(calendarUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        setCalendarMenuAnchorEl(null);
+    };
+
+    const handleEventMessageDialogOpen = (event) => {
+        event?.stopPropagation();
+        setSelectedEventModal(selectedEvent);
+        setIsEventMessageDialogOpen(true);
+    };
+
+    const handleEventMessageDialogClose = () => {
+        setIsEventMessageDialogOpen(false);
     };
 
     // Fetch registered event IDs for the current user (if employer)
@@ -645,6 +687,61 @@ const handleRegisterClick = async (event) => {
                                             </svg>
                                         </button>
                                     )}
+                                    <IconButton
+                                        type="button"
+                                        className="modal-calendar-action"
+                                        onClick={handleCalendarMenuOpen}
+                                        aria-label={`הוספת האירוע ${selectedEvent.title} ליומן`}
+                                        aria-haspopup="menu"
+                                        aria-expanded={Boolean(calendarMenuAnchorEl)}
+                                        size="small"
+                                        sx={{
+                                            flex: '0 0 auto',
+                                            color: 'var(--color-brand)',
+                                            border: '1px solid var(--color-brand)',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontFamily: 'inherit',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        <CalendarMonthOutlinedIcon fontSize="small" />
+                                    </IconButton>
+                                    <Menu
+                                        anchorEl={calendarMenuAnchorEl}
+                                        open={Boolean(calendarMenuAnchorEl)}
+                                        onClose={handleCalendarMenuClose}
+                                        onClick={(event) => event.stopPropagation()}
+                                        slotProps={{ paper: { sx: { direction: 'rtl', minWidth: 180 } } }}
+                                        sx={{ zIndex: 11000 }}
+                                    >
+                                        <MenuItem onClick={(event) => handleCalendarTargetClick(event, 'google')}>
+                                            Google Calendar
+                                        </MenuItem>
+                                        <MenuItem onClick={(event) => handleCalendarTargetClick(event, 'outlook')}>
+                                            Outlook Calendar
+                                        </MenuItem>
+                                    </Menu>
+                                    {!isGuest && currentUser?.email && currentUser?.uid && (
+                                        <Tooltip title="שליחה בהודעות">
+                                            <IconButton
+                                                type="button"
+                                                className="modal-message-action"
+                                                onClick={(event) => handleEventMessageDialogOpen(event)}
+                                                aria-label={`שליחה בהודעות של האירוע ${selectedEvent.title}`}
+                                                size="small"
+                                                sx={{
+                                                    flex: '0 0 auto',
+                                                    color: 'var(--color-brand)',
+                                                    border: '1px solid var(--color-brand)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    fontFamily: 'inherit',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                <ForwardToInboxOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                     <ShareMenu
                                         title={selectedEvent.title}
                                         url={buildEventShareUrl(selectedEvent.id)}
@@ -658,6 +755,13 @@ const handleRegisterClick = async (event) => {
                                             fontFamily: 'inherit',
                                             whiteSpace: 'nowrap',
                                         }}
+                                    />
+                                    <EventMessageDialog
+                                        open={isEventMessageDialogOpen}
+                                        event={selectedEvent}
+                                        currentUser={currentUser}
+                                        userRole={userRole}
+                                        onClose={handleEventMessageDialogClose}
                                     />
                                 </div>
                             </div>
