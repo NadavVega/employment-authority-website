@@ -66,6 +66,11 @@
     z-index: 2;
     width: 100px;
     height: 68px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    filter: drop-shadow(0 2px 7px rgba(0, 0, 0, 0.28));
     transform: translateY(-50%);
 }
 
@@ -354,11 +359,12 @@
     width: 48px;
     height: 34px;
     margin-inline-start: 6px;
-    color: #ffffff;
+    color: var(--color-text-muted);
     font-weight: 800;
-    background: var(--event-center-color, #64748b);
-    border: 0;
-    box-shadow: none;
+    background: #ffffff;
+    border: 1px solid rgba(0, 26, 64, 0.12);
+    border-inline-start: 3px solid var(--event-center-color, #64748b);
+    box-shadow: 0 2px 8px rgba(0, 26, 64, 0.08);
 }
 
 .card-image-actions {
@@ -391,7 +397,7 @@
 }
 
 .event-card-bottom .event-center-logo svg {
-    stroke: #ffffff;
+    stroke: var(--color-text-muted);
 }
 
 .badge-free {
@@ -672,7 +678,11 @@
     gap: 14px;
     min-height: 118px;
     padding: 16px 18px;
-    background: linear-gradient(135deg, #ffffff 0%, var(--color-accent-soft) 100%);
+    background: linear-gradient(
+        135deg,
+        #ffffff 0%,
+        color-mix(in srgb, var(--event-center-color, var(--color-brand)) 9%, #ffffff) 100%
+    );
     border-top: 4px solid var(--event-center-color, var(--color-brand));
 }
 
@@ -680,6 +690,8 @@
     width: 64px;
     height: 48px;
     align-self: center;
+    border-inline-start-width: 4px;
+    box-shadow: 0 4px 14px rgba(0, 26, 64, 0.12);
 }
 
 .event-card-featured .bottom-date-area {
@@ -697,6 +709,7 @@
     justify-content: center;
     gap: 8px;
     min-width: 0;
+    border-right-color: var(--event-center-color, var(--color-border));
 }
 
 .event-card-featured .bottom-title {

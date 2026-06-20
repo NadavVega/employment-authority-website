@@ -82,11 +82,13 @@
     color: var(--color-text);
 }
 .event-card-bottom .event-center-logo {
-    background: var(--event-center-color, #64748b);
-    border: 0;
-    color: #ffffff;
+    background: #ffffff;
+    border: 1px solid rgba(0, 26, 64, 0.12);
+    border-inline-start: 3px solid var(--event-center-color, #64748b);
+    color: var(--color-text-muted);
+    box-shadow: 0 2px 8px rgba(0, 26, 64, 0.08);
 }
-.event-card-bottom .event-center-logo svg { stroke: #ffffff; }
+.event-card-bottom .event-center-logo svg { stroke: var(--color-text-muted); }
 .bottom-date-area { border-left: none; padding-left: 0; min-width: auto; text-align: right; }
 .bottom-date-big { font-size: 16px; font-weight: bold; line-height: 1.2; margin: 0; }
 .bottom-title-area { flex: 1; text-align: right; border-right: 2px solid var(--color-border); padding-right: 12px; }
