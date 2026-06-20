@@ -1,4 +1,5 @@
 import {
+    addDoc,
     collection,
     doc,
     limit,
@@ -80,8 +81,49 @@ export const markAllNotificationsRead = async (notifications = []) => {
     await batch.commit();
 };
 
+export const createEventMessageNotification = async ({
+    recipient,
+    sender,
+    eventId,
+    message = '',
+}) => {
+    const recipientEmail = normalizeEmail(recipient?.email);
+    const senderEmail = normalizeEmail(sender?.email);
+    const senderName = String(
+        sender?.displayName ||
+        sender?.profile?.fullName ||
+        sender?.fullName ||
+        senderEmail ||
+        ''
+    ).trim();
+
+    if (!recipientEmail || !senderEmail || !sender?.uid || !eventId) {
+        throw new Error('Missing event message notification data.');
+    }
+
+    return addDoc(collection(db, COLLECTION_NAME), {
+        recipientEmail,
+        recipientUid: recipient?.uid || null,
+        senderEmail,
+        senderUid: sender.uid,
+        senderName,
+
+        type: 'event_message',
+        title: 'אירוע נשלח אליך',
+        body: `${senderName || senderEmail} שלח לך אירוע`,
+        message: String(message || '').trim(),
+        eventId,
+        link: `/events?eventId=${encodeURIComponent(eventId)}`,
+
+        isRead: false,
+        createdAt: serverTimestamp(),
+        readAt: null,
+    });
+};
+
 export const notificationService = {
     subscribeToMyNotifications,
     markNotificationRead,
     markAllNotificationsRead,
+    createEventMessageNotification,
 };

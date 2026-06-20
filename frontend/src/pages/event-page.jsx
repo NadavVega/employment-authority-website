@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { EventCard } from '../components/events/event-card';
-import { IconButton, Menu, MenuItem } from '@mui/material';
+import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
@@ -19,6 +20,7 @@ import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 import { buildEventShareUrl } from '../utils/eventShare';
 import { buildGoogleCalendarUrl, buildOutlookCalendarUrl } from '../utils/calendarLinks';
 import { ShareMenu } from '../components/share/ShareMenu';
+import { EventMessageDialog } from '../components/share/EventMessageDialog';
 import eventsDecoration from '../assets/images/city-view.png';
 import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
@@ -43,6 +45,7 @@ export const EventsPage = () => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [bitPaymentDetails, setBitPaymentDetails] = useState(null); // Controls the Bit popup
     const [calendarMenuAnchorEl, setCalendarMenuAnchorEl] = useState(null);
+    const [isEventMessageDialogOpen, setIsEventMessageDialogOpen] = useState(false);
 
     const requestedEventId =
         new URLSearchParams(location.search).get('eventId') ||
@@ -54,6 +57,7 @@ export const EventsPage = () => {
 
     const closeSelectedEvent = () => {
         setCalendarMenuAnchorEl(null);
+        setIsEventMessageDialogOpen(false);
         setSelectedEventModal(null);
 
         if (requestedEventId) {
@@ -87,6 +91,15 @@ export const EventsPage = () => {
         }
 
         setCalendarMenuAnchorEl(null);
+    };
+
+    const handleEventMessageDialogOpen = (event) => {
+        event.stopPropagation();
+        setIsEventMessageDialogOpen(true);
+    };
+
+    const handleEventMessageDialogClose = () => {
+        setIsEventMessageDialogOpen(false);
     };
 
     // Fetch registered event IDs for the current user (if employer)
@@ -707,6 +720,27 @@ const handleRegisterClick = async (event) => {
                                             Outlook Calendar
                                         </MenuItem>
                                     </Menu>
+                                    {!isGuest && currentUser?.email && currentUser?.uid && (
+                                        <Tooltip title="שליחה בהודעות">
+                                            <IconButton
+                                                type="button"
+                                                className="modal-message-action"
+                                                onClick={handleEventMessageDialogOpen}
+                                                aria-label={`שליחה בהודעות של האירוע ${selectedEvent.title}`}
+                                                size="small"
+                                                sx={{
+                                                    flex: '0 0 auto',
+                                                    color: 'var(--color-brand)',
+                                                    border: '1px solid var(--color-brand)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    fontFamily: 'inherit',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                <ForwardToInboxOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                     <ShareMenu
                                         title={selectedEvent.title}
                                         url={buildEventShareUrl(selectedEvent.id)}
@@ -720,6 +754,13 @@ const handleRegisterClick = async (event) => {
                                             fontFamily: 'inherit',
                                             whiteSpace: 'nowrap',
                                         }}
+                                    />
+                                    <EventMessageDialog
+                                        open={isEventMessageDialogOpen}
+                                        event={selectedEvent}
+                                        currentUser={currentUser}
+                                        userRole={userRole}
+                                        onClose={handleEventMessageDialogClose}
                                     />
                                 </div>
                             </div>

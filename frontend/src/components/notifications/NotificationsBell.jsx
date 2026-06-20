@@ -210,6 +210,11 @@ const NotificationsBell = () => {
                                                 {notification.body}
                                             </Typography>
                                         )}
+                                        {notification.message && (
+                                            <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                                                {notification.message}
+                                            </Typography>
+                                        )}
                                         <Stack
                                             direction="row"
                                             spacing={1}

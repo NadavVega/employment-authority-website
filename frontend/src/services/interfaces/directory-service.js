@@ -150,6 +150,90 @@ export const directoryService = {
   },
 
   /**
+   * Fetch only safe public recipient fields from contacts the current user
+   * can already see in the directory.
+   *
+   * @param {Object} currentUser
+   * @param {string} userRole
+   * @returns {Promise<Array>}
+   */
+  async getPermittedMessageRecipients(currentUser, userRole) {
+    const currentUserEmail = currentUser?.email
+      ? currentUser.email.toLowerCase().trim()
+      : "";
+
+    if (!currentUserEmail) {
+      return [];
+    }
+
+    const contacts = await this.getDirectoryContacts();
+    const currentUserContact = contacts.find(
+      (contact) => contact.email?.toLowerCase().trim() === currentUserEmail
+    );
+    const currentEmployerCompany = String(
+      currentUserContact?.rawData?.profile?.company ||
+      currentUserContact?.rawData?.company ||
+      currentUserContact?.organization ||
+      ""
+    )
+      .toLowerCase()
+      .trim();
+
+    const permittedContacts = contacts.filter((contact) => {
+      const contactEmail = contact.email?.toLowerCase().trim();
+
+      if (!contactEmail || contactEmail === currentUserEmail) {
+        return false;
+      }
+
+      if (contact.role === "coordinator") {
+        return true;
+      }
+
+      if (contact.role !== "employer") {
+        return false;
+      }
+
+      if (userRole === "admin" || userRole === "coordinator") {
+        return true;
+      }
+
+      if (userRole === "employer") {
+        const contactCompany = String(
+          contact.rawData?.profile?.company ||
+          contact.rawData?.company ||
+          contact.organization ||
+          ""
+        )
+          .toLowerCase()
+          .trim();
+
+        return Boolean(
+          currentEmployerCompany &&
+          contactCompany &&
+          currentEmployerCompany === contactCompany
+        );
+      }
+
+      return false;
+    });
+
+    return permittedContacts.map((contact) => ({
+      id: contact.id,
+      uid: contact.rawData?.uid || contact.rawData?.userId || null,
+      email: contact.email,
+      name: contact.name,
+      role: contact.role,
+      companyName:
+        contact.organization ||
+        contact.centerName ||
+        contact.rawData?.profile?.company ||
+        contact.rawData?.company ||
+        "",
+    }));
+  },
+
+  /**
    * Fetch a single employer/contact by email.
    *
    * @param {string} contactEmail

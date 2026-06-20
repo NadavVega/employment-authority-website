@@ -991,7 +991,8 @@
 
 .modal-share-action.MuiIconButton-root,
 .modal-share-action.MuiButton-root,
-.modal-calendar-action.MuiIconButton-root {
+.modal-calendar-action.MuiIconButton-root,
+.modal-message-action.MuiIconButton-root {
     position: static;
 }
 
