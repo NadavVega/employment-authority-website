@@ -32,7 +32,7 @@ const getReadableTextColor = (backgroundColor) => {
     return luminance > 155 ? '#172033' : '#ffffff';
 };
 
-export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetails, onApprove, onDelete, isRegistered }) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -68,7 +68,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
 
     return (
         <div
-            className={`event-card ${isExpired ? 'event-card-expired' : ''}`}
+            className={`event-card ${isExpired ? 'event-card-expired' : ''} ${isFeatured ? 'event-card-featured' : ''} ${isCompact ? 'event-card-compact' : ''}`}
             style={{
                 '--event-center-color': centerColor,
                 '--event-center-text': getReadableTextColor(centerColor),
@@ -126,23 +126,31 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                     </div>
                 </div>
 
-                {canEdit && (
-                    isExpired ? (
-                        <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
-                                <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
-                                <path d="M10 13h4"></path>
-                            </svg>
-                        </button>
-                    ) : (
-                        <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                            </svg>
-                        </button>
-                    )
-                )}
+                <div className="card-image-actions">
+                    <ShareMenu
+                        title={event.title}
+                        url={buildEventShareUrl(event.id)}
+                        ariaLabel={`שיתוף האירוע ${event.title}`}
+                        buttonClassName="edit-pencil-btn-new card-share-action"
+                    />
+                    {canEdit && (
+                        isExpired ? (
+                            <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
+                                    <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
+                                    <path d="M10 13h4"></path>
+                                </svg>
+                            </button>
+                        ) : (
+                            <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
+                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                </svg>
+                            </button>
+                        )
+                    )}
+                </div>
 
                 <div className="event-card-overlay">
                     <div className="overlay-meta-grid">
@@ -175,8 +183,7 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                 </div>
             </div>
 
-            <div 
-                className="event-card-bottom">
+            <div className="event-card-bottom">
                 <div className="event-center-logo event-logo-container" title={centerName || 'מרכז תעסוקה'}>
                     {centerIcon ? (
                         <img src={centerIcon} alt={centerName || 'לוגו המרכז'} />
@@ -191,7 +198,26 @@ export const EventCard = ({ event, isExpired, onOpenDetails, onApprove, onDelete
                 </div>
                 <div className="bottom-title-area">
                     <p className="bottom-title">{event.title}</p>
+                    {isFeatured && (
+                        <div className="featured-card-meta">
+                            <span className="standard-numbers">{fullDate}</span>
+                            <span className="standard-numbers" dir="ltr">{event.time || 'טרם נקבע'}</span>
+                            <span>{shortLocation}</span>
+                        </div>
+                    )}
                 </div>
+                {isFeatured && (
+                    <button
+                        type="button"
+                        className="featured-card-details-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenDetails(event);
+                        }}
+                    >
+                        הרשמה / פרטים
+                    </button>
+                )}
 
             </div>
         </div>

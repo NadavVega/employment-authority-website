@@ -12,7 +12,7 @@
     outline-offset: 3px;
 }
 .event-card-expired { filter: grayscale(100%); opacity: 0.6; }
-.event-card-expired .event-card-bottom { background: #64748b; }
+.event-card-expired .event-card-bottom { background: #ffffff; }
 
 .event-card-image-area { position: relative; flex-grow: 1; background-color: #f0f0f0; background-size: cover; background-position: center; overflow: hidden; }
 .card-badges-container { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
@@ -40,9 +40,14 @@
 .status-badge-pending { background: #f59e0b; color: white; padding: 4px 10px; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; display: inline-block; box-shadow: var(--shadow-sm); }
 .badge-accessibility { background: #003b8b; border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
+.card-image-actions { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 11; }
 .edit-pencil-btn-new { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 11; }
+.edit-pencil-btn-new.MuiIconButton-root { width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; }
+.card-image-actions .card-share-action.MuiIconButton-root { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; box-shadow: none; }
 .edit-pencil-btn-new:hover { background: var(--color-primary); transform: scale(1.1); }
+.card-image-actions .card-share-action.MuiIconButton-root:hover { background: var(--color-primary); transform: scale(1.1); }
 .edit-pencil-btn-new svg { width: 16px; height: 16px; stroke: white; }
+.card-image-actions .card-share-action.MuiIconButton-root svg { width: 16px; height: 16px; color: white; }
 
 .event-card-overlay { position: absolute; inset: 0; background: rgba(0, 24, 64, 0.85); color: white; display: flex; flex-direction: column; padding: 30px 16px 16px 16px; opacity: 0; transition: opacity 0.3s ease; z-index: 5; }
 .event-card:hover .event-card-overlay { opacity: 1; }
@@ -67,16 +72,22 @@
 
 /* Bottom Section - Updated for Issue #6 */
 .event-card-bottom {
-    background: var(--color-primary-dark); color: white; 
+    background: #ffffff; color: var(--color-text); 
     display: flex; align-items: center; justify-content: flex-start; gap: 12px;
     padding: 12px 16px; height: auto; z-index: 6;
 }
 .event-card-bottom,
 .event-card-bottom .bottom-date-big,
 .event-card-bottom .bottom-title {
+    color: var(--color-text);
+}
+.event-card-bottom .event-center-logo {
+    background: var(--event-center-color, #64748b);
+    border: 0;
     color: #ffffff;
 }
+.event-card-bottom .event-center-logo svg { stroke: #ffffff; }
 .bottom-date-area { border-left: none; padding-left: 0; min-width: auto; text-align: right; }
 .bottom-date-big { font-size: 16px; font-weight: bold; line-height: 1.2; margin: 0; }
-.bottom-title-area { flex: 1; text-align: right; border-right: 2px solid rgba(255,255,255,0.3); padding-right: 12px; }
+.bottom-title-area { flex: 1; text-align: right; border-right: 2px solid var(--color-border); padding-right: 12px; }
 .bottom-title { font-size: 16px; font-weight: bold; margin: 0; line-height: 1.2; }

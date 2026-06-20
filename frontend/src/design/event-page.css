@@ -258,6 +258,10 @@
     min-width: 0;
 }
 
+.events-secondary-area-expanded {
+    grid-column: 1 / -1;
+}
+
 .events-secondary-heading {
     justify-content: space-between;
 }
@@ -269,8 +273,8 @@
 }
 
 .events-secondary-scroll {
-    max-height: min(650px, calc(100vh - 220px));
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     overflow-x: hidden;
     padding: 2px 8px 8px;
     scrollbar-gutter: stable;
@@ -281,7 +285,7 @@
 }
 
 .events-secondary-grid {
-    grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: var(--space-4);
     align-items: center;
 }
@@ -336,7 +340,7 @@
 .card-badges-container {
     position: absolute;
     top: 12px;
-    left: 56px;
+    left: 96px;
     right: 12px;
     display: flex;
     justify-content: space-between;
@@ -350,14 +354,24 @@
     width: 48px;
     height: 34px;
     margin-inline-start: 6px;
-    color: var(--color-text-muted);
+    color: #ffffff;
     font-weight: 800;
+    background: var(--event-center-color, #64748b);
+    border: 0;
+    box-shadow: none;
 }
 
-.card-edit-action {
+.card-image-actions {
     position: absolute;
     top: 12px;
     left: 12px;
+    z-index: 11;
+    display: flex;
+    gap: 8px;
+}
+
+.card-image-actions .card-edit-action {
+    position: static;
 }
 
 .event-card-bottom .event-center-logo img {
@@ -374,6 +388,10 @@
     fill: none;
     stroke: var(--color-text-muted);
     stroke-width: 1.7;
+}
+
+.event-card-bottom .event-center-logo svg {
+    stroke: #ffffff;
 }
 
 .badge-free {
@@ -427,7 +445,32 @@
     z-index: 11;
 }
 
+.edit-pencil-btn-new.MuiIconButton-root {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    color: white;
+}
+
+.card-image-actions .card-share-action.MuiIconButton-root {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    color: white;
+    box-shadow: none;
+}
+
 .edit-pencil-btn-new:hover {
+    background: var(--color-primary);
+    transform: scale(1.1);
+}
+
+.card-image-actions .card-share-action.MuiIconButton-root:hover {
     background: var(--color-primary);
     transform: scale(1.1);
 }
@@ -436,6 +479,12 @@
     width: 16px;
     height: 16px;
     stroke: white;
+}
+
+.card-image-actions .card-share-action.MuiIconButton-root svg {
+    width: 16px;
+    height: 16px;
+    color: white;
 }
 
 /* --- Card Hover Overlay --- */
@@ -529,8 +578,8 @@
 
 /* --- Card Bottom Info --- */
 .event-card-bottom {
-    background: var(--event-center-color, #64748b);
-    color: var(--event-center-text, #ffffff);
+    background: #ffffff;
+    color: var(--color-text);
     padding: 10px 14px;
     display: flex;
     justify-content: space-between;
@@ -548,8 +597,7 @@
     flex: 1;
     padding-left: 8px;
     text-align: right; 
-    border-right: 2px solid currentColor;
-    border-right-color: color-mix(in srgb, currentColor 34%, transparent);
+    border-right: 2px solid var(--color-border);
     padding-right: 10px;
 }
 
@@ -578,6 +626,127 @@
 .bottom-date-small {
     font-size: 12px;
     opacity: 0.8;
+}
+
+.event-card-compact .event-card-bottom {
+    min-height: 46px;
+    padding: 5px 7px;
+    gap: 5px;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+
+.event-card-compact .event-card-bottom .event-center-logo {
+    width: 38px;
+    height: 28px;
+    margin-inline-start: 0;
+}
+
+.event-card-compact .bottom-date-area {
+    min-width: 38px;
+    flex: 0 0 auto;
+}
+
+.event-card-compact .bottom-date-big {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.event-card-compact .bottom-title-area {
+    min-width: 0;
+    padding-right: 7px;
+    padding-left: 0;
+}
+
+.event-card-compact .bottom-title {
+    font-size: 12px;
+    line-height: 1.15;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.event-card-featured .event-card-bottom {
+    align-items: stretch;
+    gap: 14px;
+    min-height: 118px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--color-accent-soft) 100%);
+    border-top: 4px solid var(--event-center-color, var(--color-brand));
+}
+
+.event-card-featured .event-center-logo {
+    width: 64px;
+    height: 48px;
+    align-self: center;
+}
+
+.event-card-featured .bottom-date-area {
+    justify-content: center;
+    min-width: 72px;
+}
+
+.event-card-featured .bottom-date-big {
+    font-size: 28px;
+}
+
+.event-card-featured .bottom-title-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.event-card-featured .bottom-title {
+    font-size: 20px;
+}
+
+.featured-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+}
+
+.featured-card-meta span {
+    max-width: 100%;
+}
+
+.featured-card-details-btn {
+    align-self: center;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    background: var(--color-brand);
+    color: #ffffff;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--t), transform var(--t);
+}
+
+.featured-card-details-btn:hover,
+.featured-card-details-btn:focus-visible {
+    background: var(--color-brand-dark);
+    transform: translateY(-1px);
+}
+
+.events-expand-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-5);
+}
+
+.events-toggle-btn {
+    font: inherit;
+    cursor: pointer;
 }
 
 /* --- 3. Expired Events Section --- */
@@ -610,6 +779,10 @@
     border-top: 2px dashed var(--color-border); 
 }
 
+.section-divider-with-action {
+    flex-wrap: wrap;
+}
+
 .past-events-section .events-grid {
     padding: 0;
     margin-top: 20px;
@@ -618,7 +791,6 @@
 .events-grid-compact > .event-card:first-child {
     grid-column: auto;
     grid-row: auto;
-    height: 280px;
 }
 
 .events-rows {
@@ -722,7 +894,7 @@
 }
 
 .event-card-expired .event-card-bottom {
-    background: var(--event-center-color, #64748b);
+    background: #ffffff;
 }
 
 /* --- 4. Modals (Event Details & Bit Dialog) --- */
@@ -773,10 +945,11 @@
 }
 
 .modal-header-content {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 24px;
-    padding-left: 42px;
+    padding-left: 60px;
 }
 
 .modal-center-logo {
@@ -801,6 +974,49 @@
     align-items: baseline;
     flex-wrap: wrap;
     gap: 10px;
+    min-width: 0;
+    flex: 1;
+    padding-left: 8px;
+}
+
+.modal-header-actions {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-share-action.MuiIconButton-root,
+.modal-share-action.MuiButton-root {
+    position: static;
+}
+
+.modal-edit-action {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.modal-edit-action:hover {
+    background: rgba(0, 59, 139, 0.08);
+}
+
+.modal-edit-action svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
 }
 
 .event-title-separator {
@@ -925,9 +1141,8 @@
         min-height: 0;
     }
 
-    .events-secondary-scroll {
-        max-height: none;
-        overflow: visible;
+    .events-secondary-area-expanded {
+        grid-column: auto;
     }
 }
 
@@ -1013,7 +1228,7 @@
     .modal-header-content {
         align-items: flex-start;
         gap: 14px;
-        padding-left: 34px;
+        padding-left: 48px;
     }
 
     .modal-center-logo {

@@ -26,6 +26,8 @@ export const EventsPage = () => {
     const [activeFilter, setActiveFilter] = useState('הכל');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('cards');
+    const [showAllUpcomingEvents, setShowAllUpcomingEvents] = useState(false);
+    const [showPastEvents, setShowPastEvents] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -52,6 +54,11 @@ export const EventsPage = () => {
         if (requestedEventId) {
             navigate(location.pathname, { replace: true, state: null });
         }
+    };
+
+    const handleSelectedEventEdit = () => {
+        if (!selectedEvent?.id) return;
+        navigate(`/edit-event/${selectedEvent.id}`);
     };
 
     // Fetch registered event IDs for the current user (if employer)
@@ -279,6 +286,7 @@ const handleRegisterClick = async (event) => {
     const selectedLocation = getEventLocation(selectedEvent);
     const selectedMapUrl = getMapSearchUrl(selectedEvent);
     const selectedEventIsCurrentUserOwned = selectedEvent?.createdBy === currentUser?.uid;
+    const canEditSelectedEvent = isAdmin || selectedEventIsCurrentUserOwned;
     const selectedCreatorName =
         selectedEvent?.creatorName ||
         selectedEvent?.coordinatorName ||
@@ -293,6 +301,11 @@ const handleRegisterClick = async (event) => {
     const filteredPastEvents = pastEvents.filter(filterFunction);
     const featuredEvent = filteredActiveEvents[0] || null;
     const secondaryActiveEvents = filteredActiveEvents.slice(1);
+    const visibleSecondaryEvents = showAllUpcomingEvents
+        ? secondaryActiveEvents
+        : secondaryActiveEvents.slice(0, 8);
+    const hasHiddenSecondaryEvents = secondaryActiveEvents.length > 8;
+    const canViewPastEvents = isAdmin || isCoordinator;
 
     const renderCenterLogo = (event, className) => {
         const icon = getCenterIcon(event);
@@ -457,6 +470,7 @@ const handleRegisterClick = async (event) => {
                                 event={featuredEvent}
                                 index={0}
                                 isGuest={isGuest}
+                                isFeatured={true}
                                 isRegistered={registeredEventIds.includes(featuredEvent.id)}
                                 onOpenDetails={(event) => setSelectedEventModal(event)}
                                 onApprove={handleApproveEvent}
@@ -465,7 +479,10 @@ const handleRegisterClick = async (event) => {
                         </div>
                     </aside>
 
-                    <section className="events-secondary-area" aria-label="אירועים נוספים">
+                    <section
+                        className={`events-secondary-area ${showAllUpcomingEvents ? 'events-secondary-area-expanded' : ''}`}
+                        aria-label="אירועים נוספים"
+                    >
                         <div className="events-secondary-heading">
                             <div>
                                 <h2>אירועים נוספים</h2>
@@ -477,12 +494,13 @@ const handleRegisterClick = async (event) => {
                             {secondaryActiveEvents.length > 0 ? (
                                 viewMode === 'cards' ? (
                                     <div className="events-grid events-secondary-grid">
-                                        {secondaryActiveEvents.map((event, index) => (
+                                        {visibleSecondaryEvents.map((event, index) => (
                                             <EventCard
                                                 key={event.id}
                                                 event={event}
                                                 index={index + 1}
                                                 isGuest={isGuest}
+                                                isCompact={true}
                                                 isRegistered={registeredEventIds.includes(event.id)}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
@@ -490,35 +508,59 @@ const handleRegisterClick = async (event) => {
                                             />
                                         ))}
                                     </div>
-                                ) : renderEventRows(secondaryActiveEvents)
+                                ) : renderEventRows(visibleSecondaryEvents)
                             ) : (
                                 <div className="no-results-message no-secondary-events">
                                     <p>אין אירועים קרובים נוספים.</p>
                                 </div>
                             )}
 
-                            {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                            {hasHiddenSecondaryEvents && (
+                                <div className="events-expand-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-secondary pill-btn events-toggle-btn"
+                                        onClick={() => setShowAllUpcomingEvents(prev => !prev)}
+                                        aria-expanded={showAllUpcomingEvents}
+                                    >
+                                        {showAllUpcomingEvents ? 'הצג פחות' : 'הצג את כל האירועים'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {canViewPastEvents && filteredPastEvents.length > 0 && (
                                 <div className="past-events-section">
-                                    <div className="section-divider">
+                                    <div className="section-divider section-divider-with-action">
                                         <h2>אירועים שנגמרו</h2>
                                         <hr/>
+                                        <button
+                                            type="button"
+                                            className="btn-secondary pill-btn events-toggle-btn"
+                                            onClick={() => setShowPastEvents(prev => !prev)}
+                                            aria-expanded={showPastEvents}
+                                        >
+                                            {showPastEvents ? 'הסתר אירועים שהסתיימו' : 'הצג אירועים שהסתיימו'}
+                                        </button>
                                     </div>
-                                    {viewMode === 'cards' ? (
-                                        <div className="events-grid events-secondary-grid events-grid-compact">
-                                            {filteredPastEvents.map((event, index) => (
-                                                <EventCard
-                                                    key={event.id}
-                                                    event={event}
-                                                    index={index}
-                                                    isGuest={isGuest}
-                                                    isExpired={true}
-                                                    onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
-                                                    onApprove={handleApproveEvent}
-                                                    onDelete={handleDeleteEvent}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : renderEventRows(filteredPastEvents, true)}
+                                    {showPastEvents && (
+                                        viewMode === 'cards' ? (
+                                            <div className="events-grid events-secondary-grid events-grid-compact">
+                                                {filteredPastEvents.map((event, index) => (
+                                                    <EventCard
+                                                        key={event.id}
+                                                        event={event}
+                                                        index={index}
+                                                        isGuest={isGuest}
+                                                        isExpired={true}
+                                                        isCompact={true}
+                                                        onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                        onApprove={handleApproveEvent}
+                                                        onDelete={handleDeleteEvent}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : renderEventRows(filteredPastEvents, true)
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -529,28 +571,39 @@ const handleRegisterClick = async (event) => {
                     <div className="no-results-message">
                         <p>לא נמצאו אירועים קרובים.</p>
                     </div>
-                    {(isAdmin || isCoordinator) && filteredPastEvents.length > 0 && (
+                    {canViewPastEvents && filteredPastEvents.length > 0 && (
                         <section className="past-events-section past-events-standalone" aria-label="אירועים שנגמרו">
-                            <div className="section-divider">
+                            <div className="section-divider section-divider-with-action">
                                 <h2>אירועים שנגמרו</h2>
                                 <hr/>
+                                <button
+                                    type="button"
+                                    className="btn-secondary pill-btn events-toggle-btn"
+                                    onClick={() => setShowPastEvents(prev => !prev)}
+                                    aria-expanded={showPastEvents}
+                                >
+                                    {showPastEvents ? 'הסתר אירועים שהסתיימו' : 'הצג אירועים שהסתיימו'}
+                                </button>
                             </div>
-                            {viewMode === 'cards' ? (
-                                <div className="events-grid events-secondary-grid events-grid-compact">
-                                    {filteredPastEvents.map((event, index) => (
-                                        <EventCard
-                                            key={event.id}
-                                            event={event}
-                                            index={index}
-                                            isGuest={isGuest}
-                                            isExpired={true}
-                                            onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
-                                            onApprove={handleApproveEvent}
-                                            onDelete={handleDeleteEvent}
-                                        />
-                                    ))}
-                                </div>
-                            ) : renderEventRows(filteredPastEvents, true)}
+                            {showPastEvents && (
+                                viewMode === 'cards' ? (
+                                    <div className="events-grid events-secondary-grid events-grid-compact">
+                                        {filteredPastEvents.map((event, index) => (
+                                            <EventCard
+                                                key={event.id}
+                                                event={event}
+                                                index={index}
+                                                isGuest={isGuest}
+                                                isExpired={true}
+                                                isCompact={true}
+                                                onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
+                                                onApprove={handleApproveEvent}
+                                                onDelete={handleDeleteEvent}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : renderEventRows(filteredPastEvents, true)
+                            )}
                         </section>
                     )}
                 </>
@@ -578,20 +631,35 @@ const handleRegisterClick = async (event) => {
                                     <span className="event-title-separator" aria-hidden="true">|</span>
                                     <span>{selectedEvent.title}</span>
                                 </h2>
-                                <ShareMenu
-                                    title={selectedEvent.title}
-                                    url={buildEventShareUrl(selectedEvent.id)}
-                                    ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
-                                    buttonClassName="modal-share-action"
-                                    buttonSx={{
-                                        flex: '0 0 auto',
-                                        color: 'var(--color-brand)',
-                                        border: '1px solid var(--color-brand)',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontFamily: 'inherit',
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                />
+                                <div className="modal-header-actions">
+                                    {canEditSelectedEvent && (
+                                        <button
+                                            type="button"
+                                            className="modal-edit-action"
+                                            onClick={handleSelectedEventEdit}
+                                            aria-label={`עריכת האירוע ${selectedEvent.title}`}
+                                            title="עריכת אירוע"
+                                        >
+                                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                            </svg>
+                                        </button>
+                                    )}
+                                    <ShareMenu
+                                        title={selectedEvent.title}
+                                        url={buildEventShareUrl(selectedEvent.id)}
+                                        ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
+                                        buttonClassName="modal-share-action"
+                                        buttonSx={{
+                                            flex: '0 0 auto',
+                                            color: 'var(--color-brand)',
+                                            border: '1px solid var(--color-brand)',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontFamily: 'inherit',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                         

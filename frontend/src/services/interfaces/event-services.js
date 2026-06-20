@@ -20,6 +20,19 @@ const cleanValue = (value, fallback = '') => {
     return value === undefined || value === null ? fallback : value;
 };
 
+const buildEventMedia = (eventDetails) => {
+    const photoUrl =
+        cleanValue(eventDetails.photoUrl) ||
+        cleanValue(eventDetails.photoPreview) ||
+        cleanValue(eventDetails.media?.photoUrl);
+
+    return {
+        photoUrl,
+        logoUrl: cleanValue(eventDetails.logoUrl) || cleanValue(eventDetails.media?.logoUrl),
+        videoUrl: cleanValue(eventDetails.videoUrl) || cleanValue(eventDetails.media?.videoUrl),
+    };
+};
+
 const getUserDocIdFromEmail = (email) => {
     return String(email || '').trim().toLowerCase();
 };
@@ -116,6 +129,7 @@ export const eventService = {
                 eventDetails.date,
                 eventDetails.time
             );
+            const media = buildEventMedia(eventDetails);
 
             const payload = {
                 title: eventDetails.title,
@@ -140,15 +154,10 @@ export const eventService = {
                 paymentDetails: eventDetails.paymentDetails || '',
 
                 image: eventDetails.image || '',
-                photoUrl: eventDetails.photoUrl || '',
-                photoPreview: eventDetails.photoPreview || null,
-                logoUrl: eventDetails.logoUrl || '',
-                
-                media: {
-                    photoUrl: eventDetails.photoUrl || null,
-                    logoUrl: eventDetails.logoUrl || null,
-                    videoUrl: eventDetails.videoUrl || null,
-                },
+                photoUrl: media.photoUrl,
+                photoPreview: eventDetails.photoPreview || '',
+                logoUrl: media.logoUrl,
+                media,
                 
                 status: eventStatus, 
                 createdBy: (currentUser && currentUser.uid) || (currentUser && currentUser.email) || 'demo_user',

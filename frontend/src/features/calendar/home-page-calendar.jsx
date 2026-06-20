@@ -8,7 +8,7 @@ import { getEventColor } from '../../utils/centerColors';
 const EventCalendar = ({ events, userName }) => {
     const navigate = useNavigate();
     const [activeDate, setActiveDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState('month');
+    const [viewMode, setViewMode] = useState('year');
 
     const handlePrev = () => {
         setActiveDate(viewMode === 'year'

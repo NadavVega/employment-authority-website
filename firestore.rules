@@ -594,19 +594,31 @@ service cloud.firestore {
         || eventData.capacity == ''
         || eventData.capacity == 'ללא הגבלה'
         || (
-          eventData.keys().hasAll(['registeredCount'])
-          && eventData.registeredCount is int
-          && (
+          (
             (
               eventData.capacity is int
-              && eventData.registeredCount < eventData.capacity
+              && eventRegisteredCount(eventData) < eventData.capacity
             )
             || (
               eventData.capacity is string
-              && eventData.registeredCount < int(eventData.capacity)
+              && eventRegisteredCount(eventData) < int(eventData.capacity)
             )
           )
         );
+    }
+
+    function eventRegisteredCount(eventData) {
+      return eventData.keys().hasAll(['registeredCount'])
+        && eventData.registeredCount is int
+        ? eventData.registeredCount
+        : 0;
+    }
+
+    function eventRegisteredUids(eventData) {
+      return eventData.keys().hasAll(['registeredUids'])
+        && eventData.registeredUids is list
+        ? eventData.registeredUids
+        : [];
     }
 
     function eventCreateFieldsAreAllowed() {
@@ -751,7 +763,8 @@ service cloud.firestore {
     }
 
     function validEmployerEventRegistrationUpdate(eventId) {
-      let oldUids = resource.data.registeredUids;
+      let oldCount = eventRegisteredCount(resource.data);
+      let oldUids = eventRegisteredUids(resource.data);
       let newUids = request.resource.data.registeredUids;
 
       return isEmployer()
@@ -766,10 +779,8 @@ service cloud.firestore {
             'registeredUids',
             'lastRegistrationAt'
           ])
-        && resource.data.registeredCount is int
         && request.resource.data.registeredCount
-          == resource.data.registeredCount + 1
-        && oldUids is list
+          == oldCount + 1
         && newUids is list
         && !oldUids.hasAny([request.auth.uid])
         && newUids.size() == oldUids.size() + 1
@@ -790,6 +801,8 @@ service cloud.firestore {
       let eventBefore = get(eventPath(eventId)).data;
       let eventAfter = getAfter(eventPath(eventId)).data;
       let registration = request.resource.data;
+      let oldCount = eventRegisteredCount(eventBefore);
+      let oldUids = eventRegisteredUids(eventBefore);
 
       return isEmployer()
         && registrationId == request.auth.uid
@@ -825,14 +838,12 @@ service cloud.firestore {
         && registration.role == 'employer'
         && registration.status in ['registered', 'pending_payment']
         && registration.registeredAt == request.time
-        && eventBefore.registeredCount is int
-        && eventAfter.registeredCount == eventBefore.registeredCount + 1
-        && eventBefore.registeredUids is list
+        && eventAfter.registeredCount == oldCount + 1
         && eventAfter.registeredUids is list
-        && !eventBefore.registeredUids.hasAny([request.auth.uid])
+        && !oldUids.hasAny([request.auth.uid])
         && eventAfter.registeredUids.size()
-          == eventBefore.registeredUids.size() + 1
-        && eventAfter.registeredUids.hasAll(eventBefore.registeredUids)
+          == oldUids.size() + 1
+        && eventAfter.registeredUids.hasAll(oldUids)
         && eventAfter.registeredUids.hasAny([request.auth.uid]);
     }
 
