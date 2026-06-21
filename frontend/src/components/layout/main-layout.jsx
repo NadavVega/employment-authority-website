@@ -100,8 +100,8 @@ const MainLayout = ({ children }) => {
                                     <Button sx={navBtnStyle} onClick={() => navigate('/content-management')}>
                                         ניהול תוכן
                                     </Button>
-                                    <Button sx={navBtnStyle} onClick={() => navigate('/admin/dashboard')}>
-                                        דשבורד מנהלים
+                                    <Button sx={navBtnStyle} onClick={() => navigate('/statistics')}>
+                                        סטטיסטיקות
                                     </Button>
                                 </>
                             )}
