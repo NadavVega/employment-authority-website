@@ -33,8 +33,47 @@ const MONTH_LABELS = [
     'נוב׳',
     'דצמ׳',
 ];
+const MONTH_FULL_LABELS = [
+    'ינואר',
+    'פברואר',
+    'מרץ',
+    'אפריל',
+    'מאי',
+    'יוני',
+    'יולי',
+    'אוגוסט',
+    'ספטמבר',
+    'אוקטובר',
+    'נובמבר',
+    'דצמבר',
+];
 
-const emptyStatistics = () => ({
+const buildEmptyYearlyTraffic = () => ({
+    hasData: false,
+    source: null,
+    series: [],
+    data: MONTH_LABELS.map((month, index) => ({
+        month,
+        monthName: MONTH_FULL_LABELS[index],
+        monthIndex: index,
+    })),
+});
+
+const buildEmptyMonthlyTraffic = (year, monthIndex) => {
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+    return {
+        hasData: false,
+        source: null,
+        series: [],
+        data: Array.from({ length: daysInMonth }, (_, index) => ({
+            day: index + 1,
+            dayLabel: String(index + 1),
+        })),
+    };
+};
+
+const emptyStatistics = (now = new Date()) => ({
     totals: {
         activeEvents: 0,
         finishedEvents: 0,
@@ -49,10 +88,24 @@ const emptyStatistics = () => ({
     },
     monthlyEvents: MONTH_LABELS.map((month, index) => ({
         month,
+        monthName: MONTH_FULL_LABELS[index],
         monthIndex: index,
         active: 0,
         finished: 0,
     })),
+    monthlyDetails: MONTH_LABELS.map((month, index) => ({
+        month,
+        monthName: MONTH_FULL_LABELS[index],
+        monthIndex: index,
+        events: {
+            active: 0,
+            finished: 0,
+        },
+        signups: 0,
+        traffic: buildEmptyMonthlyTraffic(now.getFullYear(), index),
+    })),
+    yearlyTraffic: buildEmptyYearlyTraffic(),
+    trafficSource: null,
     eventsByCenter: {},
     registrationsByCenter: {},
     registrationsByCompany: {},
@@ -283,6 +336,7 @@ const buildStatistics = async (events, centerFilter) => {
 
             if (eventStartDate && eventStartDate.getFullYear() === now.getFullYear()) {
                 statistics.monthlyEvents[eventStartDate.getMonth()].active += 1;
+                statistics.monthlyDetails[eventStartDate.getMonth()].events.active += 1;
             }
         } else {
             statistics.totals.finishedEvents += 1;
@@ -299,6 +353,7 @@ const buildStatistics = async (events, centerFilter) => {
 
             if (eventStartDate && eventStartDate.getFullYear() === now.getFullYear()) {
                 statistics.monthlyEvents[eventStartDate.getMonth()].finished += 1;
+                statistics.monthlyDetails[eventStartDate.getMonth()].events.finished += 1;
             }
         }
 
@@ -328,6 +383,7 @@ const buildStatistics = async (events, centerFilter) => {
 
             if (isSameYear(registration.registeredAt, now)) {
                 statistics.totals.registrationsThisYear += 1;
+                statistics.monthlyDetails[registration.registeredAt.getMonth()].signups += 1;
             }
         });
     }
