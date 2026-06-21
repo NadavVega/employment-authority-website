@@ -244,26 +244,25 @@ const PromotionalContentManager = ({ currentUser }) => {
     return (
         <Box component="section" aria-labelledby="promotional-content-heading" sx={{ mt: 5 }}>
             <Box
+                className="content-management-section-header"
                 sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: { xs: 'stretch', sm: 'center' },
+                    alignItems: { xs: 'stretch', sm: 'flex-end' },
                     flexDirection: { xs: 'column', sm: 'row' },
                     gap: 2,
-                    mb: 2,
                 }}
             >
                 <Box>
                     <Typography
                         id="promotional-content-heading"
-                        variant="h5"
-                        fontWeight={800}
-                        sx={{ color: 'var(--color-primary-dark)' }}
+                        component="h2"
+                        className="content-management-section-title"
                     >
                         ניהול קרוסלת התוכן העליונה
                     </Typography>
-                    <Typography sx={{ color: 'var(--color-text-muted)', mt: 0.5 }}>
-                        עריכת תוכן, קהל יעד, סדר ונראות באמצעות נכסים מאושרים בלבד.
+                    <Typography component="p" className="content-management-section-subtitle">
+                        עריכת שקופיות הקרוסלה
                     </Typography>
                 </Box>
                 <Button variant="contained" onClick={handleAdd}>

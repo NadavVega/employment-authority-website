@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Typography, Box, Divider, Tabs, Tab } from '@mui/material';
+import { useRef, useState } from 'react';
+import { Typography, Box, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
@@ -18,10 +18,20 @@ const ContentManagementPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
+    const manualArticleRef = useRef(null);
+    const articlesManagementRef = useRef(null);
+    const carouselManagementRef = useRef(null);
 
     if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
     }
+
+    const scrollToSection = (sectionRef) => {
+        sectionRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -45,8 +55,33 @@ const ContentManagementPage = () => {
     };
 
     return (
-        <Box className="modern-layout-wrapper" sx={{ pt: 4, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
-            <Typography variant="h4" fontWeight="800" sx={{ color: 'var(--color-primary-dark)', mb: 4 }}>
+        <Box className="modern-layout-wrapper" sx={{ pt: isAdmin ? 0 : 4, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
+            {isAdmin && (
+                <Box
+                    component="nav"
+                    aria-label="ניווט ניהול תוכן"
+                    className="content-management-nav"
+                >
+                    <div className="content-management-nav-group">
+                        <button
+                            type="button"
+                            className="content-management-nav-btn"
+                            onClick={() => scrollToSection(carouselManagementRef)}
+                        >
+                            קרוסלת תוכן
+                        </button>
+                        <button
+                            type="button"
+                            className="content-management-nav-btn"
+                            onClick={() => scrollToSection(articlesManagementRef)}
+                        >
+                            כתבות
+                        </button>
+                    </div>
+                </Box>
+            )}
+
+            <Typography variant="h4" fontWeight="800" sx={{ color: 'var(--color-primary-dark)', mt: isAdmin ? 4 : 0, mb: 4 }}>
                 ניהול תוכן וכתבות
             </Typography>
             
@@ -60,7 +95,8 @@ const ContentManagementPage = () => {
             }}>
                 
                 {/* RIGHT COLUMN: Form (40% width for admin, 100% for coordinator) */}
-                <Box sx={{ 
+                <Box ref={manualArticleRef} sx={{ 
+                    scrollMarginTop: '88px',
                     flex: isAdmin ? { xs: '1 1 100%', lg: '0 0 40%' } : '1 1 100%', 
                     maxWidth: isAdmin ? 'none' : '800px',
                     margin: isAdmin ? '0' : '0 auto',
@@ -68,8 +104,8 @@ const ContentManagementPage = () => {
                 }}>
                     {/* Added height: '100%' to the wrapper */}
                     <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="h6" fontWeight="800" sx={{ mb: 3, color: 'var(--color-primary-dark)' }}>
-                            הוספה ידנית של כתבה
+                        <Typography component="h2" className="content-management-section-title" sx={{ mb: 3 }}>
+                            פרסום כתבה חדשה
                         </Typography>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1 }}>
                             
@@ -107,17 +143,18 @@ const ContentManagementPage = () => {
 
                 {/* LEFT COLUMN: List (60% width) - ONLY FOR ADMIN */}
                 {isAdmin && (
-                    <Box sx={{ 
+                    <Box ref={articlesManagementRef} sx={{ 
+                        scrollMarginTop: '88px',
                         flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
                         width: '100%'
                     }}>
                         {/* Added height: '100%' to the wrapper */}
                         <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
                             
-                            <div className="bot-header-controls">
+                            <div className="bot-header-controls content-management-section-header">
                                 <div className="bot-header-text">
-                                    <h2>ניהול כתבות</h2>
-                                    <p>רשימת כתבות שנאספו על ידי הבוט או פורסמו</p>
+                                    <h2 className="content-management-section-title">ניהול כתבות</h2>
+                                    <p className="content-management-section-subtitle">כתבות שנאספו או פורסמו</p>
                                 </div>
                                 <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
                                     ⚙️ ניהול הגדרות בוט
@@ -144,7 +181,11 @@ const ContentManagementPage = () => {
 
             </Box>
 
-            {isAdmin && <PromotionalContentManager currentUser={currentUser} />}
+            {isAdmin && (
+                <Box ref={carouselManagementRef} sx={{ scrollMarginTop: '88px' }}>
+                    <PromotionalContentManager currentUser={currentUser} />
+                </Box>
+            )}
             {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
         </Box>
     );

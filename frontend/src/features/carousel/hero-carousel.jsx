@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import defaultPicture from '../../assets/images/default-event.jpg';
 import { resolveEventImage } from '../../utils/eventImageMap';
 import { getCenterIcon, getEventCenterName } from '../../utils/centerIcons';
+import { CENTER_COLORS } from '../../utils/centerColors';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 
 const formatEventDate = (dateValue) => {
@@ -46,6 +47,7 @@ const HeroCarousel = ({ events }) => {
     const slideImage = resolveEventImage(currentSlide) || defaultPicture;
     const centerIcon = getCenterIcon(currentSlide);
     const centerName = getEventCenterName(currentSlide);
+    const centerColor = CENTER_COLORS[centerName] || 'var(--color-accent)';
     const location = getEventLocation(currentSlide);
     const mapUrl = getMapSearchUrl(currentSlide);
 
@@ -128,7 +130,7 @@ const HeroCarousel = ({ events }) => {
                     )
                 )}
                 {centerName && (
-                    <Typography variant="caption" sx={{ color: 'var(--color-text-muted)', mt: 2, borderRight: '3px solid var(--color-accent)', pr: 1 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-muted)', mt: 2, borderRight: `3px solid ${centerColor || 'var(--color-accent)'}`, pr: 1 }}>
                         {centerName}
                     </Typography>
                 )}
