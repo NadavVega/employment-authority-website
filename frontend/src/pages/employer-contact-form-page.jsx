@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { directoryService } from "../services/interfaces/directory-service";
+import {
+  ISRAELI_PHONE_VALIDATION_ERROR,
+  normalizeIsraeliPhone,
+} from "../utils/phone";
 
 import "../design/global-theme.css";
 
@@ -32,6 +36,7 @@ const EmployerContactFormPage = () => {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const isCoordinator = userRole === "coordinator";
 
@@ -68,8 +73,7 @@ const EmployerContactFormPage = () => {
           return;
         }
 
-        // --- התיקון שלנו: משיכת הטלפון מהפרטים החסויים (private_info) ---
-        let privatePhone = employer.phone || ""; 
+        let privatePhone = employer.phone || "";
         try {
           const privateInfo = await directoryService.getPrivateContactInfo(employer.email);
           if (privateInfo && privateInfo.phone) {
@@ -78,14 +82,13 @@ const EmployerContactFormPage = () => {
         } catch (err) {
           console.warn("Failed to load private phone:", err);
         }
-        // ---------------------------------------------------------------
 
         setFormData({
           company: employer.organization || "",
           fullName: employer.name || "",
           address: employer.address || "",
           email: employer.email || "",
-          phone: privatePhone, // כאן אנחנו מאכלסים את הטלפון שמצאנו
+          phone: normalizeIsraeliPhone(privatePhone) || privatePhone,
           field: employer.field || "",
           subField: employer.subField || "",
           status: employer.status || "",
@@ -113,6 +116,12 @@ const EmployerContactFormPage = () => {
     }));
   };
 
+  const handlePhoneChange = (value) => {
+    handleChange("phone", value);
+    setPhoneError("");
+    setMessage("");
+  };
+
   const validateRequiredFields = () => {
     if (!formData.company.trim()) return "שם חברה הוא שדה חובה.";
     if (!formData.address.trim()) return "כתובת חברה היא שדה חובה.";
@@ -124,6 +133,7 @@ const EmployerContactFormPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
+    setPhoneError("");
 
     if (!isCoordinator) {
       setMessage("רק רכז יכול להוסיף או לערוך מעסיקים.");
@@ -133,9 +143,26 @@ const EmployerContactFormPage = () => {
     const validationError = validateRequiredFields();
 
     if (validationError) {
+      if (!formData.phone.trim()) {
+        setPhoneError("טלפון הוא שדה חובה.");
+      }
       setMessage(validationError);
       return;
     }
+
+    const normalizedPhone = normalizeIsraeliPhone(formData.phone);
+
+    if (!normalizedPhone) {
+      setPhoneError(ISRAELI_PHONE_VALIDATION_ERROR);
+      return;
+    }
+
+    const normalizedFormData = {
+      ...formData,
+      phone: normalizedPhone,
+    };
+
+    setFormData(normalizedFormData);
 
     setSaving(true);
 
@@ -144,14 +171,14 @@ const EmployerContactFormPage = () => {
         await directoryService.updateAssignedEmployerContact(
           currentUser,
           employerId,
-          formData
+          normalizedFormData
         );
 
         navigate(`/directory/${encodeURIComponent(employerId)}`);
       } else {
         const result = await directoryService.createEmployerContact(
           currentUser,
-          formData
+          normalizedFormData
         );
 
         navigate(`/directory/${encodeURIComponent(result.id)}`);
@@ -266,10 +293,28 @@ const EmployerContactFormPage = () => {
         <div style={fieldWrapperStyle}>
           <label style={labelStyle}>טלפון *</label>
           <input
-            style={{ ...inputStyle, direction: "ltr" }}
+            style={{
+              ...inputStyle,
+              direction: "ltr",
+              borderColor: phoneError ? "#b00020" : "#d6dce5",
+            }}
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="0501234567"
             value={formData.phone}
-            onChange={(e) => handleChange("phone", e.target.value)}
+            onChange={(e) => handlePhoneChange(e.target.value)}
+            aria-invalid={Boolean(phoneError)}
+            aria-describedby={phoneError ? "employer-phone-error" : undefined}
           />
+          {phoneError && (
+            <p
+              id="employer-phone-error"
+              style={{ margin: "6px 0 0", color: "#b00020", fontWeight: 700 }}
+            >
+              {phoneError}
+            </p>
+          )}
         </div>
 
         <div style={fieldWrapperStyle}>

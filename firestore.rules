@@ -431,7 +431,8 @@ service cloud.firestore {
     }
 
     function approvedRequestMatchesGrant(targetEmail, requesterEmail, grantData) {
-      let approval = get(privacyRequestPath(grantData.sourceRequestId)).data;
+      // getAfter validates the approved request written in the same atomic batch.
+      let approval = getAfter(privacyRequestPath(grantData.sourceRequestId)).data;
 
       return approval.requesterEmail == requesterEmail
         && approval.targetEmail == targetEmail

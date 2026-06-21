@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { directoryService } from "../services/interfaces/directory-service";
 
 // Design files
 import "../design/global-theme.css";
+import "../design/directory-page.css";
 
 const isVisibleValue = (value) => {
   return value && value !== "לא צוין" && String(value).trim() !== "";
@@ -447,6 +448,49 @@ const getContactCompany = (contact) => {
   );
 };
 
+const directoryCollator = new Intl.Collator("he", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+const getContactSortValue = (contact, contactType) => {
+  if (contactType === "coordinator") {
+    return (
+      contact.name ||
+      contact.centerName ||
+      contact.organization ||
+      contact.email ||
+      ""
+    );
+  }
+
+  return (
+    contact.organization ||
+    contact.companyName ||
+    contact.rawData?.profile?.company ||
+    contact.rawData?.company ||
+    contact.name ||
+    contact.email ||
+    ""
+  );
+};
+
+const sortContacts = (contacts, contactType) => {
+  return [...contacts].sort((firstContact, secondContact) => {
+    const primaryComparison = directoryCollator.compare(
+      getContactSortValue(firstContact, contactType),
+      getContactSortValue(secondContact, contactType)
+    );
+
+    if (primaryComparison !== 0) return primaryComparison;
+
+    return directoryCollator.compare(
+      firstContact.email || "",
+      secondContact.email || ""
+    );
+  });
+};
+
 const DirectoryPage = () => {
   const navigate = useNavigate();
   const { currentUser, userRole } = useAuth();
@@ -463,6 +507,10 @@ const DirectoryPage = () => {
   const [subFieldFilter, setSubFieldFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedSections, setExpandedSections] = useState({
+    coordinator: false,
+    employer: true,
+  });
 
   useEffect(() => {
     const loadContacts = async () => {
@@ -504,24 +552,24 @@ const DirectoryPage = () => {
     return [...new Set(subCategoriesInUse)].sort();
   }, [contacts, mainFieldFilter]);
 
-  useEffect(() => {
-    if (
-      subFieldFilter !== "all" &&
-      !availableSubCategories.includes(subFieldFilter)
-    ) {
-      setSubFieldFilter("all");
-    }
-  }, [availableSubCategories, subFieldFilter]);
-
-  useEffect(() => {
-    if (roleFilter === "coordinator") {
-      setEmployerAssignmentFilter("all");
-    }
-  }, [roleFilter]);
-
   const handleMainFieldChange = (value) => {
     setMainFieldFilter(value);
     setSubFieldFilter("all");
+  };
+
+  const handleRoleFilterChange = (value) => {
+    setRoleFilter(value);
+
+    if (value === "coordinator") {
+      setEmployerAssignmentFilter("all");
+    }
+
+    if (value !== "all") {
+      setExpandedSections((currentSections) => ({
+        ...currentSections,
+        [value]: true,
+      }));
+    }
   };
 
   const filteredContacts = contacts.filter((contact) => {
@@ -561,8 +609,9 @@ const DirectoryPage = () => {
     return matchesSearch && matchesRole && matchesMainField && matchesSubField;
   });
 
-  const coordinatorContacts = filteredContacts.filter(
-    (contact) => contact.role === "coordinator"
+  const coordinatorContacts = sortContacts(
+    filteredContacts.filter((contact) => contact.role === "coordinator"),
+    "coordinator"
   );
 
   const currentUserContact = contacts.find(
@@ -572,72 +621,87 @@ const DirectoryPage = () => {
 
   const currentEmployerCompany = getContactCompany(currentUserContact);
 
-  const employerContacts = filteredContacts.filter((contact) => {
-    if (contact.role !== "employer") return false;
+  const employerContacts = sortContacts(
+    filteredContacts.filter((contact) => {
+      if (contact.role !== "employer") return false;
 
-    const assignedCoordinatorEmail = contact.assignedCoordinatorEmail
-      ? contact.assignedCoordinatorEmail.toLowerCase().trim()
-      : "";
+      const assignedCoordinatorEmail = contact.assignedCoordinatorEmail
+        ? contact.assignedCoordinatorEmail.toLowerCase().trim()
+        : "";
 
-    if (userRole === "admin") {
+      if (userRole === "admin") {
+        return true;
+      }
+
+      if (userRole === "employer") {
+        const isSelf =
+          contact.email?.toLowerCase().trim() === currentUserEmail;
+
+        const sameCompany =
+          normalizeCompanyValue(currentEmployerCompany) &&
+          normalizeCompanyValue(getContactCompany(contact)) &&
+          normalizeCompanyValue(currentEmployerCompany) ===
+            normalizeCompanyValue(getContactCompany(contact));
+
+        return isSelf || sameCompany;
+      }
+
+      if (userRole !== "coordinator") return true;
+
+      if (employerAssignmentFilter === "mine") {
+        return assignedCoordinatorEmail === currentUserEmail;
+      }
+
+      if (employerAssignmentFilter === "unassigned") {
+        return !assignedCoordinatorEmail;
+      }
+
       return true;
-    }
+    }),
+    "employer"
+  );
 
-    if (userRole === "employer") {
-      const isSelf =
-        contact.email?.toLowerCase().trim() === currentUserEmail;
-
-      const sameCompany =
-        normalizeCompanyValue(currentEmployerCompany) &&
-        normalizeCompanyValue(getContactCompany(contact)) &&
-        normalizeCompanyValue(currentEmployerCompany) ===
-          normalizeCompanyValue(getContactCompany(contact));
-
-      return isSelf || sameCompany;
-    }
-
-    if (userRole !== "coordinator") return true;
-
-    if (employerAssignmentFilter === "mine") {
-      return assignedCoordinatorEmail === currentUserEmail;
-    }
-
-    if (employerAssignmentFilter === "unassigned") {
-      return !assignedCoordinatorEmail;
-    }
-
-    return true;
-  });
+  const toggleSection = (sectionName) => {
+    setExpandedSections((currentSections) => ({
+      ...currentSections,
+      [sectionName]: !currentSections[sectionName],
+    }));
+  };
 
   const renderContactsTable = (tableContacts, tableType, title) => {
-    if (tableContacts.length === 0) return null;
-
     const isCoordinatorTable = tableType === "coordinator";
+    const isExpanded = expandedSections[tableType];
+    const sectionContentId = `directory-${tableType}-contacts`;
 
     return (
-      <div style={{ marginBottom: "32px" }}>
-        <h2
-          style={{
-            color: "#002b5c",
-            fontSize: "26px",
-            marginBottom: "14px",
-            fontWeight: 700,
-          }}
+      <section className="directory-section">
+        <button
+          type="button"
+          className="directory-section-header"
+          onClick={() => toggleSection(tableType)}
+          aria-expanded={isExpanded}
+          aria-controls={sectionContentId}
         >
-          {title}
-        </h2>
+          <span className="directory-section-heading">
+            <span>{title}</span>
+            <span className="directory-section-count">{tableContacts.length}</span>
+          </span>
+          <span
+            className={`directory-section-chevron${isExpanded ? " is-expanded" : ""}`}
+            aria-hidden="true"
+          >
+            ▾
+          </span>
+        </button>
 
-        <div
-          style={{
-            width: "100%",
-            overflowX: "auto",
-            border: "1px solid #dde3ec",
-            borderRadius: "16px",
-            background: "#fff",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
-          }}
-        >
+        {isExpanded && (
+          <div id={sectionContentId} className="directory-section-content">
+            {tableContacts.length === 0 ? (
+              <p className="directory-section-empty">לא נמצאו אנשי קשר להצגה בקבוצה זו.</p>
+            ) : (
+              <div className="directory-table-wrapper">
           <table
+            className="directory-table"
             style={{
               width: "100%",
               minWidth: isCoordinatorTable ? "900px" : "1400px",
@@ -862,8 +926,11 @@ const DirectoryPage = () => {
               })}
             </tbody>
           </table>
-        </div>
-      </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     );
   };
 
@@ -973,7 +1040,7 @@ const DirectoryPage = () => {
 
         <select
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
+          onChange={(e) => handleRoleFilterChange(e.target.value)}
           style={{
             width: "100%",
             padding: "14px 16px",
@@ -1070,7 +1137,7 @@ const DirectoryPage = () => {
         </p>
       )}
 
-      {filteredContacts.length === 0 ? (
+      {coordinatorContacts.length + employerContacts.length === 0 ? (
         <p style={{ textAlign: "center", fontSize: "18px" }}>
           לא נמצאו אנשי קשר להצגה.
         </p>
