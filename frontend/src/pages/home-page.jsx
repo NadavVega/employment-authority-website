@@ -194,9 +194,29 @@ const getEventDate = (dateValue) => {
     return dateValue?.toDate ? dateValue.toDate() : new Date(dateValue);
 };
 
+const getArticleImageUrl = (article) => (
+    article.imageUrl ||
+    article.image ||
+    article.coverImage ||
+    article.thumbnailUrl ||
+    article.mediaUrl ||
+    article.mediaAssetUrl ||
+    ''
+);
+
+const getArticleDate = (article) => {
+    const value = article.publishedAt || article.createdAt || article.date;
+    const date = value?.toDate ? value.toDate() : new Date(value);
+
+    return Number.isNaN(date.getTime())
+        ? ''
+        : date.toLocaleDateString('he-IL');
+};
+
 const HomePage = () => {
     const { isAuthenticated, currentUser, userRole } = useAuth();
     const [articles, setArticles] = useState([]);
+    const [currentArticleIndex, setCurrentArticleIndex] = useState(0);
     const [events, setEvents] = useState([]);
     const [promotionalSlides, setPromotionalSlides] = useState(DEFAULT_PROMOTIONAL_SLIDES);
 
@@ -241,7 +261,11 @@ const HomePage = () => {
                 return dateB - dateA;
             });
             
-            setArticles(sortedArticles.slice(0, 10)); // Display top 10 latest articles
+            const latestArticles = sortedArticles.slice(0, 10);
+            setArticles(latestArticles); // Display top 10 latest articles
+            setCurrentArticleIndex((prev) => (
+                latestArticles.length === 0 ? 0 : Math.min(prev, latestArticles.length - 1)
+            ));
         });
 
         return () => unsubscribe();
@@ -265,6 +289,26 @@ const HomePage = () => {
 
         return unsubscribe;
     }, [userRole]);
+
+    const articleCount = articles.length;
+    const activeArticle = articleCount > 0 ? articles[currentArticleIndex] || articles[0] : null;
+    const activeArticleImage = activeArticle ? getArticleImageUrl(activeArticle) : '';
+    const activeArticleDate = activeArticle ? getArticleDate(activeArticle) : '';
+    const goToNextArticle = () => {
+        if (articleCount > 0) {
+            setCurrentArticleIndex((prev) => (prev + 1) % articleCount);
+        }
+    };
+    const goToPreviousArticle = () => {
+        if (articleCount > 0) {
+            setCurrentArticleIndex((prev) => (prev === 0 ? articleCount - 1 : prev - 1));
+        }
+    };
+    const openArticle = (article) => {
+        if (article?.url) {
+            window.open(article.url, '_blank', 'noopener,noreferrer');
+        }
+    };
 
     return (
         <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
@@ -306,30 +350,78 @@ const HomePage = () => {
                         direction: 'rtl'
                     }}>
                         <SectionTitle title="כתבות ועדכונים" icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>} />
-                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
-                            {articles.length > 0 ? articles.map(article => (
-                                <Card key={article.id} elevation={0} sx={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--color-border)', borderRight: '3px solid var(--color-accent)', bgcolor: 'var(--color-surface)', borderRadius: 0, transition: 'var(--t)', '&:hover': { boxShadow: 'var(--shadow-sm)', borderColor: 'var(--color-accent)' } }}>
-                                    {article.imageUrl && (
-                                        <CardMedia
-                                            component="img"
-                                            height="140"
-                                            image={article.imageUrl}
-                                            alt={article.title}
-                                            sx={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
-                                            onClick={() => window.open(article.url, '_blank')}
-                                        />
-                                    )}
-                                    <CardContent sx={{ p: '16px !important', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                                        <Typography variant="caption" fontWeight="700" sx={{ color: 'var(--color-primary-dark)', display: 'block', mb: 0.5 }}>{article.sourceName}</Typography>
-                                        <Typography variant="body1" fontWeight="500" sx={{ color: 'var(--color-text-main)', lineHeight: 1.5, cursor: 'pointer', mb: article.content ? 1 : 0 }} onClick={() => window.open(article.url, '_blank')}>{article.title}</Typography>
-                                        {article.content && (
-                                            <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', mt: 'auto', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                {article.content}
-                                            </Typography>
+                        <Box>
+                            {activeArticle ? (
+                                <Box>
+                                    <Card elevation={0} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: activeArticleImage ? 'minmax(180px, 0.8fr) minmax(0, 1.2fr)' : '1fr' }, minHeight: { xs: 0, md: 220 }, border: '1px solid var(--color-border)', borderRight: '3px solid var(--color-accent)', bgcolor: 'var(--color-surface)', borderRadius: 0, overflow: 'hidden', transition: 'var(--t)', '&:hover': { boxShadow: 'var(--shadow-sm)', borderColor: 'var(--color-accent)' } }}>
+                                        {activeArticleImage && (
+                                            <CardMedia
+                                                component="img"
+                                                image={activeArticleImage}
+                                                alt={activeArticle.title}
+                                                sx={{ width: '100%', height: { xs: 180, md: '100%' }, objectFit: 'cover', borderLeft: { md: '1px solid var(--color-border)' }, cursor: activeArticle.url ? 'pointer' : 'default' }}
+                                                onClick={() => openArticle(activeArticle)}
+                                            />
                                         )}
-                                    </CardContent>
-                                </Card>
-                            )) : (
+                                        <CardContent sx={{ p: '20px !important', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                            <Typography variant="caption" fontWeight="700" sx={{ color: 'var(--color-primary-dark)', display: 'block', mb: 0.75 }}>
+                                                {[activeArticle.sourceName, activeArticleDate].filter(Boolean).join(' · ')}
+                                            </Typography>
+                                            <Typography variant="h6" fontWeight="800" sx={{ color: 'var(--color-text-main)', lineHeight: 1.35, cursor: activeArticle.url ? 'pointer' : 'default', mb: activeArticle.content ? 1.5 : 0 }} onClick={() => openArticle(activeArticle)}>
+                                                {activeArticle.title}
+                                            </Typography>
+                                            {activeArticle.content && (
+                                                <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 2 }}>
+                                                    {activeArticle.content}
+                                                </Typography>
+                                            )}
+                                            {activeArticle.url && (
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={() => openArticle(activeArticle)}
+                                                    sx={{ mt: 'auto', alignSelf: 'flex-start', borderColor: 'var(--color-brand)', color: 'var(--color-brand)', fontWeight: 700 }}
+                                                >
+                                                    לקריאת הכתבה
+                                                </Button>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+
+                                    {articleCount > 1 && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mt: 1.5 }}>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                {articles.map((article, index) => (
+                                                    <Box
+                                                        component="button"
+                                                        type="button"
+                                                        key={article.id || index}
+                                                        aria-label={`הצגת כתבה ${index + 1}`}
+                                                        onClick={() => setCurrentArticleIndex(index)}
+                                                        sx={{
+                                                            width: index === currentArticleIndex ? 24 : 8,
+                                                            height: 6,
+                                                            p: 0,
+                                                            border: 0,
+                                                            borderRadius: 0,
+                                                            bgcolor: index === currentArticleIndex ? 'var(--color-accent)' : 'var(--color-border)',
+                                                            cursor: 'pointer',
+                                                            transition: 'var(--t)',
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Button variant="outlined" onClick={goToNextArticle} aria-label="הכתבה הבאה" sx={{ minWidth: 36, width: 36, height: 36, p: 0, borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                                                    &gt;
+                                                </Button>
+                                                <Button variant="outlined" onClick={goToPreviousArticle} aria-label="הכתבה הקודמת" sx={{ minWidth: 36, width: 36, height: 36, p: 0, borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                                                    &lt;
+                                                </Button>
+                                            </Box>
+                                        </Box>
+                                    )}
+                                </Box>
+                            ) : (
                                 <Paper elevation={0} sx={{ gridColumn: '1 / -1', p: 3, border: '1px solid var(--color-border)', bgcolor: 'var(--color-surface)', borderRadius: 0 }}>
                                     <Typography sx={{ color: 'var(--color-text-muted)', textAlign: 'center' }}>אין כתבות זמינות כרגע.</Typography>
                                 </Paper>

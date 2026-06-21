@@ -27,6 +27,26 @@
     border-radius: 0;
 }
 
+.content-management-nav-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-primary-dark);
+    border-radius: var(--radius-md);
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--t);
+}
+
+.content-management-nav-btn:hover,
+.content-management-nav-btn:focus-visible {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    outline: none;
+}
+
 /* --- Article Review Cards --- */
 .article-review-list {
     display: flex;

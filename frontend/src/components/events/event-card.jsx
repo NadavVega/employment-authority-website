@@ -9,6 +9,7 @@ import { resolveEventImage } from '../../utils/eventImageMap';
 import { getEventLocation, getMapSearchUrl } from '../../utils/mapLinks';
 import { buildEventShareUrl } from '../../utils/eventShare';
 import { isEventCreatedByCurrentCoordinator } from '../../utils/eventOwnership';
+import { isPastEvent } from '../../utils/eventDates';
 import { ShareMenu } from '../share/ShareMenu';
 
 const formatShortAddress = (address) => {
@@ -40,6 +41,7 @@ export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetai
     const isCreator = isEventCreatedByCurrentCoordinator(event, currentUser);
     const canEdit = isAdmin || isCreator;
     const isPending = event.status === 'pending';
+    const shouldHideShare = isExpired || isPastEvent(event);
 
     const handleEditClick = (e) => {
         e.stopPropagation();
@@ -128,12 +130,14 @@ export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetai
                 </div>
 
                 <div className="card-image-actions">
-                    <ShareMenu
-                        title={event.title}
-                        url={buildEventShareUrl(event.id)}
-                        ariaLabel={`שיתוף האירוע ${event.title}`}
-                        buttonClassName="edit-pencil-btn-new card-share-action"
-                    />
+                    {!shouldHideShare && (
+                        <ShareMenu
+                            title={event.title}
+                            url={buildEventShareUrl(event.id)}
+                            ariaLabel={`שיתוף האירוע ${event.title}`}
+                            buttonClassName="edit-pencil-btn-new card-share-action"
+                        />
+                    )}
                     {canEdit && (
                         isExpired ? (
                             <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">

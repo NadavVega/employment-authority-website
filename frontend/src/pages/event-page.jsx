@@ -20,6 +20,7 @@ import { getEventLocation, getMapSearchUrl } from '../utils/mapLinks';
 import { buildEventShareUrl } from '../utils/eventShare';
 import { buildGoogleCalendarUrl, buildOutlookCalendarUrl } from '../utils/calendarLinks';
 import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
+import { isPastEvent } from '../utils/eventDates';
 import { ShareMenu } from '../components/share/ShareMenu';
 import { EventMessageDialog } from '../components/share/EventMessageDialog';
 import eventsDecoration from '../assets/images/city-view.png';
@@ -399,6 +400,7 @@ const handleRegisterClick = async (event) => {
     const selectedEventIsCurrentUserOwned = isEventCreatedByCurrentCoordinator(selectedEvent, currentUser);
     const canEditSelectedEvent = isAdmin || selectedEventIsCurrentUserOwned;
     const canViewSelectedEventParticipants = canViewEventParticipants(selectedEvent);
+    const selectedEventIsPast = isPastEvent(selectedEvent);
     const selectedCreatorName =
         selectedEvent?.creatorName ||
         selectedEvent?.coordinatorName ||
@@ -493,12 +495,14 @@ const handleRegisterClick = async (event) => {
                             )}
                         </div>
                         <div className="event-row-actions">
-                            <ShareMenu
-                                title={event.title}
-                                url={buildEventShareUrl(event.id)}
-                                ariaLabel={`שיתוף האירוע ${event.title}`}
-                                buttonClassName="event-row-share-action"
-                            />
+                            {!isPastEvent(event) && (
+                                <ShareMenu
+                                    title={event.title}
+                                    url={buildEventShareUrl(event.id)}
+                                    ariaLabel={`שיתוף האירוע ${event.title}`}
+                                    buttonClassName="event-row-share-action"
+                                />
+                            )}
                             <button
                                 type="button"
                                 className="event-row-action btn-primary pill-btn"
@@ -851,20 +855,22 @@ const handleRegisterClick = async (event) => {
                                             </IconButton>
                                         </Tooltip>
                                     )}
-                                    <ShareMenu
-                                        title={selectedEvent.title}
-                                        url={buildEventShareUrl(selectedEvent.id)}
-                                        ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
-                                        buttonClassName="modal-share-action"
-                                        buttonSx={{
-                                            flex: '0 0 auto',
-                                            color: 'var(--color-brand)',
-                                            border: '1px solid var(--color-brand)',
-                                            borderRadius: 'var(--radius-md)',
-                                            fontFamily: 'inherit',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    />
+                                    {!selectedEventIsPast && (
+                                        <ShareMenu
+                                            title={selectedEvent.title}
+                                            url={buildEventShareUrl(selectedEvent.id)}
+                                            ariaLabel={`שיתוף האירוע ${selectedEvent.title}`}
+                                            buttonClassName="modal-share-action"
+                                            buttonSx={{
+                                                flex: '0 0 auto',
+                                                color: 'var(--color-brand)',
+                                                border: '1px solid var(--color-brand)',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontFamily: 'inherit',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        />
+                                    )}
                                     <EventMessageDialog
                                         open={isEventMessageDialogOpen}
                                         event={selectedEvent}

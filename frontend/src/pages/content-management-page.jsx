@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Typography, Box, Divider, Tabs, Tab } from '@mui/material';
+import { useRef, useState } from 'react';
+import { Typography, Box, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
@@ -18,10 +18,20 @@ const ContentManagementPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
+    const manualArticleRef = useRef(null);
+    const articlesManagementRef = useRef(null);
+    const carouselManagementRef = useRef(null);
 
     if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
     }
+
+    const scrollToSection = (sectionRef) => {
+        sectionRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -49,6 +59,50 @@ const ContentManagementPage = () => {
             <Typography variant="h4" fontWeight="800" sx={{ color: 'var(--color-primary-dark)', mb: 4 }}>
                 ניהול תוכן וכתבות
             </Typography>
+
+            <Box
+                component="nav"
+                aria-label="ניווט ניהול תוכן"
+                sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 5,
+                    display: 'flex',
+                    gap: 1,
+                    flexWrap: 'wrap',
+                    mb: 3,
+                    py: 1.5,
+                    bgcolor: 'rgba(255, 255, 255, 0.94)',
+                    borderBottom: '1px solid var(--color-border)',
+                    direction: 'rtl',
+                }}
+            >
+                {isAdmin && (
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(carouselManagementRef)}
+                    >
+                        קרוסלת תוכן
+                    </button>
+                )}
+                <button
+                    type="button"
+                    className="content-management-nav-btn"
+                    onClick={() => scrollToSection(manualArticleRef)}
+                >
+                    הוספה ידנית של כתבה
+                </button>
+                {isAdmin && (
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(articlesManagementRef)}
+                    >
+                        ניהול כתבות
+                    </button>
+                )}
+            </Box>
             
             {/* FLEXBOX LAYOUT - 'stretch' forces both columns to be equal height */}
             <Box sx={{ 
@@ -60,7 +114,8 @@ const ContentManagementPage = () => {
             }}>
                 
                 {/* RIGHT COLUMN: Form (40% width for admin, 100% for coordinator) */}
-                <Box sx={{ 
+                <Box ref={manualArticleRef} sx={{ 
+                    scrollMarginTop: '88px',
                     flex: isAdmin ? { xs: '1 1 100%', lg: '0 0 40%' } : '1 1 100%', 
                     maxWidth: isAdmin ? 'none' : '800px',
                     margin: isAdmin ? '0' : '0 auto',
@@ -107,7 +162,8 @@ const ContentManagementPage = () => {
 
                 {/* LEFT COLUMN: List (60% width) - ONLY FOR ADMIN */}
                 {isAdmin && (
-                    <Box sx={{ 
+                    <Box ref={articlesManagementRef} sx={{ 
+                        scrollMarginTop: '88px',
                         flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
                         width: '100%'
                     }}>
@@ -144,7 +200,11 @@ const ContentManagementPage = () => {
 
             </Box>
 
-            {isAdmin && <PromotionalContentManager currentUser={currentUser} />}
+            {isAdmin && (
+                <Box ref={carouselManagementRef} sx={{ scrollMarginTop: '88px' }}>
+                    <PromotionalContentManager currentUser={currentUser} />
+                </Box>
+            )}
             {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
         </Box>
     );
