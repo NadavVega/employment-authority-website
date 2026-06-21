@@ -2,7 +2,8 @@
 /* ===== CONTENT MANAGEMENT & BOT DASHBOARD ===== */
 /* ========================================================= */
 
-.bot-header-controls {
+.bot-header-controls,
+.content-management-section-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -32,24 +33,48 @@
     border-radius: 0;
 }
 
+.content-management-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    margin: 0 0 var(--space-5);
+    padding: 10px 16px;
+    background: #f7f8fa;
+    border-bottom: 1px solid #d8dee8;
+    direction: rtl;
+}
+
+.content-management-nav-group {
+    display: inline-flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 6px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
 .content-management-nav-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    min-width: 132px;
+    min-height: 44px;
+    min-width: 140px;
     border: 1px solid var(--color-brand);
-    background: var(--color-surface);
+    background: #ffffff;
     color: var(--color-brand);
-    border-radius: var(--radius-md);
-    padding: 9px 22px;
+    border-radius: 6px;
+    padding: 10px 18px;
     font-family: inherit;
     font-size: var(--text-sm);
     font-weight: 800;
     line-height: 1.2;
     cursor: pointer;
     transition: all var(--t);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 .content-management-nav-btn:hover,
@@ -60,6 +85,21 @@
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
     outline: none;
+}
+
+@media (max-width: 520px) {
+    .content-management-nav {
+        padding-inline: 8px;
+    }
+
+    .content-management-nav-group {
+        width: 100%;
+    }
+
+    .content-management-nav-btn {
+        flex: 1 1 0;
+        min-width: 0;
+    }
 }
 
 /* --- Article Review Cards --- */
