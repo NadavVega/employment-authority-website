@@ -8,7 +8,7 @@ import {
   doc,
   onSnapshot,
   updateDoc,
-  setDoc,
+  writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -140,6 +140,53 @@ const isPendingCoordinatorApproval = (request, currentUserEmail) => {
       status
     ) &&
     coordinatorApprovalStatus === "pending"
+  );
+};
+
+const isPrivacyRequestFullyApproved = (requestData) => {
+  if (requestData.employerApprovalStatus !== "approved") return false;
+
+  return requestData.requiresCoordinatorApproval === true
+    ? requestData.coordinatorApprovalStatus === "approved"
+    : requestData.coordinatorApprovalStatus === "not_required";
+};
+
+const createPrivateAccessGrant = (requestId, requestData, batch) => {
+  const targetEmail = normalizeEmail(requestData.targetEmail);
+  const requesterEmail = normalizeEmail(requestData.requesterEmail);
+  const assignedCoordinatorEmail = normalizeEmail(
+    requestData.assignedCoordinatorEmail
+  );
+
+  if (!requestId || !targetEmail || !requesterEmail) {
+    throw new Error("Private access grant details are incomplete.");
+  }
+
+  if (!isPrivacyRequestFullyApproved(requestData)) {
+    throw new Error("Private access can be granted only after full approval.");
+  }
+
+  const privateAccessRef = doc(
+    db,
+    "users",
+    targetEmail,
+    "private_access",
+    requesterEmail
+  );
+
+  batch.set(
+    privateAccessRef,
+    {
+      sourceRequestId: requestId,
+      targetEmail,
+      requesterEmail,
+      assignedCoordinatorEmail,
+      employerApprovalStatus: "approved",
+      coordinatorApprovalStatus: requestData.coordinatorApprovalStatus,
+      grantedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
   );
 };
 
@@ -508,33 +555,47 @@ export const privacyService = {
       throw new Error("Request id is missing.");
     }
 
-    if (!request?.requesterEmail) {
-      throw new Error("Requester email is missing.");
-    }
-
-    if (!request?.targetEmail) {
-      throw new Error("Target employer email is missing.");
-    }
-
     if (!currentUser?.email) {
       throw new Error("User must be logged in to approve a request.");
     }
 
     const requestRef = doc(db, "privacy_requests", request.id);
+    const requestSnap = await getDoc(requestRef);
 
-    const currentUserEmail = currentUser.email.toLowerCase().trim();
-    const assignedCoordinatorEmail = request.assignedCoordinatorEmail
-      ? String(request.assignedCoordinatorEmail).toLowerCase().trim()
-      : "";
+    if (!requestSnap.exists()) {
+      throw new Error("Privacy request was not found.");
+    }
+
+    // Use the latest Firestore state so a stale UI snapshot cannot skip a step.
+    const requestData = {
+      id: requestSnap.id,
+      ...requestSnap.data(),
+    };
+
+    const requesterEmail = normalizeEmail(requestData.requesterEmail);
+    const targetEmail = normalizeEmail(requestData.targetEmail);
+
+    if (!requesterEmail) {
+      throw new Error("Requester email is missing.");
+    }
+
+    if (!targetEmail) {
+      throw new Error("Target employer email is missing.");
+    }
+
+    const currentUserEmail = normalizeEmail(currentUser.email);
+    const assignedCoordinatorEmail = normalizeEmail(
+      requestData.assignedCoordinatorEmail
+    );
 
     const isAssignedCoordinatorApproval =
       assignedCoordinatorEmail && assignedCoordinatorEmail === currentUserEmail;
 
     const currentEmployerApprovalStatus =
-      request.employerApprovalStatus || "pending";
+      requestData.employerApprovalStatus || "pending";
 
     const currentCoordinatorApprovalStatus =
-      request.coordinatorApprovalStatus || "not_required";
+      requestData.coordinatorApprovalStatus || "not_required";
 
     const nextEmployerApprovalStatus = isAssignedCoordinatorApproval
       ? currentEmployerApprovalStatus
@@ -544,38 +605,36 @@ export const privacyService = {
       ? "approved"
       : currentCoordinatorApprovalStatus;
 
-    const shouldApproveRequest =
-      nextEmployerApprovalStatus === "approved" &&
-      (request.requiresCoordinatorApproval !== true ||
-        nextCoordinatorApprovalStatus === "approved");
+    const nextRequestData = {
+      ...requestData,
+      requesterEmail,
+      targetEmail,
+      employerApprovalStatus: nextEmployerApprovalStatus,
+      coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
+    };
+    const shouldApproveRequest = isPrivacyRequestFullyApproved(nextRequestData);
 
-    const privateAccessRef = doc(
-      db,
-      "users",
-      request.targetEmail,
-      "private_access",
-      request.requesterEmail
-    );
+    const approvalBatch = writeBatch(db);
 
-    await updateDoc(requestRef, {
+    approvalBatch.update(requestRef, {
       employerApprovalStatus: nextEmployerApprovalStatus,
       coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
 
       status: shouldApproveRequest ? "approved" : "pending",
 
       employerReviewedAt: isAssignedCoordinatorApproval
-        ? request.employerReviewedAt || null
+        ? requestData.employerReviewedAt || null
         : serverTimestamp(),
       employerReviewedBy: isAssignedCoordinatorApproval
-        ? request.employerReviewedBy || null
+        ? requestData.employerReviewedBy || null
         : currentUserEmail,
 
       coordinatorReviewedAt: isAssignedCoordinatorApproval
         ? serverTimestamp()
-        : request.coordinatorReviewedAt || null,
+        : requestData.coordinatorReviewedAt || null,
       coordinatorReviewedBy: isAssignedCoordinatorApproval
         ? currentUserEmail
-        : request.coordinatorReviewedBy || null,
+        : requestData.coordinatorReviewedBy || null,
 
       reviewedAt: shouldApproveRequest ? serverTimestamp() : null,
       reviewedBy: shouldApproveRequest ? currentUserEmail : null,
@@ -584,20 +643,11 @@ export const privacyService = {
     });
 
     if (shouldApproveRequest) {
-      await setDoc(
-        privateAccessRef,
-        {
-          sourceRequestId: request.id,
-          targetEmail: request.targetEmail,
-          requesterEmail: request.requesterEmail,
-          assignedCoordinatorEmail,
-          employerApprovalStatus: "approved",
-          coordinatorApprovalStatus: nextCoordinatorApprovalStatus,
-          grantedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
-      );
+      createPrivateAccessGrant(request.id, nextRequestData, approvalBatch);
     }
+
+    // Commit the final approval and grant together so neither can exist alone.
+    await approvalBatch.commit();
 
     return {
       status: shouldApproveRequest ? "approved" : "pending",

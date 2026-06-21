@@ -1,0 +1,99 @@
+.directory-section {
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0, 43, 92, 0.07);
+}
+
+.directory-section-header {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 16px;
+  border: 0;
+  background: #f3f6fb;
+  color: #002b5c;
+  cursor: pointer;
+  font: inherit;
+  text-align: right;
+}
+
+.directory-section-header:hover {
+  background: #eaf0f8;
+}
+
+.directory-section-header:focus-visible {
+  outline: 3px solid rgba(0, 63, 158, 0.35);
+  outline-offset: -3px;
+}
+
+.directory-section-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.directory-section-count {
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dce7f5;
+  color: #003f9e;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.directory-section-chevron {
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.directory-section-chevron.is-expanded {
+  transform: rotate(180deg);
+}
+
+.directory-section-content {
+  border-top: 1px solid #dbe3ee;
+}
+
+.directory-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.directory-table th,
+.directory-table td {
+  padding: 9px 10px !important;
+  vertical-align: middle;
+}
+
+.directory-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.directory-section-empty {
+  margin: 0;
+  padding: 18px;
+  color: #5d6775;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .directory-section-header {
+    min-height: 48px;
+    padding: 9px 12px;
+  }
+
+  .directory-section-heading {
+    font-size: 19px;
+  }
+}

@@ -11,6 +11,10 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+import {
+  ISRAELI_PHONE_VALIDATION_ERROR,
+  normalizeIsraeliPhone,
+} from "../../utils/phone";
 
 const VALID_APPLICATION_ROLES = ["admin", "coordinator", "employer"];
 const MESSAGE_ROLE_ORDER = {
@@ -552,10 +556,16 @@ export const directoryService = {
     const company = String(formData.company || "").trim();
     const address = String(formData.address || "").trim();
     const email = String(formData.email || "").toLowerCase().trim();
-    const phone = String(formData.phone || "").trim();
+    const inputPhone = String(formData.phone || "").trim();
 
-    if (!company || !address || !email || !phone) {
+    if (!company || !address || !email || !inputPhone) {
       throw new Error("שם חברה, כתובת חברה, אימייל וטלפון הם שדות חובה.");
+    }
+
+    const phone = normalizeIsraeliPhone(inputPhone);
+
+    if (!phone) {
+      throw new Error(ISRAELI_PHONE_VALIDATION_ERROR);
     }
 
     const employerRef = doc(db, "users", email);
@@ -667,8 +677,14 @@ export const directoryService = {
     const address = String(formData.address || "").trim();
     const inputPhone = String(formData.phone || "").trim();
 
-    if (!company || !address) {
-      throw new Error("שם חברה וכתובת חברה הם שדות חובה.");
+    if (!company || !address || !inputPhone) {
+      throw new Error("שם חברה, כתובת חברה וטלפון הם שדות חובה.");
+    }
+
+    const phone = normalizeIsraeliPhone(inputPhone);
+
+    if (!phone) {
+      throw new Error(ISRAELI_PHONE_VALIDATION_ERROR);
     }
 
     // 1. נסיון עדכון פרופיל ציבורי
@@ -707,13 +723,10 @@ export const directoryService = {
       const privateInfoSnap = await getDoc(privateInfoRef);
 
       if (privateInfoSnap.exists()) {
-        const existingData = privateInfoSnap.data();
-        const finalPhone = inputPhone || existingData.phone || "";
-
         await setDoc(
           privateInfoRef,
           {
-            phone: finalPhone,
+            phone,
             directEmail: normalizedEmployerEmail,
             updatedAt: serverTimestamp(),
           },
@@ -721,7 +734,7 @@ export const directoryService = {
         );
       } else {
         await setDoc(privateInfoRef, {
-          phone: inputPhone,
+          phone,
           directEmail: normalizedEmployerEmail,
           approved_viewers: [],
           createdAt: serverTimestamp(),
