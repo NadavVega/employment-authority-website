@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from './utils/theme';
@@ -20,6 +19,7 @@ import AddEventPage from './pages/add-event-page';
 import { EditEventPage } from './pages/edit-event-page';
 import ContentManagementPage from './pages/content-management-page';
 import AdminDashboardPage from './pages/admin-dashboard-page';
+import StatisticsPage from './pages/statistics-page';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -93,6 +93,17 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <AdminDashboardPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/statistics"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <StatisticsPage />
                   </MainLayout>
                 </ProtectedRoute>
               }
