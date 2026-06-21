@@ -60,24 +60,27 @@ const ContentManagementPage = () => {
                 ניהול תוכן וכתבות
             </Typography>
 
-            <Box
-                component="nav"
-                aria-label="ניווט ניהול תוכן"
-                sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 5,
-                    display: 'flex',
-                    gap: 1,
-                    flexWrap: 'wrap',
-                    mb: 3,
-                    py: 1.5,
-                    bgcolor: 'rgba(255, 255, 255, 0.94)',
-                    borderBottom: '1px solid var(--color-border)',
-                    direction: 'rtl',
-                }}
-            >
-                {isAdmin && (
+            {isAdmin && (
+                <Box
+                    component="nav"
+                    aria-label="ניווט ניהול תוכן"
+                    sx={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 30,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: 1.5,
+                        flexWrap: 'wrap',
+                        mb: 3,
+                        py: 1.75,
+                        px: 2,
+                        bgcolor: 'rgba(255, 255, 255, 0.96)',
+                        borderBottom: '1px solid var(--color-border)',
+                        boxShadow: 'var(--shadow-sm)',
+                        direction: 'rtl',
+                    }}
+                >
                     <button
                         type="button"
                         className="content-management-nav-btn"
@@ -85,24 +88,15 @@ const ContentManagementPage = () => {
                     >
                         קרוסלת תוכן
                     </button>
-                )}
-                <button
-                    type="button"
-                    className="content-management-nav-btn"
-                    onClick={() => scrollToSection(manualArticleRef)}
-                >
-                    הוספה ידנית של כתבה
-                </button>
-                {isAdmin && (
                     <button
                         type="button"
                         className="content-management-nav-btn"
                         onClick={() => scrollToSection(articlesManagementRef)}
                     >
-                        ניהול כתבות
+                        כתבות
                     </button>
-                )}
-            </Box>
+                </Box>
+            )}
             
             {/* FLEXBOX LAYOUT - 'stretch' forces both columns to be equal height */}
             <Box sx={{ 
@@ -172,8 +166,8 @@ const ContentManagementPage = () => {
                             
                             <div className="bot-header-controls">
                                 <div className="bot-header-text">
-                                    <h2>ניהול כתבות</h2>
-                                    <p>רשימת כתבות שנאספו על ידי הבוט או פורסמו</p>
+                                    <h2 className="content-management-section-title">ניהול כתבות</h2>
+                                    <p className="content-management-section-subtitle">רשימת כתבות שנאספו על ידי הבוט או פורסמו</p>
                                 </div>
                                 <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
                                     ⚙️ ניהול הגדרות בוט

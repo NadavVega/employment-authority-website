@@ -256,13 +256,12 @@ const PromotionalContentManager = ({ currentUser }) => {
                 <Box>
                     <Typography
                         id="promotional-content-heading"
-                        variant="h5"
-                        fontWeight={800}
-                        sx={{ color: 'var(--color-primary-dark)' }}
+                        component="h2"
+                        className="content-management-section-title"
                     >
                         ניהול קרוסלת התוכן העליונה
                     </Typography>
-                    <Typography sx={{ color: 'var(--color-text-muted)', mt: 0.5 }}>
+                    <Typography component="p" className="content-management-section-subtitle">
                         עריכת תוכן, קהל יעד, סדר ונראות באמצעות נכסים מאושרים בלבד.
                     </Typography>
                 </Box>
