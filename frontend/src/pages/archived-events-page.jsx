@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { deleteField } from 'firebase/firestore';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { EventCard } from '../components/events/event-card';
@@ -41,7 +42,12 @@ const formatDateKey = (date) => {
 
 const getEventDate = (event) => toSafeDate(event?.date || event?.startsAt);
 
-const isArchivedEvent = (event) => event?.status === 'archived';
+const isArchivedEvent = (event) => (
+    event?.status === 'archived' ||
+    event?.archived === true ||
+    event?.isArchived === true ||
+    Boolean(event?.archivedAt)
+);
 
 const getCreatorName = (event) => (
     event?.creatorName ||
@@ -170,6 +176,41 @@ export const ArchivedEventsPage = () => {
         });
     };
 
+    const handleRestoreFromArchive = async (event) => {
+        if (!isAdmin) {
+            alert('רק מנהל יכול לשחזר אירוע מהארכיון.');
+            return;
+        }
+
+        if (!window.confirm('האם להחזיר את האירוע לאירועים שהסתיימו?')) {
+            return;
+        }
+
+        const restoredStatus = event.previousStatus && event.previousStatus !== 'archived'
+            ? event.previousStatus
+            : 'published';
+
+        try {
+            await eventService.updateEvent(event.id, {
+                status: restoredStatus,
+                archivedAt: deleteField(),
+                archivedBy: deleteField(),
+                previousStatus: deleteField(),
+            });
+
+            setArchivedEvents((currentEvents) => (
+                currentEvents.filter((currentEvent) => currentEvent.id !== event.id)
+            ));
+
+            if (selectedEvent?.id === event.id) {
+                setSelectedEvent(null);
+            }
+        } catch (error) {
+            console.error('Failed to restore archived event:', error);
+            alert('שגיאה בשחזור האירוע מהארכיון.');
+        }
+    };
+
     if (!isAdmin) {
         return <Navigate to="/events" replace />;
     }
@@ -269,6 +310,9 @@ export const ArchivedEventsPage = () => {
                                 isExpired={true}
                                 isCompact={true}
                                 hideShare={true}
+                                isArchivedView={true}
+                                archiveActionLabel="החזרה לאירועים שהסתיימו"
+                                onArchiveAction={handleRestoreFromArchive}
                                 onOpenDetails={(selectedArchivedEvent) => setSelectedEvent(selectedArchivedEvent)}
                             />
                         ))}

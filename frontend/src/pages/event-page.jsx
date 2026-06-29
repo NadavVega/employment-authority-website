@@ -6,7 +6,7 @@ import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
 import { eventService } from '../services/interfaces/event-services'; 
 
@@ -211,8 +211,8 @@ export const EventsPage = () => {
     const pastEvents = [];
 
     realEvents.forEach(event => {
-        // Skip deleted events entirely
-        if (event.status === 'deleted') return;
+        // Skip deleted and archived events entirely
+        if (event.status === 'deleted' || event.status === 'archived') return;
 
         // Permissions Check
         if (event.status === 'pending_approval') {
@@ -254,14 +254,36 @@ export const EventsPage = () => {
         }
     };
 
-    // THIS IS THE MISSING DELETE FUNCTION
-    const handleDeleteEvent = async (eventId) => {
-        if (window.confirm("האם אתה בטוח שברצונך למחוק אירוע זה?")) {
+    const handleArchiveEvent = async (event) => {
+        if (!isAdmin) {
+            alert('רק מנהל יכול להעביר אירוע לארכיון.');
+            return;
+        }
+
+        if (!isPastEvent(event)) {
+            alert('ניתן להעביר לארכיון רק אירועים שהסתיימו.');
+            return;
+        }
+
+        if (window.confirm('האם להעביר את האירוע לארכיון?')) {
             try {
-                await eventService.updateEvent(eventId, { status: 'deleted' });
+                await eventService.updateEvent(event.id, {
+                    status: 'archived',
+                    archivedAt: serverTimestamp(),
+                    archivedBy: currentUser?.uid || currentUser?.email || '',
+                    previousStatus: event.status || 'published',
+                });
+
+                setRealEvents((currentEvents) => (
+                    currentEvents.filter((existingEvent) => existingEvent.id !== event.id)
+                ));
+
+                if (selectedEvent?.id === event.id) {
+                    closeSelectedEvent();
+                }
             } catch (error) {
-                console.error("Failed to delete event:", error);
-                alert("שגיאה במחיקת האירוע.");
+                console.error('Failed to archive event:', error);
+                alert('שגיאה בהעברת האירוע לארכיון.');
             }
         }
     };
@@ -504,6 +526,18 @@ const handleRegisterClick = async (event) => {
                                     buttonClassName="event-row-share-action"
                                 />
                             )}
+                            {isExpired && isAdmin && (
+                                <button
+                                    type="button"
+                                    className="event-row-action btn-secondary pill-btn"
+                                    onClick={(clickEvent) => {
+                                        clickEvent.stopPropagation();
+                                        handleArchiveEvent(event);
+                                    }}
+                                >
+                                    העבר לארכיון
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="event-row-action btn-primary pill-btn"
@@ -616,7 +650,6 @@ const handleRegisterClick = async (event) => {
                                 isRegistered={registeredEventIds.includes(featuredEvent.id)}
                                 onOpenDetails={(event) => setSelectedEventModal(event)}
                                 onApprove={handleApproveEvent}
-                                onDelete={handleDeleteEvent}
                             />
                         </div>
                     </aside>
@@ -646,7 +679,6 @@ const handleRegisterClick = async (event) => {
                                                 isRegistered={registeredEventIds.includes(event.id)}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
-                                                onDelete={handleDeleteEvent}
                                             />
                                         ))}
                                     </div>
@@ -697,7 +729,8 @@ const handleRegisterClick = async (event) => {
                                                         isCompact={true}
                                                         onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                         onApprove={handleApproveEvent}
-                                                        onDelete={handleDeleteEvent}
+                                                        onArchiveAction={handleArchiveEvent}
+                                                        archiveActionLabel="העבר לארכיון"
                                                     />
                                                 ))}
                                             </div>
@@ -740,7 +773,8 @@ const handleRegisterClick = async (event) => {
                                                 isCompact={true}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
-                                                onDelete={handleDeleteEvent}
+                                                onArchiveAction={handleArchiveEvent}
+                                                archiveActionLabel="העבר לארכיון"
                                             />
                                         ))}
                                     </div>
