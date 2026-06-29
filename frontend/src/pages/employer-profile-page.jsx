@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
+import { PageHero } from "../components/layout/PageHero";
 import { directoryService } from "../services/interfaces/directory-service";
 import { privacyService } from "../services/interfaces/privacy-service";
+import eventsDecoration from "../assets/images/city-view.png";
+import employmentLogo from "../assets/center-icons/taasuka-logo-color.png";
 
 // Design files
 import "../design/global-theme.css";
@@ -316,24 +319,37 @@ const EmployerProfilePage = () => {
     <div
       dir="rtl"
       style={{
-        padding: "40px",
-        maxWidth: "900px",
-        margin: "0 auto",
+        minHeight: "100vh",
+        background: "#f4f6f9",
         fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
       }}
     >
-      <h1>פרטי איש קשר</h1>
+      <PageHero
+        title="פרטי איש קשר"
+        subtitle="מידע על מעסיק, רכז או איש קשר במערכת"
+        logoSrc={employmentLogo}
+        logoAlt="רשות התעסוקה ירושלים"
+        decorationSrc={eventsDecoration}
+      />
 
       <div
         style={{
-          marginTop: "24px",
-          padding: "28px",
-          border: "1px solid #ddd",
-          borderRadius: "16px",
-          background: "#fff",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+          width: "100%",
+          maxWidth: "1180px",
+          margin: "0 auto",
+          padding: "28px clamp(16px, 5vw, 48px) 56px",
+          boxSizing: "border-box",
         }}
       >
+        <div
+          style={{
+            padding: "28px",
+            border: "1px solid var(--color-border)",
+            borderRadius: "4px",
+            background: "#fff",
+            boxShadow: "0 8px 24px rgba(0, 38, 84, 0.08)",
+          }}
+        >
         {isEmployerContact && isVisibleValue(employer.logoUrl) && (
           <div style={{ marginBottom: "18px", textAlign: "center" }}>
             <img
@@ -344,7 +360,7 @@ const EmployerProfilePage = () => {
                 maxHeight: "100px",
                 objectFit: "contain",
                 border: "1px solid #dde3ec",
-                borderRadius: "12px",
+                borderRadius: "4px",
                 padding: "10px",
                 background: "#fff",
               }}
@@ -643,6 +659,7 @@ const EmployerProfilePage = () => {
             <strong>{message}</strong>
           </p>
         )}
+        </div>
       </div>
     </div>
   );
