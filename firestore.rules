@@ -208,6 +208,121 @@ service cloud.firestore {
         && request.resource.data.assignedAt == request.time;
     }
 
+    function isAssignedCoordinatorForEmployer(userId) {
+      return isCoordinator()
+        && dataHasRole(resource.data, 'employer')
+        && assignedCoordinatorEmail(userId) == authenticatedEmail();
+    }
+
+    function isAllowedAssignedCoordinatorEmployerUpdate(userId) {
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+      let profileChanged = changedFields.hasAny([
+        'profile',
+        'profile.fullName',
+        'profile.name',
+        'profile.companyName',
+        'profile.company',
+        'profile.organization',
+        'profile.address',
+        'profile.field',
+        'profile.subField',
+        'profile.population',
+        'profile.targetPopulation',
+        'profile.phone',
+        'profile.mobile',
+        'profile.logoUrl',
+        'profile.companyDescription',
+        'profile.jobsUrl',
+        'profile.contactStatus'
+      ]);
+      let allowedRootFields = [
+        'profile',
+        'profile.fullName',
+        'profile.name',
+        'profile.companyName',
+        'profile.company',
+        'profile.organization',
+        'profile.address',
+        'profile.field',
+        'profile.subField',
+        'profile.population',
+        'profile.targetPopulation',
+        'profile.phone',
+        'profile.mobile',
+        'profile.logoUrl',
+        'profile.companyDescription',
+        'profile.jobsUrl',
+        'profile.contactStatus',
+        'updatedAt'
+      ];
+      let allowedProfileFields = [
+        'fullName',
+        'name',
+        'companyName',
+        'company',
+        'organization',
+        'address',
+        'field',
+        'subField',
+        'population',
+        'targetPopulation',
+        'phone',
+        'mobile',
+        'logoUrl',
+        'companyDescription',
+        'jobsUrl',
+        'contactStatus'
+      ];
+
+      return isAssignedCoordinatorForEmployer(userId)
+        && changedFields.hasOnly(allowedRootFields)
+        && (
+          !profileChanged
+          || (
+            resource.data.keys().hasAll(['profile'])
+            && resource.data.profile is map
+            && request.resource.data.keys().hasAll(['profile'])
+            && request.resource.data.profile is map
+            && request.resource.data.profile
+              .diff(resource.data.profile)
+              .affectedKeys()
+              .hasOnly(allowedProfileFields)
+            && request.resource.data.profile.get('role', null)
+              == resource.data.profile.get('role', null)
+            && request.resource.data.profile.get('assignedCoordinatorEmail', null)
+              == resource.data.profile.get('assignedCoordinatorEmail', null)
+            && request.resource.data.profile.get('isWhitelisted', null)
+              == resource.data.profile.get('isWhitelisted', null)
+            && request.resource.data.profile.get('isWhiteListed', null)
+              == resource.data.profile.get('isWhiteListed', null)
+            && request.resource.data.profile.get('email', null)
+              == resource.data.profile.get('email', null)
+            && request.resource.data.profile.get('uid', null)
+              == resource.data.profile.get('uid', null)
+            && request.resource.data.profile.get('createdAt', null)
+              == resource.data.profile.get('createdAt', null)
+            && request.resource.data.profile.get('companyId', null)
+              == resource.data.profile.get('companyId', null)
+            && request.resource.data.profile.get('status', null)
+              == resource.data.profile.get('status', null)
+            && request.resource.data.profile.get('lastContactNote', null)
+              == resource.data.profile.get('lastContactNote', null)
+            && request.resource.data.profile.get('lastContactDate', null)
+              == resource.data.profile.get('lastContactDate', null)
+          )
+        )
+        && request.resource.data.get('role', null) == resource.data.get('role', null)
+        && request.resource.data.get('isWhitelisted', null) == resource.data.get('isWhitelisted', null)
+        && request.resource.data.get('isWhiteListed', null) == resource.data.get('isWhiteListed', null)
+        && request.resource.data.get('assignedCoordinatorEmail', null) == resource.data.get('assignedCoordinatorEmail', null)
+        && request.resource.data.get('assignedBy', null) == resource.data.get('assignedBy', null)
+        && request.resource.data.get('assignedAt', null) == resource.data.get('assignedAt', null)
+        && request.resource.data.get('email', null) == resource.data.get('email', null)
+        && request.resource.data.get('uid', null) == resource.data.get('uid', null)
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.updatedAt == request.time;
+    }
+
     // Privacy requests and deterministic private-access grants
     function privacyRequestPath(requestId) {
       return /databases/$(database)/documents/privacy_requests/$(requestId);
@@ -237,10 +352,6 @@ service cloud.firestore {
           data.employerApprovalStatus == 'approved'
             && (
               data.coordinatorApprovalStatus == 'approved'
-              || (
-                data.requiresCoordinatorApproval == false
-                && data.coordinatorApprovalStatus == 'not_required'
-              )
             )
           ? 'approved'
           : 'pending'
@@ -257,6 +368,7 @@ service cloud.firestore {
           'requesterEmail',
           'requesterName',
           'requesterCenterName',
+          'requesterPhone',
           'requesterRole',
           'targetEmail',
           'targetEmployerName',
@@ -291,7 +403,24 @@ service cloud.firestore {
           'updatedAt'
         ])
         && data.requesterEmail == authenticatedEmail()
+        && data.requesterEmail is string
+        && data.requesterEmail == data.requesterEmail.lower()
         && data.requesterRole == 'coordinator'
+        && (
+          !data.keys().hasAny(['requesterName'])
+          || data.requesterName is string
+        )
+        && (
+          !data.keys().hasAny(['requesterCenterName'])
+          || data.requesterCenterName is string
+        )
+        && (
+          !data.keys().hasAny(['requesterPhone'])
+          || (
+            data.requesterPhone is string
+            && data.requesterPhone.size() <= 30
+          )
+        )
         && data.targetEmail is string
         && data.targetEmail == data.targetEmail.lower()
         && data.targetEmail != authenticatedEmail()
@@ -299,12 +428,12 @@ service cloud.firestore {
         && isValidApplicationUserData(targetEmployerData(data.targetEmail))
         && dataHasRole(targetEmployerData(data.targetEmail), 'employer')
         && assignedEmail != authenticatedEmail()
+        && assignedEmail != ''
         && data.assignedCoordinatorEmail == assignedEmail
         && data.targetAssignedCoordinatorEmail == assignedEmail
-        && data.requiresCoordinatorApproval == (assignedEmail != '')
+        && data.requiresCoordinatorApproval == true
         && data.employerApprovalStatus == 'pending'
-        && data.coordinatorApprovalStatus
-          == (assignedEmail != '' ? 'pending' : 'not_required')
+        && data.coordinatorApprovalStatus == 'pending'
         && data.status == 'pending'
         && data.createdAt == request.time
         && data.updatedAt == request.time
@@ -348,17 +477,8 @@ service cloud.firestore {
 
     function privacyRequestStateIsValid(data) {
       return validApprovalStatus(data.employerApprovalStatus)
-        && (
-          (
-            data.requiresCoordinatorApproval == true
-            && validApprovalStatus(data.coordinatorApprovalStatus)
-          )
-          || (
-            data.requiresCoordinatorApproval == false
-            && data.assignedCoordinatorEmail == ''
-            && data.coordinatorApprovalStatus == 'not_required'
-          )
-        )
+        && data.requiresCoordinatorApproval == true
+        && validApprovalStatus(data.coordinatorApprovalStatus)
         && data.status == privacyRequestResult(data);
     }
 
@@ -378,11 +498,31 @@ service cloud.firestore {
           == resource.data.coordinatorReviewedAt
         && request.resource.data.coordinatorReviewedBy
           == resource.data.coordinatorReviewedBy
+        && (
+          (
+            request.resource.data.employerApprovalStatus == 'approved'
+            && request.resource.data.status == 'pending'
+            && request.resource.data.reviewedAt == null
+            && request.resource.data.reviewedBy == null
+          )
+          || (
+            request.resource.data.employerApprovalStatus == 'rejected'
+            && request.resource.data.status == 'rejected'
+            && request.resource.data.reviewedAt == request.time
+            && request.resource.data.reviewedBy == authenticatedEmail()
+          )
+        )
         && request.resource.data.updatedAt == request.time;
     }
 
     function validCoordinatorPrivacyDecision() {
-      return resource.data.assignedCoordinatorEmail == authenticatedEmail()
+      return (
+          resource.data.assignedCoordinatorEmail == authenticatedEmail()
+          || (
+            resource.data.keys().hasAny(['targetAssignedCoordinatorEmail'])
+            && resource.data.targetAssignedCoordinatorEmail == authenticatedEmail()
+          )
+        )
         && isCoordinator()
         && resource.data.requesterEmail != authenticatedEmail()
         && resource.data.status == 'pending'
@@ -399,6 +539,24 @@ service cloud.firestore {
         && request.resource.data.coordinatorReviewedAt == request.time
         && request.resource.data.coordinatorReviewedBy
           == authenticatedEmail()
+        && (
+          (
+            request.resource.data.coordinatorApprovalStatus == 'approved'
+            && request.resource.data.status == 'approved'
+            && request.resource.data.reviewedAt == request.time
+            && request.resource.data.reviewedBy == authenticatedEmail()
+            && existsAfter(privateAccessPath(
+              resource.data.targetEmail,
+              resource.data.requesterEmail
+            ))
+          )
+          || (
+            request.resource.data.coordinatorApprovalStatus == 'rejected'
+            && request.resource.data.status == 'rejected'
+            && request.resource.data.reviewedAt == request.time
+            && request.resource.data.reviewedBy == authenticatedEmail()
+          )
+        )
         && request.resource.data.updatedAt == request.time;
     }
 
@@ -409,7 +567,6 @@ service cloud.firestore {
         && (
           validEmployerPrivacyDecision()
           || validCoordinatorPrivacyDecision()
-          || isAdmin()
         );
     }
 
@@ -472,13 +629,7 @@ service cloud.firestore {
         && grantData.assignedCoordinatorEmail
           == assignedCoordinatorEmail(targetEmail)
         && grantData.employerApprovalStatus == 'approved'
-        && (
-          grantData.coordinatorApprovalStatus == 'approved'
-          || (
-            grantData.assignedCoordinatorEmail == ''
-            && grantData.coordinatorApprovalStatus == 'not_required'
-          )
-        )
+        && grantData.coordinatorApprovalStatus == 'approved'
         && approvedRequestMatchesGrant(
           targetEmail,
           requesterEmail,
@@ -489,15 +640,9 @@ service cloud.firestore {
     function canWritePrivateAccessGrant(targetEmail, requesterEmail) {
       let assignedEmail = assignedCoordinatorEmail(targetEmail);
 
-      return (
-          hasAuthenticatedEmail()
-          && authenticatedEmail() != requesterEmail
-          && (
-            authenticatedEmail() == targetEmail
-            || authenticatedEmail() == assignedEmail
-          )
-        )
-        || isAdmin();
+      return hasAuthenticatedEmail()
+        && authenticatedEmail() != requesterEmail
+        && authenticatedEmail() == assignedEmail;
     }
 
     function hasApprovedPrivateAccess(
@@ -519,8 +664,8 @@ service cloud.firestore {
         && approval.requesterEmail == requesterEmail
         && approval.status == 'approved'
         && approval.employerApprovalStatus == 'approved'
-        && approval.coordinatorApprovalStatus
-          == grant.coordinatorApprovalStatus
+        && approval.coordinatorApprovalStatus == 'approved'
+        && grant.coordinatorApprovalStatus == 'approved'
         && approval.assignedCoordinatorEmail
           == currentAssignedEmail;
     }
@@ -538,7 +683,6 @@ service cloud.firestore {
             authenticatedEmail(),
             assignedEmail
           )
-          || isAdmin()
         );
     }
 
@@ -1142,6 +1286,7 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
         || isAllowedCoordinatorAssignment(userId)
+        || isAllowedAssignedCoordinatorEmployerUpdate(userId)
         || (
           isSelfUser(userId)
           && isApplicationUser()
@@ -1182,16 +1327,13 @@ service cloud.firestore {
       }
 
       match /private_access/{requesterEmail} {
-        allow get: if isAdmin()
-          || (
-            isApplicationUser()
-            && (
-              isSelfUser(userId)
-              || authenticatedEmail() == requesterEmail
-              || assignedCoordinatorEmail(userId) == authenticatedEmail()
-            )
+        allow get: if isApplicationUser()
+          && (
+            isSelfUser(userId)
+            || authenticatedEmail() == requesterEmail
+            || assignedCoordinatorEmail(userId) == authenticatedEmail()
           );
-        allow list: if isAdmin() || isSelfUser(userId);
+        allow list: if isSelfUser(userId);
         allow create, update: if canWritePrivateAccessGrant(
             userId,
             requesterEmail
@@ -1203,7 +1345,7 @@ service cloud.firestore {
           )
           && request.resource.data.grantedAt == request.time
           && request.resource.data.updatedAt == request.time;
-        allow delete: if canWritePrivateAccessGrant(userId, requesterEmail);
+        allow delete: if false;
       }
     }
 
@@ -1243,11 +1385,10 @@ service cloud.firestore {
     }
 
     match /privacy_requests/{requestId} {
-      allow get, list: if isAdmin()
-        || isPrivacyRequestParticipant(resource.data);
+      allow get, list: if isPrivacyRequestParticipant(resource.data);
       allow create: if validPrivacyRequestCreate();
       allow update: if validPrivacyRequestUpdate();
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     match /notifications/{notificationId} {

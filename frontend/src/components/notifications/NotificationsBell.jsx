@@ -24,6 +24,7 @@ import {
 import { privacyService } from '../../services/interfaces/privacy-service';
 
 const DERIVED_PENDING_APPROVAL_TYPE = 'private_details_coordinator_approval_pending';
+const MAX_VISIBLE_NOTIFICATIONS = 8;
 
 const formatNotificationDate = (createdAt) => {
     const date = createdAt?.toDate?.() || null;
@@ -48,16 +49,53 @@ const isDerivedPendingApproval = (notification) => (
     notification?.type === DERIVED_PENDING_APPROVAL_TYPE
 );
 
-const mapPendingApprovalToNotification = (request) => {
+const getAcknowledgedStorageKey = (email) => (
+    `acknowledgedPrivacyNotifications:${String(email || '').trim().toLowerCase()}`
+);
+
+const getAcknowledgedNotificationIds = (email) => {
+    if (typeof window === 'undefined' || !email) {
+        return [];
+    }
+
+    try {
+        const storedValue = window.localStorage.getItem(getAcknowledgedStorageKey(email));
+
+        return storedValue ? JSON.parse(storedValue) : [];
+    } catch (error) {
+        console.error('Failed to load acknowledged notifications:', error);
+        return [];
+    }
+};
+
+const saveAcknowledgedNotificationIds = (email, ids) => {
+    if (typeof window === 'undefined' || !email) {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(
+            getAcknowledgedStorageKey(email),
+            JSON.stringify(Array.from(ids))
+        );
+    } catch (error) {
+        console.error('Failed to save acknowledged notifications:', error);
+    }
+};
+
+const getDerivedPendingApprovalId = (requestId) => `privacy-request-${requestId}`;
+
+const mapPendingApprovalToNotification = (request, acknowledgedIds) => {
     const requesterNameOrEmail = request.requesterName || request.requesterEmail || '';
+    const id = getDerivedPendingApprovalId(request.id);
 
     return {
-        id: `privacy-request-${request.id}`,
+        id,
         type: DERIVED_PENDING_APPROVAL_TYPE,
         title: 'בקשת גישה ממתינה לאישור שלך',
         body: `${requesterNameOrEmail} ביקש גישה לפרטי מעסיק המשויך אליך`,
         link: '/privacy-requests',
-        isRead: false,
+        isRead: acknowledgedIds.has(id),
         createdAt: request.createdAt,
         requestId: request.id,
     };
@@ -69,6 +107,16 @@ const NotificationsBell = () => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [notifications, setNotifications] = useState([]);
     const [pendingApprovals, setPendingApprovals] = useState([]);
+    const [acknowledgedNotificationState, setAcknowledgedNotificationState] = useState(
+        () => {
+            const initialEmail = currentUser?.email || '';
+
+            return {
+                email: initialEmail,
+                ids: new Set(getAcknowledgedNotificationIds(initialEmail)),
+            };
+        }
+    );
     const [isUpdating, setIsUpdating] = useState(false);
     const userEmail = currentUser?.email || '';
 
@@ -91,13 +139,24 @@ const NotificationsBell = () => {
         );
     }, [isAuthenticated, userEmail]);
 
+    const storedAcknowledgedNotificationIds = useMemo(
+        () => new Set(getAcknowledgedNotificationIds(userEmail)),
+        [userEmail]
+    );
+    const acknowledgedNotificationIds =
+        acknowledgedNotificationState.email === userEmail
+            ? acknowledgedNotificationState.ids
+            : storedAcknowledgedNotificationIds;
+
     const visibleNotifications = useMemo(
         () => {
             if (!userEmail) {
                 return [];
             }
 
-            const pendingApprovalItems = pendingApprovals.map(mapPendingApprovalToNotification);
+            const pendingApprovalItems = pendingApprovals.map((request) => (
+                mapPendingApprovalToNotification(request, acknowledgedNotificationIds)
+            ));
 
             return [...notifications, ...pendingApprovalItems].sort(
                 (first, second) => (
@@ -105,7 +164,12 @@ const NotificationsBell = () => {
                 )
             );
         },
-        [notifications, pendingApprovals, userEmail]
+        [acknowledgedNotificationIds, notifications, pendingApprovals, userEmail]
+    );
+
+    const displayedNotifications = useMemo(
+        () => visibleNotifications.slice(0, MAX_VISIBLE_NOTIFICATIONS),
+        [visibleNotifications]
     );
 
     const unreadCount = useMemo(
@@ -127,13 +191,54 @@ const NotificationsBell = () => {
         setAnchorEl(null);
     };
 
+    const acknowledgeDerivedNotification = (notification) => {
+        const idsToAcknowledge = [];
+
+        if (isDerivedPendingApproval(notification)) {
+            idsToAcknowledge.push(notification.id);
+        }
+
+        if (notification?.requestId) {
+            idsToAcknowledge.push(getDerivedPendingApprovalId(notification.requestId));
+        }
+
+        if (idsToAcknowledge.length === 0) {
+            return;
+        }
+
+        setAcknowledgedNotificationState((currentState) => {
+            const currentIds =
+                currentState.email === userEmail
+                    ? currentState.ids
+                    : new Set(getAcknowledgedNotificationIds(userEmail));
+            const nextIds = new Set(currentIds);
+
+            idsToAcknowledge.forEach((id) => nextIds.add(id));
+            saveAcknowledgedNotificationIds(userEmail, nextIds);
+
+            return {
+                email: userEmail,
+                ids: nextIds,
+            };
+        });
+    };
+
     const handleNotificationClick = async (notification) => {
         if (!notification) {
             return;
         }
 
+        acknowledgeDerivedNotification(notification);
+
         try {
             if (!notification.isRead && !isDerivedPendingApproval(notification)) {
+                setNotifications((currentNotifications) => (
+                    currentNotifications.map((currentNotification) => (
+                        currentNotification.id === notification.id
+                            ? { ...currentNotification, isRead: true }
+                            : currentNotification
+                    ))
+                ));
                 await markNotificationRead(notification.id);
             }
         } catch (error) {
@@ -151,6 +256,36 @@ const NotificationsBell = () => {
         setIsUpdating(true);
 
         try {
+            const derivedNotificationIds = visibleNotifications
+                .filter(isDerivedPendingApproval)
+                .map((notification) => notification.id);
+
+            if (derivedNotificationIds.length > 0) {
+                setAcknowledgedNotificationState((currentState) => {
+                    const currentIds =
+                        currentState.email === userEmail
+                            ? currentState.ids
+                            : new Set(getAcknowledgedNotificationIds(userEmail));
+                    const nextIds = new Set(currentIds);
+
+                    derivedNotificationIds.forEach((id) => nextIds.add(id));
+                    saveAcknowledgedNotificationIds(userEmail, nextIds);
+
+                    return {
+                        email: userEmail,
+                        ids: nextIds,
+                    };
+                });
+            }
+
+            setNotifications((currentNotifications) => (
+                currentNotifications.map((notification) => (
+                    notification.isRead
+                        ? notification
+                        : { ...notification, isRead: true }
+                ))
+            ));
+
             await markAllNotificationsRead(
                 visibleNotifications.filter(
                     (notification) => !isDerivedPendingApproval(notification)
@@ -239,7 +374,7 @@ const NotificationsBell = () => {
                     </Box>
                 ) : (
                     <List disablePadding sx={{ maxHeight: 420, overflowY: 'auto' }}>
-                        {visibleNotifications.map((notification) => {
+                        {displayedNotifications.map((notification) => {
                             const createdDate = formatNotificationDate(notification.createdAt);
 
                             return (
