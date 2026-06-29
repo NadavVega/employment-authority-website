@@ -18,6 +18,9 @@ const COLLECTION_NAME = 'notifications';
 const NOTIFICATION_LIMIT = 15;
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const normalizeOptionalString = (value) => (
+    typeof value === 'string' && value.trim() ? value.trim() : ''
+);
 const noop = () => {};
 
 export const subscribeToMyNotifications = (currentUser, callback) => {
@@ -162,8 +165,8 @@ export const createPrivateDetailsRequestNotification = async ({
         senderEmail ||
         ''
     ).trim();
-    const senderUid = directSenderUid || sender?.uid || '';
-    const recipientUid = directRecipientUid || recipient?.uid || '';
+    const senderUid = normalizeOptionalString(directSenderUid || sender?.uid);
+    const recipientUid = normalizeOptionalString(directRecipientUid || recipient?.uid);
 
     if (!recipientEmail || !senderEmail || !requestId) {
         throw new Error('Missing private details request notification data.');
@@ -217,8 +220,8 @@ export const createPrivateDetailsCoordinatorApprovalNotification = async ({
         senderEmail ||
         ''
     ).trim();
-    const senderUid = directSenderUid || sender?.uid || '';
-    const recipientUid = directRecipientUid || recipient?.uid || '';
+    const senderUid = normalizeOptionalString(directSenderUid || sender?.uid);
+    const recipientUid = normalizeOptionalString(directRecipientUid || recipient?.uid);
 
     if (!recipientEmail || !senderEmail || !requestId) {
         throw new Error('Missing private details coordinator approval notification data.');

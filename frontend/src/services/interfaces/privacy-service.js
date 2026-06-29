@@ -51,6 +51,7 @@ const getUserProfileByEmail = async (email) => {
 };
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const normalizeValue = (value) => String(value || "").trim().toLowerCase();
 
 const getPublicUserByEmail = async (email) => {
   const normalizedEmail = normalizeEmail(email);
@@ -75,9 +76,7 @@ const getPublicUserByEmail = async (email) => {
 const getAssignedCoordinatorEmail = (employer) => {
   return normalizeEmail(
     employer?.assignedCoordinatorEmail ||
-      employer?.profile?.assignedCoordinatorEmail ||
-      employer?.coordinatorEmail ||
-      employer?.profile?.coordinatorEmail
+      employer?.profile?.assignedCoordinatorEmail
   );
 };
 
@@ -155,7 +154,8 @@ const createPrivateAccessGrant = (requestId, requestData, batch) => {
   const targetEmail = normalizeEmail(requestData.targetEmail);
   const requesterEmail = normalizeEmail(requestData.requesterEmail);
   const assignedCoordinatorEmail = normalizeEmail(
-    requestData.assignedCoordinatorEmail
+    requestData.assignedCoordinatorEmail ||
+      requestData.targetAssignedCoordinatorEmail
   );
 
   if (!requestId || !targetEmail || !requesterEmail) {
@@ -232,7 +232,7 @@ export const privacyService = {
     }
 
     if (!assignedCoordinatorEmail) {
-      throw new Error("Target employer is not assigned to a coordinator.");
+      throw new Error("לא מוגדר רכז משויך למעסיק הזה, ולכן לא ניתן לשלוח בקשת גישה.");
     }
 
     const existingRequestQuery = query(
@@ -253,21 +253,12 @@ export const privacyService = {
 
     const requestData = {
       requesterEmail,
-      requesterName: requesterProfile.fullName || currentUser.displayName || "",
-      requesterCenterName: requesterProfile.centerName || "",
-      requesterPhone: requesterProfile.phone || "",
       requesterRole: "coordinator",
 
       targetEmail,
       targetEmployerName:
         targetEmployerProfile.organization ||
         publicTargetEmployer.organization ||
-        "",
-      targetEmployerContactName:
-        targetEmployerProfile.fullName ||
-        publicTargetEmployer.fullName ||
-        targetEmployerProfile.name ||
-        publicTargetEmployer.name ||
         "",
       targetEmployerRole: "employer",
 
@@ -293,45 +284,62 @@ export const privacyService = {
       reviewedBy: null,
     };
 
+    const requesterName = requesterProfile.fullName || currentUser.displayName || "";
+    const requesterCenterName = requesterProfile.centerName || "";
+    const requesterPhone = requesterProfile.phone || "";
+
+    if (requesterName) {
+      requestData.requesterName = requesterName;
+    }
+
+    if (requesterCenterName) {
+      requestData.requesterCenterName = requesterCenterName;
+    }
+
+    if (requesterPhone) {
+      requestData.requesterPhone = requesterPhone.slice(0, 30);
+    }
+
+    if (import.meta.env.DEV) {
+      console.log("privacy request payload", requestData);
+    }
+
     const docRef = await addDoc(
       collection(db, "privacy_requests"),
       requestData
     );
 
-    const senderName = requesterProfile.fullName || currentUser.displayName || "";
+    const senderName = requesterName;
     const notificationRequests = [
-      createPrivateDetailsRequestNotification({
-        recipientEmail: targetEmail,
-        recipientUid: publicTargetEmployer.uid,
-        senderEmail: requesterEmail,
-        senderUid: currentUser.uid,
-        senderName,
-        requestId: docRef.id,
-      }),
+      () =>
+        createPrivateDetailsRequestNotification({
+          recipientEmail: targetEmail,
+          senderEmail: requesterEmail,
+          senderName,
+          requestId: docRef.id,
+        }),
     ];
 
     if (assignedCoordinatorEmail && assignedCoordinatorEmail !== requesterEmail) {
-      notificationRequests.push(
+      notificationRequests.push(() =>
         createPrivateDetailsCoordinatorApprovalNotification({
           recipientEmail: assignedCoordinatorEmail,
           senderEmail: requesterEmail,
-          senderUid: currentUser.uid,
           senderName,
           requestId: docRef.id,
         })
       );
     }
 
-    const notificationResults = await Promise.allSettled(notificationRequests);
-    const failedNotification = notificationResults.find(
-      (result) => result.status === "rejected"
-    );
-
-    if (failedNotification) {
-      console.warn(
-        "Private details request notification failed:",
-        failedNotification.reason
-      );
+    for (const sendNotification of notificationRequests) {
+      try {
+        await sendNotification();
+      } catch (notificationError) {
+        console.warn(
+          "Private details request notification failed:",
+          notificationError
+        );
+      }
     }
 
     return {
@@ -617,21 +625,26 @@ export const privacyService = {
 
     const currentUserEmail = normalizeEmail(currentUser.email);
     const assignedCoordinatorEmail = normalizeEmail(
-      requestData.assignedCoordinatorEmail ||
-        requestData.targetAssignedCoordinatorEmail
+      requestData.assignedCoordinatorEmail
+    );
+    const targetAssignedCoordinatorEmail = normalizeEmail(
+      requestData.targetAssignedCoordinatorEmail
     );
 
     const isAssignedCoordinatorApproval =
-      assignedCoordinatorEmail && assignedCoordinatorEmail === currentUserEmail;
+      assignedCoordinatorEmail === currentUserEmail ||
+      targetAssignedCoordinatorEmail === currentUserEmail;
     const isEmployerApproval = targetEmail === currentUserEmail;
 
-    const currentEmployerApprovalStatus =
-      requestData.employerApprovalStatus || "pending";
+    const currentEmployerApprovalStatus = normalizeValue(
+      requestData.employerApprovalStatus || "pending"
+    );
 
-    const currentCoordinatorApprovalStatus =
-      requestData.coordinatorApprovalStatus || "pending";
+    const currentCoordinatorApprovalStatus = normalizeValue(
+      requestData.coordinatorApprovalStatus || "pending"
+    );
 
-    if (requestData.status !== "pending") {
+    if (normalizeValue(requestData.status) !== "pending") {
       throw new Error("Only pending privacy requests can be approved.");
     }
 
@@ -740,20 +753,23 @@ export const privacyService = {
     const requesterEmail = normalizeEmail(requestData.requesterEmail);
     const targetEmail = normalizeEmail(requestData.targetEmail);
     const assignedCoordinatorEmail = normalizeEmail(
-      requestData.assignedCoordinatorEmail ||
-        requestData.targetAssignedCoordinatorEmail
+      requestData.assignedCoordinatorEmail
+    );
+    const targetAssignedCoordinatorEmail = normalizeEmail(
+      requestData.targetAssignedCoordinatorEmail
     );
 
     const isAssignedCoordinatorRejection =
-      assignedCoordinatorEmail && assignedCoordinatorEmail === currentUserEmail;
+      assignedCoordinatorEmail === currentUserEmail ||
+      targetAssignedCoordinatorEmail === currentUserEmail;
     const isEmployerRejection = targetEmail === currentUserEmail;
 
-    if (requestData.status !== "pending") {
+    if (normalizeValue(requestData.status) !== "pending") {
       throw new Error("Only pending privacy requests can be rejected.");
     }
 
     if (isEmployerRejection) {
-      if (requestData.employerApprovalStatus !== "pending") {
+      if (normalizeValue(requestData.employerApprovalStatus) !== "pending") {
         throw new Error("Employer approval is not pending.");
       }
     } else if (isAssignedCoordinatorRejection) {
@@ -761,11 +777,11 @@ export const privacyService = {
         throw new Error("Requester cannot reject their own request.");
       }
 
-      if (requestData.employerApprovalStatus !== "approved") {
+      if (normalizeValue(requestData.employerApprovalStatus) !== "approved") {
         throw new Error("Employer approval is required first.");
       }
 
-      if (requestData.coordinatorApprovalStatus !== "pending") {
+      if (normalizeValue(requestData.coordinatorApprovalStatus) !== "pending") {
         throw new Error("Coordinator approval is not pending.");
       }
     } else {
@@ -806,5 +822,13 @@ export const privacyService = {
       status: "rejected",
       message: "Privacy request rejected successfully.",
     };
+  },
+
+  async approveAssignedCoordinatorPrivacyRequest(request, currentUser) {
+    return this.approvePrivacyRequest(request, currentUser);
+  },
+
+  async rejectAssignedCoordinatorPrivacyRequest(request, currentUser) {
+    return this.rejectPrivacyRequest(request, currentUser);
   },
 };
