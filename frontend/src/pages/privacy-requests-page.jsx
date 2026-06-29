@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { privacyService } from "../services/interfaces/privacy-service";
 
@@ -24,14 +24,22 @@ const PrivacyRequestsPage = () => {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState("");
 
-  const isAdmin = userRole === "admin";
+  const currentEmail = String(currentUser?.email || "").trim().toLowerCase();
+  const canUsePage = userRole === "coordinator" || userRole === "employer";
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
+    if (!currentEmail || !userRole) {
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
     try {
-      const data = await privacyService.getPendingPrivacyRequests();
+      const data = await privacyService.getPrivacyRequestsForCurrentUser({
+        email: currentEmail,
+        role: userRole,
+      });
       setRequests(data);
     } catch (error) {
       console.error("Failed to load privacy requests:", error);
@@ -39,11 +47,37 @@ const PrivacyRequestsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentEmail, userRole]);
 
   useEffect(() => {
-    loadRequests();
-  }, []);
+    if (!currentEmail || !userRole) {
+      return;
+    }
+
+    if (!canUsePage) {
+      return;
+    }
+
+    Promise.resolve().then(loadRequests);
+  }, [currentEmail, userRole, canUsePage, loadRequests]);
+
+  const canEmployerAct = (request) =>
+    userRole === "employer" &&
+    request.targetEmail === currentEmail &&
+    request.status === "pending" &&
+    request.employerApprovalStatus === "pending";
+
+  const canCoordinatorAct = (request) =>
+    userRole === "coordinator" &&
+    (request.assignedCoordinatorEmail === currentEmail ||
+      request.targetAssignedCoordinatorEmail === currentEmail) &&
+    request.requesterEmail !== currentEmail &&
+    request.status === "pending" &&
+    request.employerApprovalStatus === "approved" &&
+    request.coordinatorApprovalStatus === "pending";
+
+  const canActOnRequest = (request) =>
+    canEmployerAct(request) || canCoordinatorAct(request);
 
   const handleApprove = async (requestId) => {
     const request = requests.find((item) => item.id === requestId);
@@ -91,7 +125,7 @@ const PrivacyRequestsPage = () => {
     }
   };
 
-  if (!isAdmin) {
+  if (!canUsePage && userRole) {
     return (
       <div
         dir="rtl"
@@ -100,8 +134,8 @@ const PrivacyRequestsPage = () => {
           fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
         }}
       >
-        <h1>אין הרשאה</h1>
-        <p>רק מנהלת יכולה לצפות בבקשות גישה לפרטי קשר.</p>
+        <h1>בקשות גישה לפרטי קשר</h1>
+        <p>העמוד הזה רלוונטי לרכזים ולמעסיקים בלבד.</p>
       </div>
     );
   }
@@ -142,7 +176,7 @@ const PrivacyRequestsPage = () => {
       </h1>
 
       <p style={{ color: "#555", fontSize: "17px", marginBottom: "28px" }}>
-        כאן ניתן לאשר או לדחות בקשות של רכזים לצפייה בפרטי קשר פרטיים של מעסיקים.
+        כאן ניתן לראות בקשות גישה שבהן את/ה משתתף/ת ולעדכן אותן כשנדרש אישורך.
       </p>
 
       {message && (
@@ -170,7 +204,7 @@ const PrivacyRequestsPage = () => {
             boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
           }}
         >
-          אין בקשות ממתינות כרגע.
+          אין בקשות גישה להצגה כרגע.
         </div>
       ) : (
         <div
@@ -202,11 +236,31 @@ const PrivacyRequestsPage = () => {
               </h2>
 
               <p style={{ margin: "8px 0" }}>
-                <strong>רכז מבקש:</strong> {request.requesterEmail}
+                <strong>שם הרכז/ת:</strong>{" "}
+                {request.requesterName || "לא צוין"}
               </p>
 
               <p style={{ margin: "8px 0" }}>
-                <strong>מעסיק:</strong> {request.targetEmail}
+                <strong>מרכז:</strong>{" "}
+                {request.requesterCenterName || "לא צוין"}
+              </p>
+
+              <p style={{ margin: "8px 0" }}>
+                <strong>טלפון:</strong> {request.requesterPhone || "לא צוין"}
+              </p>
+
+              <p style={{ margin: "8px 0" }}>
+                <strong>אימייל:</strong> {request.requesterEmail}
+              </p>
+
+              <p style={{ margin: "8px 0" }}>
+                <strong>סטטוס אישור מעסיק:</strong>{" "}
+                {request.employerApprovalStatus}
+              </p>
+
+              <p style={{ margin: "8px 0" }}>
+                <strong>סטטוס אישור רכז משויך:</strong>{" "}
+                {request.coordinatorApprovalStatus}
               </p>
 
               <p style={{ margin: "8px 0" }}>
@@ -217,51 +271,57 @@ const PrivacyRequestsPage = () => {
                 <strong>נוצר בתאריך:</strong> {formatDate(request.createdAt)}
               </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  marginTop: "18px",
-                }}
-              >
-                <button
-                  onClick={() => handleApprove(request.id)}
-                  disabled={actionLoadingId === request.id}
+              {canActOnRequest(request) && (
+                <div
                   style={{
-                    padding: "10px 18px",
-                    border: "none",
-                    borderRadius: "999px",
-                    background: "#0f7b35",
-                    color: "white",
-                    cursor:
-                      actionLoadingId === request.id ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
-                    fontFamily: "inherit",
-                    opacity: actionLoadingId === request.id ? 0.7 : 1,
+                    display: "flex",
+                    gap: "12px",
+                    marginTop: "18px",
                   }}
                 >
-                  {actionLoadingId === request.id ? "מאשר..." : "אשר"}
-                </button>
+                  <button
+                    onClick={() => handleApprove(request.id)}
+                    disabled={actionLoadingId === request.id}
+                    style={{
+                      padding: "10px 18px",
+                      border: "none",
+                      borderRadius: "999px",
+                      background: "#0f7b35",
+                      color: "white",
+                      cursor:
+                        actionLoadingId === request.id
+                          ? "not-allowed"
+                          : "pointer",
+                      fontWeight: "bold",
+                      fontFamily: "inherit",
+                      opacity: actionLoadingId === request.id ? 0.7 : 1,
+                    }}
+                  >
+                    {actionLoadingId === request.id ? "מאשר..." : "אשר"}
+                  </button>
 
-                <button
-                  onClick={() => handleReject(request.id)}
-                  disabled={actionLoadingId === request.id}
-                  style={{
-                    padding: "10px 18px",
-                    border: "none",
-                    borderRadius: "999px",
-                    background: "#b00020",
-                    color: "white",
-                    cursor:
-                      actionLoadingId === request.id ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
-                    fontFamily: "inherit",
-                    opacity: actionLoadingId === request.id ? 0.7 : 1,
-                  }}
-                >
-                  {actionLoadingId === request.id ? "דוחה..." : "דחה"}
-                </button>
-              </div>
+                  <button
+                    onClick={() => handleReject(request.id)}
+                    disabled={actionLoadingId === request.id}
+                    style={{
+                      padding: "10px 18px",
+                      border: "none",
+                      borderRadius: "999px",
+                      background: "#b00020",
+                      color: "white",
+                      cursor:
+                        actionLoadingId === request.id
+                          ? "not-allowed"
+                          : "pointer",
+                      fontWeight: "bold",
+                      fontFamily: "inherit",
+                      opacity: actionLoadingId === request.id ? 0.7 : 1,
+                    }}
+                  >
+                    {actionLoadingId === request.id ? "דוחה..." : "דחה"}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
