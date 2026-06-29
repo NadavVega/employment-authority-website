@@ -214,9 +214,24 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     ['title', 'type', 'date', 'startTime', 'endTime', 'description'].forEach(field => {
         if (!formData[field]) newErrors[field] = 'שדה זה הוא חובה';
     });
-    // location is only required for in-person events
-    if (!formData.isOnline && !formData.location) {
+    
+    if (!formData.coordinatorName || !nameRegex.test(formData.coordinatorName)) {
+      newErrors.coordinatorName = 'נא להזין שם תקין (אותיות ורווחים בלבד)';
+    }
+
+    // location validation
+    if (formData.isOnline) {
+      if (!formData.location) {
         newErrors.location = 'שדה זה הוא חובה';
+      } else if (!formData.location.startsWith('http://') && !formData.location.startsWith('https://')) {
+        newErrors.location = 'קישור חייב להתחיל ב-http:// או https://';
+      }
+    } else {
+      if (!formData.location) {
+        newErrors.location = 'שדה זה הוא חובה';
+      } else if (formData.location.trim().length < 2) {
+        newErrors.location = 'כתובת אינה תקינה';
+      }
     }
 
     if (!isCapacityUnlimited && !formData.capacity) {
@@ -531,6 +546,11 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                 )}
               </div>
               {errors.location && <span className="error-text">{errors.location}</span>}
+              {!formData.isOnline && formData.location && !formData.location.includes('ירושלים') && (
+                <span className="warning-text" style={{ color: '#d97706', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  שים לב: המיקום שהוזן אינו מכיל את המילה "ירושלים". האם זו טעות?
+                </span>
+              )}
             </div>
 
             {/* Description */}
@@ -551,10 +571,11 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
                 type="text"
                 value={formData.coordinatorName || ''}
                 onChange={e => setFormData({ ...formData, coordinatorName: e.target.value })}
-                className="input-standard"
+                className={`input-standard ${errors.coordinatorName ? 'error-border' : ''}`}
                 placeholder="שם מלא"
                 style={{ marginBottom: '10px' }}
               />
+              {errors.coordinatorName && <span className="error-text" style={{ marginBottom: '10px', display: 'block' }}>{errors.coordinatorName}</span>}
               {renderPhoneInputs(coordinatorPhones, setCoordinatorPhones, 'coordPhone')}
             </div>
             {/* Accessibility toggle */}

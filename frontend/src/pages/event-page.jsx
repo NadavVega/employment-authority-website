@@ -806,6 +806,16 @@ const handleRegisterClick = async (event) => {
                                     <span className="event-card-type">{selectedEvent.type || 'אירוע'}</span>
                                     <span className="event-title-separator" aria-hidden="true">|</span>
                                     <span>{selectedEvent.title}</span>
+                                    {selectedEvent.paymentMethod && (
+                                        <>
+                                            <span className="event-title-separator" aria-hidden="true">|</span>
+                                            <span className="event-payment-type" style={{ fontSize: '0.9em', fontWeight: 600, color: 'var(--color-primary, #1a56db)' }}>
+                                                {selectedEvent.paymentMethod === 'none' 
+                                                    ? 'חינם' 
+                                                    : selectedEvent.price ? `₪${selectedEvent.price}` : 'בתשלום'}
+                                            </span>
+                                        </>
+                                    )}
                                 </h2>
                                 <div className="modal-header-actions">
                                     {canViewSelectedEventParticipants && (
