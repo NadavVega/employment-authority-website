@@ -1,0 +1,108 @@
+.page-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-6);
+    min-height: 88px;
+    padding: var(--space-4) var(--space-12);
+    background: var(--color-brand-dark);
+    border-bottom: 3px solid var(--color-brand);
+    overflow: hidden;
+    direction: rtl;
+}
+
+.page-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 50%,
+        rgba(0, 0, 0, 0.94) 100%
+    );
+    pointer-events: none;
+}
+
+.page-hero-decoration {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 65%;
+    opacity: 0.72;
+    pointer-events: none;
+}
+
+.page-hero-logo {
+    position: absolute;
+    top: 50%;
+    right: var(--space-12);
+    z-index: 2;
+    width: 100px;
+    height: 68px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    filter: drop-shadow(0 2px 7px rgba(0, 0, 0, 0.28));
+    transform: translateY(-50%);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.page-hero-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.page-hero-copy {
+    position: relative;
+    z-index: 2;
+    padding-right: 124px;
+}
+
+.page-hero-extra {
+    position: relative;
+    z-index: 2;
+}
+
+.page-hero h1 {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.38);
+}
+
+.page-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.86);
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 760px) {
+    .page-hero {
+        min-height: 80px;
+        padding: var(--space-4);
+    }
+
+    .page-hero-decoration {
+        opacity: 0.64;
+    }
+
+    .page-hero-logo {
+        right: var(--space-4);
+        width: 72px;
+        height: 52px;
+    }
+
+    .page-hero-copy {
+        padding-right: 90px;
+    }
+}

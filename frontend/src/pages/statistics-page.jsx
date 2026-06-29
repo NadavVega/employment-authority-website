@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 
 import { useAuth } from '../context/auth-context';
+import { PageHero } from '../components/layout/PageHero';
 import { statisticsService } from '../services/interfaces/statistics-service';
 import { CENTER_COLORS } from '../utils/centerColors';
 import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
@@ -44,6 +45,21 @@ const STATS_COLORS = {
     grey: '#98a2b3',
     track: '#edf1f6',
 };
+
+const MONTH_FULL_LABELS = [
+    'ינואר',
+    'פברואר',
+    'מרץ',
+    'אפריל',
+    'מאי',
+    'יוני',
+    'יולי',
+    'אוגוסט',
+    'ספטמבר',
+    'אוקטובר',
+    'נובמבר',
+    'דצמבר',
+];
 
 const cardSx = {
     borderRadius: '4px',
@@ -108,6 +124,14 @@ const buildCenterCardRows = (statistics) => {
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('he-IL');
+
+const getNumberedMonthLabel = (monthIndex, monthName) => {
+    const numericIndex = Number(monthIndex);
+    const safeIndex = Number.isInteger(numericIndex) ? numericIndex : -1;
+    const label = monthName || MONTH_FULL_LABELS[safeIndex] || '';
+
+    return label ? `${String(safeIndex + 1).padStart(2, '0')} ${label}` : '';
+};
 
 const sumValues = (values = []) => values.reduce((sum, value) => sum + Number(value || 0), 0);
 
@@ -246,7 +270,7 @@ const StatisticsTooltip = ({ active, payload, label }) => {
 };
 
 const MonthAxisTick = ({ x, y, payload, chartData, onMonthSelect }) => {
-    const monthData = chartData.find((item) => item.month === payload?.value);
+    const monthData = chartData.find((item) => item.monthLabel === payload?.value);
 
     return (
         <text
@@ -261,7 +285,7 @@ const MonthAxisTick = ({ x, y, payload, chartData, onMonthSelect }) => {
                 if (monthData) {
                     onMonthSelect({
                         monthIndex: monthData.monthIndex,
-                        monthName: monthData.monthName || monthData.month,
+                        monthName: monthData.monthLabel || monthData.monthName || monthData.month,
                     });
                 }
             }}
@@ -299,13 +323,9 @@ const ModeButton = ({ active, children, onClick }) => (
 const StatisticsModeToggle = ({ activeMode, onModeChange }) => (
     <Stack
         direction="row"
-        spacing={0.75}
+        spacing={1}
         sx={{
             alignSelf: { xs: 'flex-start', sm: 'center' },
-            p: 0.5,
-            border: `1px solid ${STATS_COLORS.border}`,
-            borderRadius: '4px',
-            bgcolor: '#ffffff',
         }}
     >
         <ModeButton active={activeMode === 'overall'} onClick={() => onModeChange('overall')}>
@@ -315,121 +335,6 @@ const StatisticsModeToggle = ({ activeMode, onModeChange }) => (
             לפי מרכזים
         </ModeButton>
     </Stack>
-);
-
-const ContextChip = ({ children, inverse = false }) => (
-    <Box
-        component="span"
-        sx={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            width: 'fit-content',
-            px: 1.25,
-            py: 0.35,
-            borderRadius: '4px',
-            borderInlineStart: `3px solid ${STATS_COLORS.gold}`,
-            bgcolor: inverse ? 'rgba(255, 255, 255, 0.14)' : '#fbfcfe',
-            color: inverse ? '#ffffff' : STATS_COLORS.navy,
-            fontSize: '0.8rem',
-            fontWeight: 900,
-            backdropFilter: inverse ? 'blur(2px)' : 'none',
-        }}
-    >
-        {children}
-    </Box>
-);
-
-const StatisticsPageHero = ({
-    centerName,
-    isAdmin,
-}) => (
-    <Box
-        component="header"
-        className="statistics-page-hero"
-        sx={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            minHeight: { xs: 132, md: 148 },
-            px: { xs: 2.5, sm: 4, md: 6 },
-            py: { xs: 3, md: 3.5 },
-            bgcolor: STATS_COLORS.navy,
-            borderBottom: `3px solid ${STATS_COLORS.municipalBlue}`,
-            overflow: 'hidden',
-            direction: 'rtl',
-        }}
-    >
-        <Box
-            component="img"
-            src={eventsDecoration}
-            alt=""
-            aria-hidden="true"
-            sx={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 65%',
-                opacity: 0.66,
-            }}
-        />
-        <Box
-            aria-hidden="true"
-            sx={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 32, 74, 0.92) 100%)',
-            }}
-        />
-        <Box
-            component="img"
-            src={employmentLogo}
-            alt=""
-            aria-hidden="true"
-            sx={{
-                position: 'relative',
-                zIndex: 1,
-                width: { xs: 74, md: 96 },
-                height: { xs: 52, md: 66 },
-                objectFit: 'contain',
-                flexShrink: 0,
-                ml: { xs: 2, md: 3 },
-                filter: 'drop-shadow(0 2px 7px rgba(0, 0, 0, 0.3))',
-            }}
-        />
-        <Box sx={{ position: 'relative', zIndex: 1, minWidth: 0 }}>
-            <ContextChip inverse>
-                {isAdmin ? 'מבט מנהל' : 'מבט רכז'}
-            </ContextChip>
-            <Typography
-                variant="h3"
-                component="h1"
-                sx={{
-                    mt: 1,
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    fontWeight: 950,
-                    fontSize: { xs: '1.8rem', md: '2.55rem' },
-                    lineHeight: 1.08,
-                    letterSpacing: 0,
-                    textShadow: '0 2px 8px rgba(0, 0, 0, 0.38)',
-                }}
-            >
-                {isAdmin ? 'סטטיסטיקות' : `סטטיסטיקות${centerName ? ` - ${centerName}` : ''}`}
-            </Typography>
-            <Typography
-                variant="body1"
-                sx={{
-                    mt: 0.5,
-                    color: 'rgba(255, 255, 255, 0.86)',
-                    lineHeight: 1.65,
-                    textShadow: '0 1px 5px rgba(0, 0, 0, 0.42)',
-                }}
-            >
-                תמונת מצב של האירועים, המרכזים וההרשמות
-            </Typography>
-        </Box>
-    </Box>
 );
 
 const StatisticsActionBar = ({
@@ -451,7 +356,7 @@ const StatisticsActionBar = ({
             gap: { xs: 1.5, md: 2.5 },
             flexWrap: 'wrap',
             px: { xs: 2, sm: 3, md: 6 },
-            py: { xs: 1.75, md: 2.25 },
+            py: { xs: 2, md: 3 },
             borderBottom: `1px solid ${STATS_COLORS.border}`,
             bgcolor: '#ffffff',
             direction: 'rtl',
@@ -459,9 +364,6 @@ const StatisticsActionBar = ({
     >
         {isAdmin ? (
             <>
-                {!isMonthView && (
-                    <StatisticsModeToggle activeMode={activeMode} onModeChange={onModeChange} />
-                )}
                 <Autocomplete
                     size="small"
                     options={centerOptions}
@@ -487,6 +389,9 @@ const StatisticsActionBar = ({
                         />
                     )}
                 />
+                {!isMonthView && (
+                    <StatisticsModeToggle activeMode={activeMode} onModeChange={onModeChange} />
+                )}
             </>
         ) : (
             <Box
@@ -580,9 +485,30 @@ const CenterBreakdown = ({ slices = [] }) => {
     );
 };
 
-const StatisticsStatCard = ({ title, value, slices = [], accent = STATS_COLORS.municipalBlue, children }) => (
-    <Card className="statistics-stat-card" sx={{ ...reportCardSx, minHeight: 165, height: '100%' }}>
-        <CardContent sx={{ p: 2, height: '100%', '&:last-child': { pb: 2 } }}>
+const CardHelperText = ({ children }) => (
+    <Typography variant="body2" sx={{ color: STATS_COLORS.muted, fontWeight: 800, lineHeight: 1.45 }}>
+        {children}
+    </Typography>
+);
+
+const LegendLabel = ({ children }) => (
+    <Typography variant="caption" sx={{ color: STATS_COLORS.muted, fontWeight: 900 }}>
+        {children}
+    </Typography>
+);
+
+const StatisticsStatCard = ({
+    title,
+    value,
+    description,
+    legendLabel,
+    note,
+    slices = [],
+    accent = STATS_COLORS.municipalBlue,
+    children,
+}) => (
+    <Card className="statistics-stat-card" sx={{ ...reportCardSx, minHeight: 218, height: '100%' }}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 }, height: '100%', '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
             <Stack spacing={1.5} sx={{ height: '100%' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
                     <Box sx={{ minWidth: 0 }}>
@@ -595,7 +521,14 @@ const StatisticsStatCard = ({ title, value, slices = [], accent = STATS_COLORS.m
                     </Box>
                     <StatisticsRing value={value} slices={slices} color={accent} />
                 </Stack>
-                {children || <CenterBreakdown slices={slices} />}
+                {description && <CardHelperText>{description}</CardHelperText>}
+                {note && <CardHelperText>{note}</CardHelperText>}
+                {children || (
+                    <Stack spacing={0.75} sx={{ mt: 'auto' }}>
+                        {legendLabel && <LegendLabel>{legendLabel}</LegendLabel>}
+                        <CenterBreakdown slices={slices} />
+                    </Stack>
+                )}
             </Stack>
         </CardContent>
     </Card>
@@ -616,10 +549,11 @@ const MiniTrafficChart = ({ traffic }) => {
         <StatisticsStatCard
             title="תנועת משתמשים השנה"
             value={total}
+            description="ציר X: זמן · ציר Y: כמות תנועה"
             slices={[]}
             accent={STATS_COLORS.municipalBlue}
         >
-            <Box sx={{ height: 48, mt: 'auto', direction: 'ltr' }}>
+            <Box sx={{ height: 70, mt: 'auto', direction: 'ltr' }}>
                 {hasTrafficData ? (
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
@@ -639,7 +573,9 @@ const MiniTrafficChart = ({ traffic }) => {
                             height: '100%',
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'flex-end',
                             color: STATS_COLORS.muted,
+                            direction: 'rtl',
                         }}
                     >
                         <Typography variant="caption" fontWeight={800}>
@@ -665,25 +601,32 @@ const StatisticsSummaryGrid = ({ statistics, yearlyTraffic }) => {
                 gridTemplateColumns: {
                     xs: '1fr',
                     sm: 'repeat(2, minmax(0, 1fr))',
-                    lg: 'repeat(4, minmax(0, 1fr))',
+                    lg: 'repeat(2, minmax(0, 1fr))',
+                    xl: 'repeat(4, minmax(220px, 1fr))',
                 },
-                gap: { xs: 1.5, md: 2 },
+                gap: { xs: 1.5, md: 2.5 },
             }}
         >
             <StatisticsStatCard
                 title="נרשמים פעילים"
                 value={activeUsersCard?.total || getActiveRegistrations(statistics)}
+                description="משתמשים שעדיין רשומים לאירועים"
+                legendLabel="צבעים לפי מרכז"
                 slices={activeUsersCard?.slices || []}
             />
             <MiniTrafficChart traffic={yearlyTraffic} />
             <StatisticsStatCard
                 title="אירועים שנוצרו"
                 value={createdEventsCard?.total || getTotalCreatedEvents(statistics)}
+                description="כל האירועים שנוצרו במערכת"
+                legendLabel="צבעים לפי מרכז"
                 slices={createdEventsCard?.slices || []}
             />
             <StatisticsStatCard
                 title="משתתפים בכל הזמנים"
                 value={participantsCard?.total || getTotalParticipants(statistics)}
+                description="כל המשתתפים הרשומים בפועל"
+                note="ביטולים אינם נספרים"
                 slices={participantsCard?.slices || []}
             />
         </Box>
@@ -769,14 +712,17 @@ const StatisticsTrafficChartCard = ({
 };
 
 const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect }) => {
-    const chartData = statistics?.monthlyEvents || [];
+    const chartData = (statistics?.monthlyEvents || []).map((monthData) => ({
+        ...monthData,
+        monthLabel: getNumberedMonthLabel(monthData.monthIndex, monthData.monthName),
+    }));
     const hasChartData = chartData.some((item) => item.active || item.finished);
 
     const handleMonthClick = (monthData) => {
         if (Number.isInteger(monthData?.monthIndex)) {
             onMonthSelect({
                 monthIndex: monthData.monthIndex,
-                monthName: monthData.monthName || monthData.month,
+                monthName: monthData.monthLabel || monthData.monthName || monthData.month,
             });
         }
     };
@@ -797,7 +743,7 @@ const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect }) => {
                             >
                                 <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(99, 112, 131, 0.18)" />
                                 <XAxis
-                                    dataKey="month"
+                                    dataKey="monthLabel"
                                     axisLine={false}
                                     tickLine={false}
                                     interval={0}
@@ -1106,6 +1052,7 @@ const StatisticsPage = () => {
         ? `${visibleMonthDetails.monthName} ${reportYear}`
         : String(reportYear);
     const showCenterView = isAdmin && adminViewMode === 'centers' && !visibleMonthDetails;
+    const coordinatorCenterName = isCoordinator && !isAdmin ? statistics?.centerName : '';
     const handleCenterSelect = (centerName) => {
         setSelectedCenterName(centerName || null);
 
@@ -1123,13 +1070,16 @@ const StatisticsPage = () => {
                 bgcolor: '#f4f6f9',
             }}
         >
-            <StatisticsPageHero
-                centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
-                isAdmin={isAdmin}
+            <PageHero
+                title={isAdmin ? 'סטטיסטיקות' : `סטטיסטיקות${coordinatorCenterName ? ` - ${coordinatorCenterName}` : ''}`}
+                subtitle={isAdmin ? 'תמונת מצב של האירועים, המרכזים וההרשמות' : 'תמונת מצב של המרכז שלך'}
+                logoSrc={employmentLogo}
+                logoAlt="רשות התעסוקה ירושלים"
+                decorationSrc={eventsDecoration}
             />
             <StatisticsActionBar
                 isAdmin={isAdmin}
-                centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
+                centerName={coordinatorCenterName}
                 activeMode={adminViewMode}
                 onModeChange={setAdminViewMode}
                 centerOptions={centerOptions}
