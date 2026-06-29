@@ -555,8 +555,8 @@ const handleRegisterClick = async (event) => {
                     ))}
                     {/* NEW: Archive View Button (Manager Only) */}
                     {isAdmin && (
-                        <button className="btn-secondary pill-btn" onClick={() => alert("תצוגת ארכיון תיבנה בקרוב.")}>
-                            📦 תצוגת ארכיון
+                        <button className="btn-secondary pill-btn" onClick={() => navigate('/events/archive')}>
+                            ארכיון אירועים
                         </button>
                     )}
                     {(userRole === 'coordinator' || userRole === 'admin') && (

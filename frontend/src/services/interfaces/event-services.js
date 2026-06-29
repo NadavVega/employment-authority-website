@@ -10,6 +10,7 @@ import {
     collectionGroup,
     where,
     getDocs,
+    orderBy,
     arrayUnion,
     Timestamp
 } from 'firebase/firestore';
@@ -202,6 +203,25 @@ export const eventService = {
             }
         } catch (error) {
             console.error("Error fetching event by ID:", error);
+            throw error;
+        }
+    },
+
+    async getArchivedEvents() {
+        try {
+            const archivedEventsQuery = query(
+                collection(db, 'events'),
+                where('status', '==', 'archived'),
+                orderBy('date', 'desc')
+            );
+            const snapshot = await getDocs(archivedEventsQuery);
+
+            return snapshot.docs.map((docSnapshot) => ({
+                id: docSnapshot.id,
+                ...docSnapshot.data()
+            }));
+        } catch (error) {
+            console.error("Error fetching archived events:", error);
             throw error;
         }
     },

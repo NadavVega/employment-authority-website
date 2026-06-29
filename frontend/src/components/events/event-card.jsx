@@ -34,14 +34,24 @@ const getReadableTextColor = (backgroundColor) => {
     return luminance > 155 ? '#172033' : '#ffffff';
 };
 
-export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({
+    event,
+    isExpired,
+    isFeatured,
+    isCompact,
+    onOpenDetails,
+    onApprove,
+    onDelete,
+    isRegistered,
+    hideShare = false,
+}) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
     const isCreator = isEventCreatedByCurrentCoordinator(event, currentUser);
     const canEdit = isAdmin || isCreator;
     const isPending = event.status === 'pending';
-    const shouldHideShare = isExpired || isPastEvent(event);
+    const shouldHideShare = hideShare || isExpired || isPastEvent(event);
 
     const handleEditClick = (e) => {
         e.stopPropagation();
@@ -138,7 +148,7 @@ export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetai
                             buttonClassName="edit-pencil-btn-new card-share-action"
                         />
                     )}
-                    {canEdit && (
+                    {canEdit && (!isExpired || onDelete) && (
                         isExpired ? (
                             <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
