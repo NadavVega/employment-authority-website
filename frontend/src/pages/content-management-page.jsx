@@ -67,32 +67,30 @@ const ContentManagementPage = () => {
                 decorationSrc={eventsDecoration}
             />
 
-            <Box className="modern-layout-wrapper" sx={{ pt: { xs: 2.5, md: 3.5 }, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
-                {isAdmin && (
-                    <Box
-                        component="nav"
-                        aria-label="ניווט ניהול תוכן"
-                        className="content-management-nav"
+            {isAdmin && (
+                <Box
+                    component="nav"
+                    aria-label="ניווט ניהול תוכן"
+                    className="content-management-action-bar"
+                >
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(carouselManagementRef)}
                     >
-                        <div className="content-management-nav-group">
-                            <button
-                                type="button"
-                                className="content-management-nav-btn"
-                                onClick={() => scrollToSection(carouselManagementRef)}
-                            >
-                                קרוסלת תוכן
-                            </button>
-                            <button
-                                type="button"
-                                className="content-management-nav-btn"
-                                onClick={() => scrollToSection(articlesManagementRef)}
-                            >
-                                כתבות
-                            </button>
-                        </div>
-                    </Box>
-                )}
-                
+                        קרוסלת תוכן
+                    </button>
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(articlesManagementRef)}
+                    >
+                        כתבות
+                    </button>
+                </Box>
+            )}
+
+            <Box className="modern-layout-wrapper" sx={{ pt: { xs: 2, md: 3 }, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
                 {/* FLEXBOX LAYOUT - 'stretch' forces both columns to be equal height */}
                 <Box sx={{ 
                     display: 'flex', 
