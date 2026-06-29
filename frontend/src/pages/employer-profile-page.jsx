@@ -346,6 +346,10 @@ const EmployerProfilePage = () => {
     return cleanPhone;
   };
 
+  const handleReturnToDirectory = () => {
+    navigate("/directory");
+  };
+
   useEffect(() => {
     const loadEmployerProfile = async () => {
       setLoading(true);
@@ -581,6 +585,16 @@ const EmployerProfilePage = () => {
         logoAlt="רשות התעסוקה ירושלים"
         decorationSrc={eventsDecoration}
       />
+
+      <div className="employer-profile-action-bar">
+        <button
+          type="button"
+          className="employer-profile-back-button"
+          onClick={handleReturnToDirectory}
+        >
+          חזרה לאלפון
+        </button>
+      </div>
 
       <div className="employer-profile-shell">
         <ContactIdentityCard

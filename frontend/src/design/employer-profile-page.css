@@ -1,3 +1,35 @@
+.employer-profile-action-bar {
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+  background: #fff;
+  padding: 14px clamp(16px, 5vw, 48px);
+  box-sizing: border-box;
+}
+
+.employer-profile-back-button {
+  border: 1px solid var(--color-brand);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--color-brand);
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.employer-profile-back-button:hover,
+.employer-profile-back-button:focus-visible {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.employer-profile-back-button:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
 .employer-profile-shell {
   width: 100%;
   max-width: 1280px;
