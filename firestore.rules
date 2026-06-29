@@ -208,6 +208,99 @@ service cloud.firestore {
         && request.resource.data.assignedAt == request.time;
     }
 
+    function isAllowedCoordinatorEmployerCreate(userId) {
+      let data = request.resource.data;
+      let profile = data.profile;
+
+      return isCoordinator()
+        && data.keys().hasOnly([
+          'email',
+          'role',
+          'isWhitelisted',
+          'assignedCoordinatorEmail',
+          'assignedBy',
+          'assignedAt',
+          'createdBy',
+          'createdAt',
+          'updatedAt',
+          'profile'
+        ])
+        && data.keys().hasAll([
+          'email',
+          'role',
+          'isWhitelisted',
+          'assignedCoordinatorEmail',
+          'assignedBy',
+          'assignedAt',
+          'createdBy',
+          'createdAt',
+          'updatedAt',
+          'profile'
+        ])
+        && data.email is string
+        && userId == data.email
+        && data.email == data.email.lower()
+        && data.email != authenticatedEmail()
+        && data.role == 'employer'
+        && data.isWhitelisted == true
+        && data.assignedCoordinatorEmail == authenticatedEmail()
+        && data.assignedBy == authenticatedEmail()
+        && data.assignedAt == request.time
+        && data.createdBy == authenticatedEmail()
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && profile is map
+        && profile.keys().hasOnly([
+          'role',
+          'company',
+          'organization',
+          'fullName',
+          'address',
+          'field',
+          'subField',
+          'contactStatus',
+          'companyId',
+          'logoUrl',
+          'companyDescription',
+          'jobsUrl',
+          'lastContactNote',
+          'lastContactDate'
+        ])
+        && profile.keys().hasAll([
+          'role',
+          'company',
+          'organization',
+          'fullName',
+          'address',
+          'field',
+          'subField',
+          'contactStatus',
+          'companyId',
+          'logoUrl',
+          'companyDescription',
+          'jobsUrl',
+          'lastContactNote',
+          'lastContactDate'
+        ])
+        && profile.role == 'employer'
+        && profile.company is string
+        && profile.company.size() > 0
+        && profile.organization is string
+        && profile.organization.size() > 0
+        && profile.fullName is string
+        && profile.address is string
+        && profile.address.size() > 0
+        && profile.field is string
+        && profile.subField is string
+        && profile.contactStatus is string
+        && profile.companyId is string
+        && profile.logoUrl is string
+        && profile.companyDescription is string
+        && profile.jobsUrl is string
+        && profile.lastContactNote is string
+        && profile.lastContactDate is string;
+    }
+
     function isAssignedCoordinatorForEmployer(userId) {
       return isCoordinator()
         && dataHasRole(resource.data, 'employer')
@@ -228,12 +321,13 @@ service cloud.firestore {
         'profile.subField',
         'profile.population',
         'profile.targetPopulation',
-        'profile.phone',
-        'profile.mobile',
         'profile.logoUrl',
         'profile.companyDescription',
         'profile.jobsUrl',
-        'profile.contactStatus'
+        'profile.contactStatus',
+        'profile.companyId',
+        'profile.lastContactNote',
+        'profile.lastContactDate'
       ]);
       let allowedRootFields = [
         'profile',
@@ -247,12 +341,13 @@ service cloud.firestore {
         'profile.subField',
         'profile.population',
         'profile.targetPopulation',
-        'profile.phone',
-        'profile.mobile',
         'profile.logoUrl',
         'profile.companyDescription',
         'profile.jobsUrl',
         'profile.contactStatus',
+        'profile.companyId',
+        'profile.lastContactNote',
+        'profile.lastContactDate',
         'updatedAt'
       ];
       let allowedProfileFields = [
@@ -266,12 +361,13 @@ service cloud.firestore {
         'subField',
         'population',
         'targetPopulation',
-        'phone',
-        'mobile',
         'logoUrl',
         'companyDescription',
         'jobsUrl',
-        'contactStatus'
+        'contactStatus',
+        'companyId',
+        'lastContactNote',
+        'lastContactDate'
       ];
 
       return isAssignedCoordinatorForEmployer(userId)
@@ -301,14 +397,12 @@ service cloud.firestore {
               == resource.data.profile.get('uid', null)
             && request.resource.data.profile.get('createdAt', null)
               == resource.data.profile.get('createdAt', null)
-            && request.resource.data.profile.get('companyId', null)
-              == resource.data.profile.get('companyId', null)
             && request.resource.data.profile.get('status', null)
               == resource.data.profile.get('status', null)
-            && request.resource.data.profile.get('lastContactNote', null)
-              == resource.data.profile.get('lastContactNote', null)
-            && request.resource.data.profile.get('lastContactDate', null)
-              == resource.data.profile.get('lastContactDate', null)
+            && request.resource.data.profile.get('phone', null)
+              == resource.data.profile.get('phone', null)
+            && request.resource.data.profile.get('mobile', null)
+              == resource.data.profile.get('mobile', null)
           )
         )
         && request.resource.data.get('role', null) == resource.data.get('role', null)
@@ -698,6 +792,78 @@ service cloud.firestore {
           'directPhone',
           'updatedAt'
         ]);
+    }
+
+    function validAssignedCoordinatorPrivateInfoCreate(userId) {
+      let data = request.resource.data;
+
+      return isCoordinator()
+        && assignedCoordinatorEmail(userId) == authenticatedEmail()
+        && data.keys().hasOnly([
+          'phone',
+          'directEmail',
+          'personalMobile',
+          'mobile',
+          'directPhone',
+          'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'phone',
+          'directEmail',
+          'updatedAt'
+        ])
+        && data.phone is string
+        && data.directEmail is string
+        && (
+          !data.keys().hasAny(['personalMobile'])
+          || data.personalMobile is string
+        )
+        && (
+          !data.keys().hasAny(['mobile'])
+          || data.mobile is string
+        )
+        && (
+          !data.keys().hasAny(['directPhone'])
+          || data.directPhone is string
+        )
+        && data.updatedAt == request.time;
+    }
+
+    function validAssignedCoordinatorPrivateInfoUpdate(userId) {
+      return isCoordinator()
+        && assignedCoordinatorEmail(userId) == authenticatedEmail()
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'phone',
+            'directEmail',
+            'personalMobile',
+            'mobile',
+            'directPhone',
+            'updatedAt'
+          ])
+        && (
+          !request.resource.data.keys().hasAny(['phone'])
+          || request.resource.data.phone is string
+        )
+        && (
+          !request.resource.data.keys().hasAny(['directEmail'])
+          || request.resource.data.directEmail is string
+        )
+        && (
+          !request.resource.data.keys().hasAny(['personalMobile'])
+          || request.resource.data.personalMobile is string
+        )
+        && (
+          !request.resource.data.keys().hasAny(['mobile'])
+          || request.resource.data.mobile is string
+        )
+        && (
+          !request.resource.data.keys().hasAny(['directPhone'])
+          || request.resource.data.directPhone is string
+        )
+        && request.resource.data.updatedAt == request.time;
     }
 
     // Events and registrations
@@ -1282,7 +1448,9 @@ service cloud.firestore {
         || isApplicationUser();
       allow list: if isAdmin() || isApplicationUser();
 
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin()
+        || isAllowedCoordinatorEmployerCreate(userId);
+      allow delete: if isAdmin();
       allow update: if isAdmin()
         || isAllowedCoordinatorAssignment(userId)
         || isAllowedAssignedCoordinatorEmployerUpdate(userId)
@@ -1298,6 +1466,7 @@ service cloud.firestore {
         allow create: if privateDocumentId == 'details'
           && (
             isAdmin()
+            || validAssignedCoordinatorPrivateInfoCreate(userId)
             || (
               isSelfUser(userId)
               && isEmployer()
@@ -1315,6 +1484,7 @@ service cloud.firestore {
         allow update: if privateDocumentId == 'details'
           && (
             isAdmin()
+            || validAssignedCoordinatorPrivateInfoUpdate(userId)
             || (
               isSelfUser(userId)
               && isEmployer()

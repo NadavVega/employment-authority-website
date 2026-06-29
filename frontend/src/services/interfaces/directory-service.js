@@ -7,6 +7,7 @@ import {
   where,
   updateDoc,
   setDoc,
+  writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -596,7 +597,7 @@ export const directoryService = {
         address,
         field: String(formData.field || "").trim(),
         subField: String(formData.subField || "").trim(),
-        status: String(formData.status || "").trim(),
+        contactStatus: String(formData.status || "").trim(),
         companyId: String(formData.companyId || "").trim(),
         logoUrl: String(formData.logoUrl || "").trim(),
         companyDescription: String(formData.companyDescription || "").trim(),
@@ -609,8 +610,6 @@ export const directoryService = {
     const privateInfoData = {
       directEmail: email,
       phone,
-      approved_viewers: [],
-      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
@@ -707,7 +706,6 @@ export const directoryService = {
       address,
       field: normalizePublicValue(formData.field, employerProfile.field || ""),
       subField: normalizePublicValue(formData.subField, employerProfile.subField || ""),
-      phone,
       logoUrl: normalizePublicValue(formData.logoUrl, employerProfile.logoUrl || ""),
       companyDescription: normalizePublicValue(
         formData.companyDescription,
@@ -718,32 +716,46 @@ export const directoryService = {
         formData.status,
         employerProfile.contactStatus || ""
       ),
+      companyId: normalizePublicValue(formData.companyId, employerProfile.companyId || ""),
+      lastContactNote: normalizePublicValue(
+        formData.lastContactNote,
+        employerProfile.lastContactNote || ""
+      ),
+      lastContactDate: normalizePublicValue(
+        formData.lastContactDate,
+        employerProfile.lastContactDate || ""
+      ),
     };
 
-    const nextProfile = {
-      ...employerProfile,
+    const publicUpdatePayload = {
+      updatedAt: serverTimestamp(),
     };
 
     let profileChanged = false;
 
     Object.entries(safeProfileUpdates).forEach(([fieldName, value]) => {
       if ((employerProfile[fieldName] || "") !== value) {
-        nextProfile[fieldName] = value;
+        publicUpdatePayload[`profile.${fieldName}`] = value;
         profileChanged = true;
       }
     });
 
-    if (!profileChanged) {
-      return {
-        id: normalizedEmployerEmail,
-        email: normalizedEmployerEmail,
-      };
-    }
-
-    const updates = {
-      profile: nextProfile,
+    const privateInfoRef = doc(
+      db,
+      "users",
+      normalizedEmployerEmail,
+      "private_info",
+      "details"
+    );
+    const privateInfoSnap = await getDoc(privateInfoRef);
+    const privateInfoUpdates = {
+      phone,
       updatedAt: serverTimestamp(),
     };
+
+    if (!privateInfoSnap.exists()) {
+      privateInfoUpdates.directEmail = normalizedEmployerEmail;
+    }
 
     if (import.meta.env.DEV) {
       console.info(
@@ -756,17 +768,29 @@ export const directoryService = {
           employerAssignedCoordinatorEmailRoot:
             employerData.assignedCoordinatorEmail || "",
           employerAssignedCoordinatorEmailProfile:
-            employerProfile.assignedCoordinatorEmail || "",
+          employerProfile.assignedCoordinatorEmail || "",
           resolvedAssignedCoordinatorEmail: assignedCoordinatorEmail,
           docPath: `users/${normalizedEmployerEmail}`,
-          updatePayload: updates,
-          updatePayloadKeys: Object.keys(updates),
+          updatePayload: publicUpdatePayload,
+          updatePayloadKeys: Object.keys(publicUpdatePayload),
+          privateInfoDocPath: `users/${normalizedEmployerEmail}/private_info/details`,
+          privateInfoPayloadKeys: Object.keys(privateInfoUpdates),
         }
       );
     }
 
     try {
-      await updateDoc(employerRef, updates);
+      const batch = writeBatch(db);
+
+      if (profileChanged) {
+        console.log("Employer public update path", normalizedEmployerEmail);
+        console.log("Employer public update payload", publicUpdatePayload);
+        batch.update(employerRef, publicUpdatePayload);
+      }
+
+      batch.set(privateInfoRef, privateInfoUpdates, { merge: true });
+
+      await batch.commit();
     } catch (error) {
       console.error("Profile Update Error:", error);
       throw new Error("שגיאת הרשאות בעדכון הפרופיל הציבורי: " + error.message, {
