@@ -1,13 +1,41 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import AssignmentIndOutlinedIcon from "@mui/icons-material/AssignmentIndOutlined";
+import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import CorporateFareOutlinedIcon from "@mui/icons-material/CorporateFareOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LayersOutlinedIcon from "@mui/icons-material/LayersOutlined";
+import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
+import LocalPhoneOutlinedIcon from "@mui/icons-material/LocalPhoneOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { useAuth } from "../context/auth-context";
+import { PageHero } from "../components/layout/PageHero";
 import { directoryService } from "../services/interfaces/directory-service";
 import { privacyService } from "../services/interfaces/privacy-service";
+import { CENTER_COLORS } from "../utils/centerColors";
+import { getCenterIcon, getEventCenterName } from "../utils/centerIcons";
+import eventsDecoration from "../assets/images/city-view.png";
+import employmentLogo from "../assets/center-icons/taasuka-logo-color.png";
 
 // Design files
 import "../design/global-theme.css";
+import "../design/employer-profile-page.css";
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const isVisibleValue = (value) => {
+  return value && value !== "לא צוין" && String(value).trim() !== "";
+};
 
 const getAssignedCoordinatorEmail = (contact) =>
   normalizeEmail(
@@ -16,6 +44,220 @@ const getAssignedCoordinatorEmail = (contact) =>
       contact?.coordinatorEmail ||
       contact?.profile?.coordinatorEmail
   );
+
+const getContactCenterCandidates = (contact) => [
+  contact?.centerName,
+  contact?.center,
+  contact?.organization,
+  contact?.profile?.centerName,
+  contact?.profile?.center,
+  contact?.rawData?.profile?.centerName,
+  contact?.rawData?.profile?.center,
+  contact?.rawData?.centerName,
+  contact?.rawData?.center,
+];
+
+const getContactCenterIdentity = (contact) => {
+  const matchedCenterName = getContactCenterCandidates(contact)
+    .filter(isVisibleValue)
+    .map((candidate) => getEventCenterName(candidate))
+    .find((centerName) => Boolean(getCenterIcon(centerName)));
+
+  const rawCenterName = getContactCenterCandidates(contact)
+    .filter(isVisibleValue)
+    .map((candidate) => String(candidate || "").trim())
+    .find(Boolean);
+
+  const centerName = matchedCenterName || rawCenterName || "מרכז לא מזוהה";
+
+  return {
+    centerName,
+    icon: matchedCenterName ? getCenterIcon(centerName) : employmentLogo,
+    color: matchedCenterName
+      ? CENTER_COLORS[centerName] || "var(--color-brand)"
+      : "#64748B",
+    isMatched: Boolean(matchedCenterName),
+  };
+};
+
+const ltrValueStyle = {
+  direction: "ltr",
+  unicodeBidi: "plaintext",
+  display: "inline-block",
+  textAlign: "left",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  maxWidth: "100%",
+};
+
+const DetailItem = ({ icon, label, value, ltr = false, children }) => {
+  if (value !== undefined && !isVisibleValue(value)) return null;
+  if (value === undefined && !children) return null;
+
+  return (
+    <div className="employer-profile-detail-item">
+      <span className="employer-profile-detail-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div className="employer-profile-detail-content">
+        <span className="employer-profile-detail-label">{label}</span>
+        <span
+          className="employer-profile-detail-value"
+          dir={ltr ? "ltr" : undefined}
+          style={ltr ? ltrValueStyle : undefined}
+        >
+          {children || value}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const SectionCard = ({ title, icon, children, className = "" }) => (
+  <section className={`employer-profile-section-card ${className}`}>
+    <div className="employer-profile-section-heading">
+      <span className="employer-profile-section-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <h2>{title}</h2>
+    </div>
+    {children}
+  </section>
+);
+
+const EmptyState = ({ icon, children }) => (
+  <div className="employer-profile-empty-state">
+    <span aria-hidden="true">{icon}</span>
+    <p>{children}</p>
+  </div>
+);
+
+const ContactIdentityCard = ({
+  employer,
+  isCoordinatorContact,
+  isEmployerContact,
+  centerIdentity,
+  displayRole,
+}) => {
+  const accentColor = isCoordinatorContact
+    ? centerIdentity.color
+    : "var(--color-brand)";
+  const logoSrc = isCoordinatorContact ? centerIdentity.icon : employer.logoUrl;
+  const organizationName = isCoordinatorContact
+    ? centerIdentity.centerName
+    : employer.organization;
+  const contactName =
+    employer.name || (isCoordinatorContact ? employer.email : "") || "איש קשר";
+  const roleLine = [
+    displayRole(employer.role),
+    isCoordinatorContact && employer.population,
+  ]
+    .filter(isVisibleValue)
+    .join(" · ");
+
+  return (
+    <section
+      className="employer-profile-identity-card"
+      style={{ "--contact-accent": accentColor }}
+    >
+      <div className="employer-profile-identity-accent" aria-hidden="true" />
+      <div className="employer-profile-identity-logo">
+        {isVisibleValue(logoSrc) ? (
+          <img
+            src={logoSrc}
+            alt={
+              isCoordinatorContact
+                ? `לוגו ${organizationName}`
+                : `לוגו ${organizationName || "חברה"}`
+            }
+          />
+        ) : (
+          <BusinessOutlinedIcon fontSize="large" />
+        )}
+      </div>
+      <div className="employer-profile-identity-copy">
+        {isVisibleValue(organizationName) && <p>{organizationName}</p>}
+        <h1>{contactName}</h1>
+        {isVisibleValue(roleLine) && <span>{roleLine}</span>}
+      </div>
+      {isEmployerContact && isVisibleValue(employer.status) && (
+        <div className="employer-profile-status-chip">{employer.status}</div>
+      )}
+    </section>
+  );
+};
+
+const ActionPanel = ({
+  canAssignEmployer,
+  canEditEmployer,
+  assignmentLoading,
+  requestLoading,
+  handleAssignEmployerToCoordinator,
+  handleRequestAccess,
+  handleEditEmployer,
+  canRequestAccess,
+  accessStatus,
+  hasApprovedAccess,
+  isAdmin,
+  isEmployerContact,
+}) => (
+  <SectionCard title="פעולות וסטטוס" icon={<InfoOutlinedIcon />}>
+    <div className="employer-profile-action-list">
+      {canAssignEmployer && (
+        <button
+          className="employer-profile-button employer-profile-button-primary"
+          onClick={handleAssignEmployerToCoordinator}
+          disabled={assignmentLoading}
+        >
+          {assignmentLoading
+            ? "משייך מעסיק..."
+            : "אני מרכז/ת את הקשר עם מעסיק זה"}
+        </button>
+      )}
+
+      {canEditEmployer && (
+        <button
+          className="employer-profile-button employer-profile-button-primary"
+          onClick={handleEditEmployer}
+        >
+          עריכת פרטי מעסיק
+        </button>
+      )}
+
+      {canRequestAccess && accessStatus === "none" && (
+        <button
+          className="employer-profile-button employer-profile-button-secondary"
+          onClick={handleRequestAccess}
+          disabled={requestLoading}
+        >
+          {requestLoading ? "שולח בקשה..." : "בקשת גישה לפרטי קשר"}
+        </button>
+      )}
+
+      {!canAssignEmployer &&
+        !canEditEmployer &&
+        !(canRequestAccess && accessStatus === "none") && (
+          <p className="employer-profile-muted">אין פעולות זמינות כרגע.</p>
+        )}
+
+      {!isAdmin && accessStatus === "pending" && (
+        <p className="employer-profile-warning">
+          בקשת הגישה נשלחה וממתינה לאישורים הנדרשים.
+        </p>
+      )}
+
+      {!isAdmin && accessStatus === "rejected" && (
+        <p className="employer-profile-danger">בקשת הגישה נדחתה.</p>
+      )}
+
+      {isEmployerContact && !canRequestAccess && !hasApprovedAccess && (
+        <p className="employer-profile-muted">
+          רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
+        </p>
+      )}
+    </div>
+  </SectionCard>
+);
 
 const EmployerProfilePage = () => {
   const { employerId } = useParams();
@@ -104,18 +346,8 @@ const EmployerProfilePage = () => {
     return cleanPhone;
   };
 
-  const isVisibleValue = (value) => {
-    return value && value !== "לא צוין" && String(value).trim() !== "";
-  };
-
-  const ltrValueStyle = {
-    direction: "ltr",
-    unicodeBidi: "plaintext",
-    display: "inline-block",
-    textAlign: "left",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
-    maxWidth: "100%",
+  const handleReturnToDirectory = () => {
+    navigate("/directory");
   };
 
   useEffect(() => {
@@ -312,337 +544,330 @@ const EmployerProfilePage = () => {
       isVisibleValue(employer.lastContactNote) ||
       isVisibleValue(employer.lastContactDate));
 
+  const centerIdentity = isCoordinatorContact
+    ? getContactCenterIdentity(employer)
+    : null;
+
+  const hasCoordinatorContactDetails =
+    isCoordinatorContact &&
+    (isVisibleValue(displayEmail) || isVisibleValue(displayPhone));
+
+  const hasEmployerBasicDetails =
+    isEmployerContact &&
+    (isVisibleValue(employer.name) ||
+      isVisibleValue(employer.role) ||
+      isVisibleValue(employer.organization) ||
+      isVisibleValue(employer.field) ||
+      isVisibleValue(employer.subField) ||
+      isVisibleValue(employer.address) ||
+      isVisibleValue(employer.notes) ||
+      ((isCoordinator || isAdmin) &&
+        (isVisibleValue(employer.assignedCoordinatorEmail) ||
+          isVisibleValue(employer.assignedCoordinatorName) ||
+          isEmployerContact)));
+
+  const handleEditEmployer = () =>
+    navigate(`/directory/${encodeURIComponent(employer.email)}/edit`);
+
   return (
     <div
       dir="rtl"
       style={{
-        padding: "40px",
-        maxWidth: "900px",
-        margin: "0 auto",
+        minHeight: "100vh",
+        background: "#f4f6f9",
         fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
       }}
     >
-      <h1>פרטי איש קשר</h1>
+      <PageHero
+        title="פרטי איש קשר"
+        subtitle="מידע על מעסיק, רכז או איש קשר במערכת"
+        logoSrc={employmentLogo}
+        logoAlt="רשות התעסוקה ירושלים"
+        decorationSrc={eventsDecoration}
+      />
 
-      <div
-        style={{
-          marginTop: "24px",
-          padding: "28px",
-          border: "1px solid #ddd",
-          borderRadius: "16px",
-          background: "#fff",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-        }}
-      >
-        {isEmployerContact && isVisibleValue(employer.logoUrl) && (
-          <div style={{ marginBottom: "18px", textAlign: "center" }}>
-            <img
-              src={employer.logoUrl}
-              alt={`לוגו ${employer.organization || "חברה"}`}
-              style={{
-                maxWidth: "180px",
-                maxHeight: "100px",
-                objectFit: "contain",
-                border: "1px solid #dde3ec",
-                borderRadius: "12px",
-                padding: "10px",
-                background: "#fff",
-              }}
-            />
-          </div>
-        )}
+      <div className="employer-profile-action-bar">
+        <button
+          type="button"
+          className="employer-profile-back-button"
+          onClick={handleReturnToDirectory}
+        >
+          חזרה לאלפון
+        </button>
+      </div>
 
-        {isVisibleValue(employer.organization) && <h2>{employer.organization}</h2>}
+      <div className="employer-profile-shell">
+        <ContactIdentityCard
+          employer={employer}
+          isCoordinatorContact={isCoordinatorContact}
+          isEmployerContact={isEmployerContact}
+          centerIdentity={centerIdentity}
+          displayRole={displayRole}
+        />
 
-        {isVisibleValue(employer.name) && (
-          <p>
-            <strong>שם איש קשר:</strong> {employer.name}
-          </p>
-        )}
-
-        {isVisibleValue(employer.role) && (
-          <p>
-            <strong>תפקיד:</strong> {displayRole(employer.role)}
-          </p>
-        )}
-
-        {isCoordinatorContact && isVisibleValue(employer.centerName) && (
-          <p>
-            <strong>מרכז / ארגון:</strong> {employer.centerName}
-          </p>
-        )}
-
-        {isCoordinatorContact && isVisibleValue(employer.population) && (
-          <p>
-            <strong>אוכלוסייה:</strong> {employer.population}
-          </p>
-        )}
-        {isCoordinatorContact && isVisibleValue(displayEmail) && (
-          <p>
-              <strong>אימייל:</strong>{" "}
-              <span dir="ltr" style={ltrValueStyle}>
-                {displayEmail}
-              </span>
-          </p>
-        )}
-
-
-        {isCoordinatorContact && isVisibleValue(displayPhone) && (
-          <p>
-            <strong>טלפון:</strong>{" "}
-            <span dir="ltr" style={ltrValueStyle}>
-              {displayPhone}
-            </span>
-          </p>
-        )}
-
-        {isEmployerContact && isVisibleValue(employer.field) && (
-          <p>
-            <strong>תחום:</strong> {employer.field}
-          </p>
-        )}
-
-        {isEmployerContact && isVisibleValue(employer.subField) && (
-          <p>
-            <strong>תת־תחום:</strong> {employer.subField}
-          </p>
-        )}
-
-        {isEmployerContact && isVisibleValue(employer.address) && (
-          <p>
-            <strong>כתובת:</strong> {employer.address}
-          </p>
-        )}
-
-        {isEmployerContact && (isCoordinator || isAdmin) && (
-          <>
-            <p>
-              <strong>רכז משויך:</strong>{" "}
-              {employer.assignedCoordinatorEmail
-              ? employer.assignedCoordinatorEmail
-              : "טרם שויך למרכז"}
-            </p>
-
-          {isVisibleValue(employer.assignedCoordinatorName) && (
-           <p>
-             <strong>שם רכז:</strong> {employer.assignedCoordinatorName}
-          </p>
-      )}
-  </>
-)}
-
-        {canAssignEmployer && (
-          <button
-            onClick={handleAssignEmployerToCoordinator}
-            disabled={assignmentLoading}
-            style={{
-              marginTop: "12px",
-              padding: "10px 18px",
-              border: "none",
-              borderRadius: "999px",
-              background: "#0f766e",
-              color: "white",
-              cursor: assignmentLoading ? "not-allowed" : "pointer",
-              opacity: assignmentLoading ? 0.7 : 1,
-              fontFamily: "inherit",
-              fontWeight: 700,
-            }}
-          >
-            {assignmentLoading
-              ? "משייך מעסיק..."
-              : "אני מרכז/ת את הקשר עם מעסיק זה"}
-          </button>
-        )}
-
-        {canEditEmployer && (
-          <button
-            onClick={() =>
-              navigate(`/directory/${encodeURIComponent(employer.email)}/edit`)
-            }
-            style={{
-              marginTop: "12px",
-              marginRight: "12px",
-              padding: "10px 18px",
-              border: "none",
-              borderRadius: "999px",
-              background: "#1976d2",
-              color: "white",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              fontWeight: 700,
-            }}
-          >
-            עריכת פרטי מעסיק
-          </button>
-        )}
-
-        {isVisibleValue(employer.notes) && (
-          <p>
-            <strong>הערות:</strong> {employer.notes}
-          </p>
-        )}
-
-        {hasCompanyDetails && (
-          <>
-            <hr style={{ margin: "24px 0" }} />
-
-            <h3>פרטי חברה</h3>
-
-            {isVisibleValue(employer.status) && (
-              <p>
-                <strong>סטטוס קשר:</strong> {employer.status}
-              </p>
-            )}
-
-            {isVisibleValue(employer.companyId) && (
-              <p>
-                <strong>ח.פ / מזהה חברה:</strong>{" "}
-                <span dir="ltr" style={ltrValueStyle}>
-                  {employer.companyId}
-                </span>
-              </p>
-            )}
-
-            {isVisibleValue(employer.companyDescription) && (
-              <p>
-                <strong>תיאור החברה:</strong> {employer.companyDescription}
-              </p>
-            )}
-
-            {isVisibleValue(employer.jobsUrl) && (
-              <p>
-                <strong>קישור לאזור משרות:</strong>{" "}
-                <a
-                  href={employer.jobsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    color: "#003f9e",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                  }}
-                >
-                  מעבר לאזור המשרות
-                </a>
-              </p>
-            )}
-
-            {isVisibleValue(employer.lastContactNote) && (
-              <p>
-                <strong>תיעוד קשר אחרון:</strong> {employer.lastContactNote}
-              </p>
-            )}
-
-            {isVisibleValue(employer.lastContactDate) && (
-              <p>
-                <strong>תאריך קשר אחרון:</strong>{" "}
-                {displayProfileDate(employer.lastContactDate)}
-              </p>
-            )}
-          </>
-        )}
-
-        {isEmployerContact && (
-          <>
-            <hr style={{ margin: "24px 0" }} />
-
-            <h3>פרטי קשר פרטיים</h3>
-
-            {hasApprovedAccess ? (
-              <>
-                {isVisibleValue(displayEmail) && (
-                  <p>
-                    <strong>אימייל:</strong>{" "}
-                    <span dir="ltr" style={ltrValueStyle}>
-                      {displayEmail}
-                    </span>
-                  </p>
-                )}
-
-                {isVisibleValue(displayPhone) && (
-                  <p>
-                    <strong>טלפון:</strong>{" "}
-                    <span dir="ltr" style={ltrValueStyle}>
-                      {displayPhone}
-                    </span>
-                  </p>
-                )}
-
-                {!isVisibleValue(displayEmail) &&
-                  !isVisibleValue(displayPhone) && (
-                    <p style={{ color: "#666" }}>
-                      אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
-                    </p>
-                  )}
-              </>
-            ) : (
-              <>
-                <p>
-                  <strong>אימייל:</strong> מוסתר
-                </p>
-
-                <p>
-                  <strong>טלפון:</strong> מוסתר
-                </p>
-
-                <p style={{ color: "#666" }}>
-                  פרטי הקשר מוסתרים עד שהמעסיק יאשר את בקשת הגישה.
-                </p>
-              </>
-            )}
-
-            {!isAdmin && (
-              <p>
-                <strong>סטטוס גישה:</strong>{" "}
-                {displayAccessStatus(accessStatus)}
-              </p>
-            )}
-
-            {canRequestAccess && accessStatus === "none" && (
-              <button
-                onClick={handleRequestAccess}
-                disabled={requestLoading}
-                style={{
-                  marginTop: "16px",
-                  padding: "10px 18px",
-                  border: "none",
-                  borderRadius: "999px",
-                  background: "#1976d2",
-                  color: "white",
-                  cursor: requestLoading ? "not-allowed" : "pointer",
-                  opacity: requestLoading ? 0.7 : 1,
-                  fontFamily: "inherit",
-                }}
+        <div className="employer-profile-layout">
+          <main className="employer-profile-main-column">
+            {isCoordinatorContact && (
+              <SectionCard
+                title="פרטי רכז"
+                icon={<PersonOutlineOutlinedIcon />}
               >
-                {requestLoading ? "שולח בקשה..." : "בקשת גישה לפרטי קשר"}
-              </button>
+                <div className="employer-profile-detail-grid">
+                  <DetailItem
+                    icon={<PersonOutlineOutlinedIcon />}
+                    label="שם איש קשר"
+                    value={employer.name}
+                  />
+                  <DetailItem
+                    icon={<BadgeOutlinedIcon />}
+                    label="תפקיד"
+                    value={displayRole(employer.role)}
+                  />
+                  <DetailItem
+                    icon={<BusinessOutlinedIcon />}
+                    label="מרכז / ארגון"
+                    value={centerIdentity?.centerName}
+                  />
+                  <DetailItem
+                    icon={<GroupsOutlinedIcon />}
+                    label="אוכלוסייה"
+                    value={employer.population}
+                  />
+                  <DetailItem
+                    icon={<EmailOutlinedIcon />}
+                    label="אימייל"
+                    value={displayEmail}
+                    ltr
+                  />
+                  <DetailItem
+                    icon={<LocalPhoneOutlinedIcon />}
+                    label="טלפון"
+                    value={displayPhone}
+                    ltr
+                  />
+                </div>
+                {!hasCoordinatorContactDetails && (
+                  <EmptyState icon={<InfoOutlinedIcon />}>
+                    לא נשמרו פרטי התקשרות נוספים לרכז זה.
+                  </EmptyState>
+                )}
+              </SectionCard>
             )}
 
-            {!isAdmin && accessStatus === "pending" && (
-              <p style={{ marginTop: "16px", color: "#b26a00" }}>
-                בקשת הגישה נשלחה וממתינה לאישורים הנדרשים.
-              </p>
+            {hasEmployerBasicDetails && (
+              <SectionCard
+                title="פרטי איש קשר"
+                icon={<PersonOutlineOutlinedIcon />}
+              >
+                <div className="employer-profile-detail-grid">
+                  <DetailItem
+                    icon={<PersonOutlineOutlinedIcon />}
+                    label="שם איש קשר"
+                    value={employer.name}
+                  />
+                  <DetailItem
+                    icon={<BadgeOutlinedIcon />}
+                    label="תפקיד"
+                    value={displayRole(employer.role)}
+                  />
+                  <DetailItem
+                    icon={<BusinessOutlinedIcon />}
+                    label="מרכז / ארגון"
+                    value={employer.organization}
+                  />
+                  <DetailItem
+                    icon={<CategoryOutlinedIcon />}
+                    label="תחום"
+                    value={employer.field}
+                  />
+                  <DetailItem
+                    icon={<LayersOutlinedIcon />}
+                    label="תת־תחום"
+                    value={employer.subField}
+                  />
+                  <DetailItem
+                    icon={<LocationOnOutlinedIcon />}
+                    label="כתובת"
+                    value={employer.address}
+                  />
+                  {isEmployerContact && (isCoordinator || isAdmin) && (
+                    <DetailItem
+                      icon={<AssignmentIndOutlinedIcon />}
+                      label="רכז משויך"
+                      value={
+                        employer.assignedCoordinatorEmail
+                          ? employer.assignedCoordinatorEmail
+                          : "טרם שויך למרכז"
+                      }
+                      ltr={isVisibleValue(employer.assignedCoordinatorEmail)}
+                    />
+                  )}
+                  <DetailItem
+                    icon={<PersonOutlineOutlinedIcon />}
+                    label="שם רכז"
+                    value={employer.assignedCoordinatorName}
+                  />
+                  <DetailItem
+                    icon={<NotesOutlinedIcon />}
+                    label="הערות"
+                    value={employer.notes}
+                  />
+                </div>
+              </SectionCard>
             )}
 
-            {!isAdmin && accessStatus === "rejected" && (
-              <p style={{ marginTop: "16px", color: "#b00020" }}>
-                בקשת הגישה נדחתה.
-              </p>
+            {hasCompanyDetails && (
+              <SectionCard
+                title="פרטי חברה"
+                icon={<CorporateFareOutlinedIcon />}
+              >
+                <div className="employer-profile-detail-grid">
+                  <DetailItem
+                    icon={<CheckCircleOutlineOutlinedIcon />}
+                    label="סטטוס קשר"
+                    value={employer.status}
+                  />
+                  <DetailItem
+                    icon={<BadgeOutlinedIcon />}
+                    label="ח.פ / מזהה חברה"
+                    value={employer.companyId}
+                    ltr
+                  />
+                  <DetailItem
+                    icon={<DescriptionOutlinedIcon />}
+                    label="תיאור החברה"
+                    value={employer.companyDescription}
+                  />
+                  <DetailItem
+                    icon={<LinkOutlinedIcon />}
+                    label="קישור לאזור משרות"
+                    value={employer.jobsUrl}
+                  >
+                    <a
+                      href={employer.jobsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="employer-profile-link"
+                    >
+                      מעבר לאזור המשרות
+                    </a>
+                  </DetailItem>
+                  <DetailItem
+                    icon={<NotesOutlinedIcon />}
+                    label="תיעוד קשר אחרון"
+                    value={employer.lastContactNote}
+                  />
+                  <DetailItem
+                    icon={<CalendarMonthOutlinedIcon />}
+                    label="תאריך קשר אחרון"
+                    value={displayProfileDate(employer.lastContactDate)}
+                  />
+                </div>
+              </SectionCard>
             )}
 
-            {!canRequestAccess && !hasApprovedAccess && (
-              <p style={{ marginTop: "16px", color: "#777" }}>
-                רק רכז יכול לבקש גישה לפרטי קשר פרטיים.
-              </p>
+            {isEmployerContact && (
+              <SectionCard
+                title="פרטי קשר פרטיים"
+                icon={<LockOutlinedIcon />}
+              >
+                {hasApprovedAccess ? (
+                  isVisibleValue(displayEmail) || isVisibleValue(displayPhone) ? (
+                    <div className="employer-profile-detail-grid">
+                      <DetailItem
+                        icon={<EmailOutlinedIcon />}
+                        label="אימייל"
+                        value={displayEmail}
+                        ltr
+                      />
+                      <DetailItem
+                        icon={<LocalPhoneOutlinedIcon />}
+                        label="טלפון"
+                        value={displayPhone}
+                        ltr
+                      />
+                    </div>
+                  ) : (
+                    <EmptyState icon={<InfoOutlinedIcon />}>
+                      אין פרטי קשר פרטיים שמורים עבור מעסיק זה.
+                    </EmptyState>
+                  )
+                ) : (
+                  <div className="employer-profile-locked-card">
+                    <LockOutlinedIcon aria-hidden="true" />
+                    <div>
+                      <h3>פרטי הקשר מוסתרים</h3>
+                      <p>
+                        פרטי הקשר מוסתרים עד שהמעסיק יאשר את בקשת הגישה.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
             )}
-          </>
-        )}
+          </main>
 
-        {message && (
-          <p style={{ marginTop: "16px" }}>
-            <strong>{message}</strong>
-          </p>
-        )}
+          <aside className="employer-profile-side-column">
+            <ActionPanel
+              canAssignEmployer={canAssignEmployer}
+              canEditEmployer={canEditEmployer}
+              assignmentLoading={assignmentLoading}
+              requestLoading={requestLoading}
+              handleAssignEmployerToCoordinator={
+                handleAssignEmployerToCoordinator
+              }
+              handleRequestAccess={handleRequestAccess}
+              handleEditEmployer={handleEditEmployer}
+              canRequestAccess={canRequestAccess}
+              accessStatus={accessStatus}
+              hasApprovedAccess={hasApprovedAccess}
+              isAdmin={isAdmin}
+              isEmployerContact={isEmployerContact}
+            />
+
+            <SectionCard
+              title={isCoordinatorContact ? "שיוך מרכז" : "זיהוי חברה"}
+              icon={<BusinessOutlinedIcon />}
+            >
+              <div className="employer-profile-logo-panel">
+                {isCoordinatorContact && centerIdentity?.icon ? (
+                  <img
+                    src={centerIdentity.icon}
+                    alt={`לוגו ${centerIdentity.centerName}`}
+                  />
+                ) : isEmployerContact && isVisibleValue(employer.logoUrl) ? (
+                  <img
+                    src={employer.logoUrl}
+                    alt={`לוגו ${employer.organization || "חברה"}`}
+                  />
+                ) : (
+                  <BusinessOutlinedIcon fontSize="large" />
+                )}
+                <p>
+                  {isCoordinatorContact
+                    ? centerIdentity?.centerName
+                    : employer.organization || "לא צוין ארגון"}
+                </p>
+              </div>
+            </SectionCard>
+
+            {isEmployerContact && !isAdmin && (
+              <SectionCard title="סטטוס גישה" icon={<LockOutlinedIcon />}>
+                <DetailItem
+                  icon={<InfoOutlinedIcon />}
+                  label="סטטוס גישה"
+                  value={displayAccessStatus(accessStatus)}
+                />
+              </SectionCard>
+            )}
+
+            {message && (
+              <div className="employer-profile-message">
+                <strong>{message}</strong>
+              </div>
+            )}
+          </aside>
+        </div>
       </div>
     </div>
   );

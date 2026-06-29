@@ -1,8 +1,99 @@
+.directory-page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f4f6f9;
+  font-family: "Assistant", "Heebo", "Arial", sans-serif;
+}
+
+.directory-action-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 18px 48px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+  direction: rtl;
+  box-sizing: border-box;
+}
+
+.directory-filter-control {
+  width: 100%;
+  min-height: 42px;
+  flex: 1 1 190px;
+  max-width: 260px;
+  padding: 0 14px;
+  border: 1px solid #d6dce5;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.directory-filter-control:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(0, 63, 158, 0.14);
+}
+
+.directory-search-input {
+  flex-basis: 360px;
+  max-width: 520px;
+  text-align: right;
+}
+
+.directory-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  border: 1px solid #0f766e;
+  border-radius: 4px;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.directory-add-button:hover,
+.directory-add-button:focus-visible {
+  background: #0b5d58;
+  border-color: #0b5d58;
+  outline: none;
+}
+
+.directory-content {
+  width: 100%;
+  max-width: none;
+  padding: 28px 48px 56px;
+  box-sizing: border-box;
+}
+
+.directory-error {
+  margin: 0 0 20px;
+  color: #b00020;
+  text-align: center;
+}
+
+.directory-empty-state {
+  margin: 0;
+  color: #1f2937;
+  font-size: 18px;
+  text-align: center;
+}
+
 .directory-section {
   margin-bottom: 14px;
   overflow: hidden;
   border: 1px solid #dbe3ee;
-  border-radius: 14px;
+  border-radius: 4px;
   background: #fff;
   box-shadow: 0 3px 10px rgba(0, 43, 92, 0.07);
 }
@@ -80,6 +171,50 @@
   background: #f8fafc;
 }
 
+.directory-center-identity-cell {
+  width: 86px;
+  min-width: 86px;
+  padding: 7px 10px !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.directory-center-identity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  direction: ltr;
+  white-space: nowrap;
+}
+
+.directory-center-accent {
+  width: 4px;
+  height: 38px;
+  background: var(--center-color);
+  border-radius: 0;
+  flex: 0 0 auto;
+}
+
+.directory-center-logo {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #ffffff;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.directory-center-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .directory-section-empty {
   margin: 0;
   padding: 18px;
@@ -88,6 +223,22 @@
 }
 
 @media (max-width: 700px) {
+  .directory-action-bar {
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  .directory-filter-control,
+  .directory-search-input,
+  .directory-add-button {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .directory-content {
+    padding: 20px 16px 40px;
+  }
+
   .directory-section-header {
     min-height: 48px;
     padding: 9px 12px;

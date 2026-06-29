@@ -29,6 +29,8 @@ const CENTER_DEFINITIONS = [
             'מרכז הקריירה באוניברסיטה העיברית',
             'אוניברסיטה העברית',
             'אוניברסיטה העיברית',
+            'huji',
+            'huji career center',
             'hebrew-career',
             'hebrew career',
         ],

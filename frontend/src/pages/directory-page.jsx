@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
+import { PageHero } from "../components/layout/PageHero";
 import { directoryService } from "../services/interfaces/directory-service";
+import { CENTER_COLORS } from "../utils/centerColors";
+import { getCenterIcon, getEventCenterName } from "../utils/centerIcons";
+import eventsDecoration from "../assets/images/city-view.png";
+import employmentLogo from "../assets/center-icons/taasuka-logo-color.png";
 
 // Design files
 import "../design/global-theme.css";
@@ -448,6 +453,39 @@ const getContactCompany = (contact) => {
   );
 };
 
+const getCoordinatorCenterCandidates = (contact) => [
+  contact?.centerName,
+  contact?.center,
+  contact?.organization,
+  contact?.profile?.centerName,
+  contact?.profile?.center,
+  contact?.rawData?.profile?.centerName,
+  contact?.rawData?.profile?.center,
+  contact?.rawData?.centerName,
+  contact?.rawData?.center,
+];
+
+const getCoordinatorCenterIdentity = (contact) => {
+  const matchedCenterName = getCoordinatorCenterCandidates(contact)
+    .filter(isVisibleValue)
+    .map((candidate) => getEventCenterName(candidate))
+    .find((centerName) => Boolean(getCenterIcon(centerName)));
+
+  const rawCenterName = getCoordinatorCenterCandidates(contact)
+    .filter(isVisibleValue)
+    .map((candidate) => String(candidate || "").trim())
+    .find(Boolean);
+
+  const centerName = matchedCenterName || rawCenterName || "מרכז לא מזוהה";
+
+  return {
+    centerName,
+    icon: matchedCenterName ? getCenterIcon(centerName) : employmentLogo,
+    color: matchedCenterName ? CENTER_COLORS[centerName] || "#64748B" : "#64748B",
+    isMatched: Boolean(matchedCenterName),
+  };
+};
+
 const directoryCollator = new Intl.Collator("he", {
   numeric: true,
   sensitivity: "base",
@@ -704,7 +742,7 @@ const DirectoryPage = () => {
             className="directory-table"
             style={{
               width: "100%",
-              minWidth: isCoordinatorTable ? "900px" : "1400px",
+              minWidth: isCoordinatorTable ? "980px" : "1400px",
               borderCollapse: "collapse",
               fontSize: "15px",
               textAlign: "right",
@@ -744,6 +782,12 @@ const DirectoryPage = () => {
                 )}
 
                 <th style={{ padding: "14px 12px" }}>פעולות</th>
+                {isCoordinatorTable && (
+                  <th
+                    className="directory-center-identity-cell"
+                    aria-label="זהות מרכז"
+                  />
+                )}
               </tr>
             </thead>
 
@@ -751,6 +795,9 @@ const DirectoryPage = () => {
               {tableContacts.map((contact) => {
                 const { mainCategory, subCategory } =
                   getContactFieldClassification(contact);
+                const centerIdentity = isCoordinatorTable
+                  ? getCoordinatorCenterIdentity(contact)
+                  : null;
 
                 return (
                   <tr key={contact.id} style={{ borderBottom: "1px solid #edf0f5" }}>
@@ -921,6 +968,31 @@ const DirectoryPage = () => {
                         צפייה בפרופיל
                       </button>
                     </td>
+
+                    {isCoordinatorTable && (
+                      <td className="directory-center-identity-cell">
+                        <div
+                          className="directory-center-identity"
+                          style={{ "--center-color": centerIdentity.color }}
+                          title={centerIdentity.centerName}
+                        >
+                          <span
+                            className="directory-center-accent"
+                            aria-hidden="true"
+                          />
+                          <span className="directory-center-logo">
+                            <img
+                              src={centerIdentity.icon}
+                              alt={
+                                centerIdentity.isMatched
+                                  ? `לוגו ${centerIdentity.centerName}`
+                                  : "לוגו ברירת מחדל"
+                              }
+                            />
+                          </span>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -951,108 +1023,39 @@ const DirectoryPage = () => {
   return (
     <div
       dir="rtl"
-      style={{
-        padding: "32px",
-        width: "100%",
-        maxWidth: "1500px",
-        margin: "0 auto",
-        fontFamily: '"Assistant", "Heebo", "Arial", sans-serif',
-      }}
+      className="directory-page"
     >
-      <h1
-        style={{
-          textAlign: "center",
-          fontSize: "42px",
-          color: "#002b5c",
-          marginBottom: "12px",
-          fontWeight: 700,
-        }}
-      >
-        אלפון מעסיקים ורכזים
-      </h1>
+      <PageHero
+        title="אלפון מעסיקים ורכזים"
+        subtitle="איתור אנשי קשר, מעסיקים ורכזים ברשות התעסוקה"
+        logoSrc={employmentLogo}
+        logoAlt="רשות התעסוקה ירושלים"
+        decorationSrc={eventsDecoration}
+      />
 
-      <p
-        style={{
-          textAlign: "center",
-          color: "#555",
-          fontSize: "18px",
-          marginBottom: "28px",
-        }}
-      >
-        כאן ניתן לצפות באנשי קשר, מעסיקים וגורמים רלוונטיים ברשות התעסוקה.
-      </p>
-
-      {userRole === "coordinator" && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "24px",
-          }}
-        >
+      <section className="directory-action-bar" aria-label="סינון אלפון">
+        {userRole === "coordinator" && (
           <button
+            type="button"
+            className="directory-add-button"
             onClick={() => navigate("/directory/new")}
-            style={{
-              padding: "12px 22px",
-              border: "none",
-              borderRadius: "999px",
-              background: "#0f766e",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
           >
             הוספת מעסיק חדש
           </button>
-        </div>
-      )}
+        )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "14px",
-          alignItems: "center",
-          margin: "0 auto 28px auto",
-          maxWidth: "1180px",
-        }}
-      >
         <input
+          className="directory-filter-control directory-search-input"
           type="text"
           placeholder="חיפוש לפי שם, חברה/מרכז, תפקיד, תחום, אוכלוסייה, טלפון, כתובת או ח.פ..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "14px 18px",
-            border: "2px solid #d6dce5",
-            borderRadius: "12px",
-            fontSize: "16px",
-            background: "#ffffff",
-            color: "#1f2937",
-            textAlign: "right",
-            outline: "none",
-            boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
-            fontFamily: "inherit",
-          }}
         />
 
         <select
+          className="directory-filter-control"
           value={roleFilter}
           onChange={(e) => handleRoleFilterChange(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "14px 16px",
-            border: "2px solid #d6dce5",
-            borderRadius: "12px",
-            fontSize: "15px",
-            background: "#ffffff",
-            color: "#1f2937",
-            outline: "none",
-            boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
-            fontFamily: "inherit",
-          }}
         >
           <option value="all">כל התפקידים</option>
           <option value="employer">מעסיקים</option>
@@ -1061,20 +1064,9 @@ const DirectoryPage = () => {
 
         {userRole === "coordinator" && roleFilter !== "coordinator" && (
           <select
+            className="directory-filter-control"
             value={employerAssignmentFilter}
             onChange={(e) => setEmployerAssignmentFilter(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "14px 16px",
-              border: "2px solid #d6dce5",
-              borderRadius: "12px",
-              fontSize: "15px",
-              background: "#ffffff",
-              color: "#1f2937",
-              outline: "none",
-              boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
-              fontFamily: "inherit",
-            }}
           >
             <option value="all">כל המעסיקים</option>
             <option value="mine">המעסיקים שלי</option>
@@ -1083,20 +1075,9 @@ const DirectoryPage = () => {
         )}
 
         <select
+          className="directory-filter-control"
           value={mainFieldFilter}
           onChange={(e) => handleMainFieldChange(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "14px 16px",
-            border: "2px solid #d6dce5",
-            borderRadius: "12px",
-            fontSize: "15px",
-            background: "#ffffff",
-            color: "#1f2937",
-            outline: "none",
-            boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
-            fontFamily: "inherit",
-          }}
         >
           <option value="all">כל התחומים</option>
           {availableMainCategories.map((category) => (
@@ -1107,20 +1088,9 @@ const DirectoryPage = () => {
         </select>
 
         <select
+          className="directory-filter-control"
           value={subFieldFilter}
           onChange={(e) => setSubFieldFilter(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "14px 16px",
-            border: "2px solid #d6dce5",
-            borderRadius: "12px",
-            fontSize: "15px",
-            background: "#ffffff",
-            color: "#1f2937",
-            outline: "none",
-            boxShadow: "0 3px 10px rgba(0, 43, 92, 0.08)",
-            fontFamily: "inherit",
-          }}
         >
           <option value="all">כל תתי התחומים</option>
           {availableSubCategories.map((subCategory) => (
@@ -1129,34 +1099,36 @@ const DirectoryPage = () => {
             </option>
           ))}
         </select>
-      </div>
+      </section>
 
-      {error && (
-        <p style={{ color: "red", textAlign: "center", marginBottom: "20px" }}>
-          {error}
-        </p>
-      )}
+      <main className="directory-content">
+        {error && (
+          <p className="directory-error">
+            {error}
+          </p>
+        )}
 
-      {coordinatorContacts.length + employerContacts.length === 0 ? (
-        <p style={{ textAlign: "center", fontSize: "18px" }}>
-          לא נמצאו אנשי קשר להצגה.
-        </p>
-      ) : (
-        <>
-          {roleFilter === "coordinator" &&
-            renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
+        {coordinatorContacts.length + employerContacts.length === 0 ? (
+          <p className="directory-empty-state">
+            לא נמצאו אנשי קשר להצגה.
+          </p>
+        ) : (
+          <>
+            {roleFilter === "coordinator" &&
+              renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
 
-          {roleFilter === "employer" &&
-            renderContactsTable(employerContacts, "employer", "מעסיקים")}
+            {roleFilter === "employer" &&
+              renderContactsTable(employerContacts, "employer", "מעסיקים")}
 
-          {roleFilter === "all" && (
-            <>
-              {renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
-              {renderContactsTable(employerContacts, "employer", "מעסיקים")}
-            </>
-          )}
-        </>
-      )}
+            {roleFilter === "all" && (
+              <>
+                {renderContactsTable(coordinatorContacts, "coordinator", "רכזים")}
+                {renderContactsTable(employerContacts, "employer", "מעסיקים")}
+              </>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 };

@@ -795,8 +795,8 @@ service cloud.firestore {
     }
 
     function isEventArchiveTransition() {
-      return resource.data.status != 'deleted'
-        && request.resource.data.status == 'deleted';
+      return resource.data.status != 'archived'
+        && request.resource.data.status == 'archived';
     }
 
     function validAdminPastArchive() {
@@ -804,6 +804,16 @@ service cloud.firestore {
         && eventUpdateKeepsOwnership()
         && isEventArchiveTransition()
         && eventHasPassed(resource.data)
+        && request.resource.data.archivedAt == request.time
+        && (
+          request.resource.data.archivedBy == request.auth.uid
+          || (
+            hasAuthenticatedEmail()
+            && request.resource.data.archivedBy is string
+            && request.resource.data.archivedBy.lower() == authenticatedEmail()
+          )
+        )
+        && request.resource.data.previousStatus == resource.data.status
         && request.resource.data
           .diff(resource.data)
           .affectedKeys()
@@ -811,7 +821,8 @@ service cloud.firestore {
             'status',
             'updatedAt',
             'archivedAt',
-            'deletedAt'
+            'archivedBy',
+            'previousStatus'
           ]);
     }
 

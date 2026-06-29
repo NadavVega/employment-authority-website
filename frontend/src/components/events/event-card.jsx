@@ -34,14 +34,28 @@ const getReadableTextColor = (backgroundColor) => {
     return luminance > 155 ? '#172033' : '#ffffff';
 };
 
-export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetails, onApprove, onDelete, isRegistered }) => {
+export const EventCard = ({
+    event,
+    isExpired,
+    isFeatured,
+    isCompact,
+    onOpenDetails,
+    onApprove,
+    onArchiveAction,
+    archiveActionLabel = 'העבר לארכיון',
+    isArchivedView = false,
+    isRegistered,
+    hideShare = false,
+}) => {
     const { currentUser, isAdmin } = useAuth();
     const navigate = useNavigate();
 
     const isCreator = isEventCreatedByCurrentCoordinator(event, currentUser);
     const canEdit = isAdmin || isCreator;
     const isPending = event.status === 'pending';
-    const shouldHideShare = isExpired || isPastEvent(event);
+    const isArchived = isArchivedView || event.status === 'archived' || event.archived === true || event.isArchived === true || Boolean(event.archivedAt);
+    const shouldHideShare = hideShare || isArchived || isExpired || isPastEvent(event);
+    const canRunArchiveAction = isAdmin && isExpired && onArchiveAction;
 
     const handleEditClick = (e) => {
         e.stopPropagation();
@@ -138,16 +152,23 @@ export const EventCard = ({ event, isExpired, isFeatured, isCompact, onOpenDetai
                             buttonClassName="edit-pencil-btn-new card-share-action"
                         />
                     )}
-                    {canEdit && (
-                        isExpired ? (
-                            <button className="edit-pencil-btn-new card-edit-action" onClick={(e) => { e.stopPropagation(); onDelete(event.id); }} style={{ background: 'var(--color-text-muted)' }} title="העבר לארכיון">
+                    {canRunArchiveAction ? (
+                            <button
+                                className="edit-pencil-btn-new card-edit-action card-archive-action"
+                                onClick={(e) => { e.stopPropagation(); onArchiveAction(event); }}
+                                style={{ background: 'var(--color-text-muted)' }}
+                                title={archiveActionLabel}
+                                aria-label={archiveActionLabel}
+                            >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="2" y="4" width="20" height="5" rx="2" ry="2"></rect>
                                     <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"></path>
                                     <path d="M10 13h4"></path>
                                 </svg>
+                                <span>{archiveActionLabel}</span>
                             </button>
-                        ) : (
+                    ) : (
+                        canEdit && !isExpired && !isArchived && (
                             <button className="edit-pencil-btn-new card-edit-action" onClick={handleEditClick} title="עריכת אירוע">
                                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
