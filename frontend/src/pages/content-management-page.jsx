@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Typography, Box, Tabs, Tab } from '@mui/material';
+import { Typography, Box, Tabs, Tab, Snackbar } from '@mui/material';
 import { useAuth } from '../context/auth-context';
 import { ArticleService } from '../services/ArticleService';
 import { ArticleReviewList } from '../components/manager/ArticleReviewList';
@@ -16,6 +16,7 @@ const ContentManagementPage = () => {
         title: '', sourceName: '', category: 'general', url: '', content: '', imageUrl: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
     const [isBotSettingsOpen, setIsBotSettingsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const manualArticleRef = useRef(null);
@@ -44,11 +45,11 @@ const ContentManagementPage = () => {
         try {
             const managerIdentifier = currentUser?.email || 'unknown';
             await ArticleService.publishArticle(formData, managerIdentifier);
-            alert('הכתבה פורסמה בהצלחה!'); 
+            setSnackbarMessage('הכתבה פורסמה בהצלחה!'); 
             setFormData({ title: '', sourceName: '', category: 'general', url: '', content: '', imageUrl: '' });
         } catch (error) {
             console.error("Error publishing article:", error);
-            alert('אירעה שגיאה בפרסום הכתבה. אנא נסה שוב.');
+            setSnackbarMessage('אירעה שגיאה בפרסום הכתבה. אנא נסה שוב.');
         } finally {
             setIsSubmitting(false);
         }
@@ -122,8 +123,8 @@ const ContentManagementPage = () => {
                                 value={formData.sourceName} onChange={handleChange} 
                             />
                             <input 
-                                type="text" name="url" dir="ltr"
-                                placeholder="קישור חיצוני (URL)" 
+                                type="text" name="url" dir="ltr" required
+                                placeholder="קישור חיצוני (URL) *" 
                                 className="input-standard" 
                                 value={formData.url} onChange={handleChange} 
                             />
@@ -187,6 +188,15 @@ const ContentManagementPage = () => {
                 </Box>
             )}
             {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
+            
+            <Snackbar
+                open={Boolean(snackbarMessage)}
+                autoHideDuration={3000}
+                onClose={() => setSnackbarMessage('')}
+                message={snackbarMessage}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                sx={{ zIndex: 11000 }}
+            />
         </Box>
     );
 };

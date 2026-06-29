@@ -1262,7 +1262,8 @@ service cloud.firestore {
           && resource.data.keys().hasAll(['status'])
           && resource.data.status == 'approved'
         );
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() || isCoordinator();
+      allow update, delete: if isAdmin();
     }
 
     match /promotional_content/{slideId} {
