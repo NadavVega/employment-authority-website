@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
     Alert,
+    Autocomplete,
     Box,
     Button,
     Card,
@@ -9,12 +10,9 @@ import {
     CircularProgress,
     Container,
     Stack,
+    TextField,
     Typography,
 } from '@mui/material';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
     Area,
     AreaChart,
@@ -22,9 +20,7 @@ import {
     BarChart,
     CartesianGrid,
     Cell,
-    Label,
     Line,
-    ReferenceDot,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -33,25 +29,27 @@ import {
 
 import { useAuth } from '../context/auth-context';
 import { statisticsService } from '../services/interfaces/statistics-service';
+import { CENTER_COLORS } from '../utils/centerColors';
+import { getCenterIcon, getEventCenterName } from '../utils/centerIcons';
+import eventsDecoration from '../assets/images/city-view.png';
+import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
 const STATS_COLORS = {
-    navy: '#071b3d',
-    teal: '#1497a8',
-    tealLight: '#18b7bf',
+    navy: '#10233f',
+    municipalBlue: '#003b8b',
+    municipalBlueLight: '#2f6fb6',
     gold: '#e3aa1a',
-    purple: '#9c3bbd',
-    orangeRed: '#f24b35',
-    softBg: '#f6fbff',
-    border: '#071b3d',
+    border: '#d8dee8',
     muted: '#637083',
-    track: '#e8eef5',
+    grey: '#98a2b3',
+    track: '#edf1f6',
 };
 
 const cardSx = {
-    borderRadius: { xs: '14px', md: '16px' },
+    borderRadius: '4px',
     border: `1px solid ${STATS_COLORS.border}`,
-    bgcolor: '#ffffff',
-    boxShadow: '0 18px 38px rgba(7, 27, 61, 0.09)',
+    bgcolor: '#fbfcfe',
+    boxShadow: '0 8px 24px rgba(0, 38, 84, 0.08)',
     overflow: 'hidden',
 };
 
@@ -64,14 +62,49 @@ const reportCardSx = {
         top: 0,
         right: 0,
         left: 0,
-        height: 4,
-        background: `linear-gradient(90deg, ${STATS_COLORS.gold}, ${STATS_COLORS.teal})`,
+        height: 0,
     },
 };
 
 const chartCardSx = {
     ...reportCardSx,
-    minHeight: { xs: 360, md: 420 },
+    width: '100%',
+    height: { xs: 360, md: 300 },
+    minHeight: { xs: 360, md: 300 },
+};
+
+const CENTER_DISPLAY_ORDER = [
+    'מרכז כיוון',
+    'מרכז הזדמנות',
+    'מרכז פיתוח קריירה לאקדמאים',
+    'מרכז ריאן',
+    'מרכז ותיקים בעבודה',
+    'קעליטה',
+    'מרכז הקריירה האוניברסיטה העברית',
+    'תוכניות לעולים',
+];
+
+const buildCenterCardRows = (statistics) => {
+    const cardsByCenter = new Map(
+        (statistics?.centerCards || []).map((card) => [
+            getEventCenterName(card.centerName) || card.centerName,
+            card,
+        ])
+    );
+
+    return CENTER_DISPLAY_ORDER.map((displayName) => {
+        const normalizedName = getEventCenterName(displayName) || displayName;
+        const sourceCard = cardsByCenter.get(normalizedName) || {};
+
+        return {
+            centerName: displayName,
+            activeEvents: sourceCard.activeEvents || 0,
+            finishedEvents: sourceCard.finishedEvents || 0,
+            registrations: sourceCard.registrations || 0,
+            color: sourceCard.color || CENTER_COLORS[normalizedName] || STATS_COLORS.municipalBlue,
+            icon: getCenterIcon(displayName),
+        };
+    });
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('he-IL');
@@ -98,25 +131,6 @@ const getActiveRegistrations = (statistics) => (
     sumValues(Object.values(statistics?.activeSignedUsersByCenter || {}))
 );
 
-const getCurrentMonthRegistrations = (statistics) => (
-    getDonutCard(statistics, 'currentMonthSignedUsers')?.total ||
-    statistics?.totals?.registrationsThisMonth ||
-    0
-);
-
-const getTopCenterRows = (statistics) => {
-    const allParticipants = getDonutCard(statistics, 'allParticipants');
-    const activeSignedUsers = getDonutCard(statistics, 'activeSignedUsers');
-    const createdEvents = getDonutCard(statistics, 'createdEvents');
-    const sourceRows = allParticipants?.slices?.length
-        ? allParticipants.slices
-        : activeSignedUsers?.slices?.length
-            ? activeSignedUsers.slices
-            : createdEvents?.slices || [];
-
-    return sourceRows.slice(0, 6);
-};
-
 const buildYearlySignupTraffic = (statistics) => {
     const data = (statistics?.monthlyDetails || []).map((month) => ({
         month: month.month,
@@ -128,7 +142,7 @@ const buildYearlySignupTraffic = (statistics) => {
 
     return {
         hasData,
-        series: [{ key: 'signups', name: 'הרשמות', color: STATS_COLORS.teal }],
+        series: [{ key: 'signups', name: 'הרשמות', color: STATS_COLORS.municipalBlue }],
         data,
     };
 };
@@ -139,24 +153,12 @@ const normalizeTraffic = (traffic, fallbackTraffic) => {
             ...traffic,
             series: traffic.series.map((line, index) => ({
                 ...line,
-                color: index === 0 ? STATS_COLORS.teal : line.color || STATS_COLORS.navy,
+                color: index === 0 ? STATS_COLORS.municipalBlue : line.color || STATS_COLORS.navy,
             })),
         };
     }
 
     return fallbackTraffic;
-};
-
-const getPeakPoint = (data, key) => {
-    const numericRows = data
-        .map((item) => ({ ...item, value: Number(item[key] || 0) }))
-        .filter((item) => item.value > 0);
-
-    if (!numericRows.length) {
-        return null;
-    }
-
-    return numericRows.reduce((peak, item) => (item.value > peak.value ? item : peak), numericRows[0]);
 };
 
 const ChartEmptyState = ({ children = 'אין נתונים להצגה כרגע' }) => (
@@ -176,33 +178,6 @@ const ChartEmptyState = ({ children = 'אין נתונים להצגה כרגע' 
     </Box>
 );
 
-const StatisticsDecorativeBackground = () => (
-    <Box
-        aria-hidden="true"
-        sx={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-            '&::before': {
-                content: '""',
-                position: 'absolute',
-                inset: 0,
-                opacity: 0.32,
-                backgroundImage: `radial-gradient(${STATS_COLORS.teal} 1px, transparent 1px)`,
-                backgroundSize: '24px 24px',
-                maskImage: 'linear-gradient(90deg, transparent 0%, #000 18%, transparent 72%)',
-            },
-        }}
-    >
-        <Box sx={{ position: 'absolute', top: 56, left: 46, width: 42, height: 42, border: `2px solid ${STATS_COLORS.gold}`, borderRadius: '50%', opacity: 0.34 }} />
-        <Box sx={{ position: 'absolute', top: 170, right: 28, width: 0, height: 0, borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderBottom: `30px solid ${STATS_COLORS.gold}`, opacity: 0.22 }} />
-        <Box sx={{ position: 'absolute', top: 168, right: 35, width: 0, height: 0, borderLeft: '11px solid transparent', borderRight: '11px solid transparent', borderBottom: `19px solid ${STATS_COLORS.softBg}` }} />
-        <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: '13%', width: 1, bgcolor: 'rgba(7, 27, 61, 0.08)' }} />
-        <Box sx={{ position: 'absolute', top: 0, bottom: 0, right: '31%', width: 1, bgcolor: 'rgba(7, 27, 61, 0.06)' }} />
-    </Box>
-);
-
 const DashboardCardHeader = ({ title, subtitle, action }) => (
     <Stack
         direction={{ xs: 'column', sm: 'row' }}
@@ -212,7 +187,17 @@ const DashboardCardHeader = ({ title, subtitle, action }) => (
         sx={{ minWidth: 0 }}
     >
         <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" component="h2" fontWeight={900} sx={{ color: STATS_COLORS.navy, lineHeight: 1.2 }}>
+            <Typography
+                variant="h6"
+                component="h2"
+                fontWeight={950}
+                sx={{
+                    color: STATS_COLORS.navy,
+                    lineHeight: 1.2,
+                    fontSize: { xs: '1.06rem', md: '1.22rem' },
+                    letterSpacing: 0,
+                }}
+            >
                 {title}
             </Typography>
             {subtitle && (
@@ -243,7 +228,7 @@ const StatisticsTooltip = ({ active, payload, label }) => {
                 direction: 'rtl',
                 bgcolor: '#ffffff',
                 border: `1px solid ${STATS_COLORS.border}`,
-                boxShadow: '0 12px 24px rgba(7, 27, 61, 0.12)',
+                boxShadow: '0 10px 22px rgba(7, 27, 61, 0.1)',
                 borderRadius: '10px',
                 p: 1.25,
             }}
@@ -252,7 +237,7 @@ const StatisticsTooltip = ({ active, payload, label }) => {
                 {label}
             </Typography>
             {payload.map((entry) => (
-                <Typography key={`${entry.dataKey}-${entry.name}`} variant="caption" display="block" sx={{ color: entry.color || STATS_COLORS.teal }}>
+                <Typography key={`${entry.dataKey}-${entry.name}`} variant="caption" display="block" sx={{ color: entry.color || STATS_COLORS.municipalBlue }}>
                     {entry.name}: {formatNumber(entry.value)}
                 </Typography>
             ))}
@@ -286,192 +271,422 @@ const MonthAxisTick = ({ x, y, payload, chartData, onMonthSelect }) => {
     );
 };
 
-const CalendarSelectButton = ({ label = 'בחירת חודש' }) => (
+const ModeButton = ({ active, children, onClick }) => (
     <Button
-        variant="outlined"
-        size="small"
-        startIcon={<CalendarMonthIcon />}
-        endIcon={<KeyboardArrowDownIcon />}
+        className="statistics-mode-toggle"
+        variant={active ? 'contained' : 'outlined'}
+        onClick={onClick}
         sx={{
-            alignSelf: { xs: 'flex-start', sm: 'center' },
-            direction: 'rtl',
-            color: STATS_COLORS.navy,
-            borderColor: STATS_COLORS.navy,
-            borderRadius: '999px',
-            px: 1.5,
-            whiteSpace: 'nowrap',
-            bgcolor: '#ffffff',
-            '& .MuiButton-startIcon': { ml: 0.75, mr: 0 },
-            '& .MuiButton-endIcon': { mr: 0.75, ml: 0 },
+            minHeight: 36,
+            px: 1.8,
+            borderRadius: '4px',
+            borderColor: active ? STATS_COLORS.municipalBlue : STATS_COLORS.border,
+            bgcolor: active ? STATS_COLORS.municipalBlue : '#ffffff',
+            color: active ? '#ffffff' : STATS_COLORS.navy,
+            fontWeight: 900,
+            boxShadow: 'none',
             '&:hover': {
-                borderColor: STATS_COLORS.teal,
-                bgcolor: 'rgba(20, 151, 168, 0.08)',
+                borderColor: STATS_COLORS.municipalBlue,
+                bgcolor: active ? STATS_COLORS.municipalBlue : '#f3f7fb',
+                boxShadow: 'none',
             },
         }}
     >
-        {label}
+        {children}
     </Button>
 );
 
-const StatisticsDashboardHeader = ({ year, periodLabel, centerName, isMonthView }) => (
-    <Box
+const StatisticsModeToggle = ({ activeMode, onModeChange }) => (
+    <Stack
+        direction="row"
+        spacing={0.75}
         sx={{
-            position: 'relative',
-            zIndex: 1,
-            borderBottom: `1px solid rgba(7, 27, 61, 0.16)`,
-            pb: { xs: 2.5, md: 3 },
+            alignSelf: { xs: 'flex-start', sm: 'center' },
+            p: 0.5,
+            border: `1px solid ${STATS_COLORS.border}`,
+            borderRadius: '4px',
+            bgcolor: '#ffffff',
         }}
     >
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
-            <Typography variant="overline" sx={{ color: STATS_COLORS.teal, fontWeight: 900, letterSpacing: 0 }}>
-                ניתוח נתוני פעילות
-            </Typography>
-            <Typography variant="overline" sx={{ color: STATS_COLORS.navy, fontWeight: 800, letterSpacing: 0 }}>
-                תקופת דוח: {year}
-            </Typography>
-        </Stack>
+        <ModeButton active={activeMode === 'overall'} onClick={() => onModeChange('overall')}>
+            מבט כללי
+        </ModeButton>
+        <ModeButton active={activeMode === 'centers'} onClick={() => onModeChange('centers')}>
+            לפי מרכזים
+        </ModeButton>
+    </Stack>
+);
 
-        <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box sx={{ position: 'relative', width: 28, height: 25, flexShrink: 0 }}>
-                <Box sx={{ width: 0, height: 0, borderLeft: '14px solid transparent', borderRight: '14px solid transparent', borderBottom: `24px solid ${STATS_COLORS.gold}` }} />
-                <Box sx={{ position: 'absolute', top: 8, left: 8, width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: `11px solid ${STATS_COLORS.softBg}` }} />
-            </Box>
+const ContextChip = ({ children, inverse = false }) => (
+    <Box
+        component="span"
+        sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            width: 'fit-content',
+            px: 1.25,
+            py: 0.35,
+            borderRadius: '4px',
+            borderInlineStart: `3px solid ${STATS_COLORS.gold}`,
+            bgcolor: inverse ? 'rgba(255, 255, 255, 0.14)' : '#fbfcfe',
+            color: inverse ? '#ffffff' : STATS_COLORS.navy,
+            fontSize: '0.8rem',
+            fontWeight: 900,
+            backdropFilter: inverse ? 'blur(2px)' : 'none',
+        }}
+    >
+        {children}
+    </Box>
+);
+
+const StatisticsPageHero = ({
+    centerName,
+    isAdmin,
+}) => (
+    <Box
+        component="header"
+        className="statistics-page-hero"
+        sx={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: { xs: 132, md: 148 },
+            px: { xs: 2.5, sm: 4, md: 6 },
+            py: { xs: 3, md: 3.5 },
+            bgcolor: STATS_COLORS.navy,
+            borderBottom: `3px solid ${STATS_COLORS.municipalBlue}`,
+            overflow: 'hidden',
+            direction: 'rtl',
+        }}
+    >
+        <Box
+            component="img"
+            src={eventsDecoration}
+            alt=""
+            aria-hidden="true"
+            sx={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center 65%',
+                opacity: 0.66,
+            }}
+        />
+        <Box
+            aria-hidden="true"
+            sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 32, 74, 0.92) 100%)',
+            }}
+        />
+        <Box
+            component="img"
+            src={employmentLogo}
+            alt=""
+            aria-hidden="true"
+            sx={{
+                position: 'relative',
+                zIndex: 1,
+                width: { xs: 74, md: 96 },
+                height: { xs: 52, md: 66 },
+                objectFit: 'contain',
+                flexShrink: 0,
+                ml: { xs: 2, md: 3 },
+                filter: 'drop-shadow(0 2px 7px rgba(0, 0, 0, 0.3))',
+            }}
+        />
+        <Box sx={{ position: 'relative', zIndex: 1, minWidth: 0 }}>
+            <ContextChip inverse>
+                {isAdmin ? 'מבט מנהל' : 'מבט רכז'}
+            </ContextChip>
             <Typography
                 variant="h3"
                 component="h1"
                 sx={{
-                    color: STATS_COLORS.navy,
+                    mt: 1,
+                    color: 'rgba(255, 255, 255, 0.9)',
                     fontWeight: 950,
-                    fontSize: { xs: '1.85rem', md: '2.65rem' },
+                    fontSize: { xs: '1.8rem', md: '2.55rem' },
                     lineHeight: 1.08,
+                    letterSpacing: 0,
+                    textShadow: '0 2px 8px rgba(0, 0, 0, 0.38)',
                 }}
             >
-                דשבורד סטטיסטיקות אירועים והרשמות
-                <Box component="span" sx={{ fontWeight: 500 }}> | {periodLabel}</Box>
+                {isAdmin ? 'סטטיסטיקות' : `סטטיסטיקות${centerName ? ` - ${centerName}` : ''}`}
             </Typography>
-        </Stack>
-
-        <Typography variant="body1" sx={{ mt: 1.5, color: STATS_COLORS.muted, maxWidth: 760 }}>
-            {centerName && !isMonthView
-                ? `מבט מרוכז על פעילות המרכז: ${centerName}`
-                : centerName
-                    ? `מבט חודשי על פעילות המרכז: ${centerName}`
-                    : 'מבט מרוכז על אירועים, הרשמות, משתתפים ופעילות מרכזים במערכת'}
-        </Typography>
+            <Typography
+                variant="body1"
+                sx={{
+                    mt: 0.5,
+                    color: 'rgba(255, 255, 255, 0.86)',
+                    lineHeight: 1.65,
+                    textShadow: '0 1px 5px rgba(0, 0, 0, 0.42)',
+                }}
+            >
+                תמונת מצב של האירועים, המרכזים וההרשמות
+            </Typography>
+        </Box>
     </Box>
 );
 
-const StatisticsDonutProgress = ({ label, value, total, color = STATS_COLORS.teal }) => {
-    const percentage = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
-
-    return (
-        <Box sx={{ textAlign: 'center', minWidth: 82 }}>
+const StatisticsActionBar = ({
+    isAdmin,
+    centerName,
+    activeMode,
+    onModeChange,
+    centerOptions,
+    selectedCenter,
+    onCenterSelect,
+    isMonthView,
+    monthAction,
+}) => (
+    <Box
+        className="statistics-action-bar"
+        sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 1.5, md: 2.5 },
+            flexWrap: 'wrap',
+            px: { xs: 2, sm: 3, md: 6 },
+            py: { xs: 1.75, md: 2.25 },
+            borderBottom: `1px solid ${STATS_COLORS.border}`,
+            bgcolor: '#ffffff',
+            direction: 'rtl',
+        }}
+    >
+        {isAdmin ? (
+            <>
+                {!isMonthView && (
+                    <StatisticsModeToggle activeMode={activeMode} onModeChange={onModeChange} />
+                )}
+                <Autocomplete
+                    size="small"
+                    options={centerOptions}
+                    value={selectedCenter}
+                    onChange={(_, value) => onCenterSelect(value)}
+                    noOptionsText="לא נמצאו מרכזים"
+                    clearText="ניקוי"
+                    openText="פתיחה"
+                    closeText="סגירה"
+                    sx={{
+                        width: { xs: '100%', sm: 340 },
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: '4px',
+                            bgcolor: '#ffffff',
+                            fontWeight: 800,
+                        },
+                    }}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            placeholder="חיפוש מרכז..."
+                            aria-label="חיפוש מרכז"
+                        />
+                    )}
+                />
+            </>
+        ) : (
             <Box
                 sx={{
-                    width: 76,
-                    height: 76,
-                    mx: 'auto',
-                    borderRadius: '50%',
-                    background: `conic-gradient(${color} ${percentage * 3.6}deg, ${STATS_COLORS.track} 0deg)`,
-                    display: 'grid',
-                    placeItems: 'center',
+                    minHeight: 38,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    px: 1.5,
                     border: `1px solid ${STATS_COLORS.border}`,
+                    borderRadius: '4px',
+                    color: STATS_COLORS.navy,
+                    bgcolor: '#fbfcfe',
+                    fontWeight: 900,
                 }}
             >
-                <Box
-                    sx={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: '50%',
-                        bgcolor: '#ffffff',
-                        display: 'grid',
-                        placeItems: 'center',
-                        border: '1px solid rgba(7, 27, 61, 0.12)',
-                    }}
-                >
-                    <Typography variant="caption" fontWeight={950} sx={{ color: STATS_COLORS.navy }}>
-                        {percentage}%
-                    </Typography>
-                </Box>
+                מרכז: {centerName || 'לא צוין'}
             </Box>
-            <Typography variant="caption" sx={{ mt: 0.75, display: 'block', color: STATS_COLORS.muted, fontWeight: 800 }}>
-                {label}
+        )}
+        {monthAction && (
+            <Box sx={{ mr: { xs: 0, sm: 'auto' } }}>
+                {monthAction}
+            </Box>
+        )}
+    </Box>
+);
+
+const buildRingGradient = (slices = [], fallbackColor = STATS_COLORS.municipalBlue) => {
+    const total = sumValues(slices.map((slice) => slice.value));
+
+    if (!total) {
+        return `conic-gradient(${STATS_COLORS.track} 0deg 360deg)`;
+    }
+
+    let cursor = 0;
+    const stops = slices.map((slice) => {
+        const start = cursor;
+        const size = (Number(slice.value || 0) / total) * 360;
+        cursor += size;
+        return `${slice.color || fallbackColor} ${start}deg ${cursor}deg`;
+    });
+
+    return `conic-gradient(${stops.join(', ')})`;
+};
+
+const StatisticsRing = ({ value, slices, color = STATS_COLORS.municipalBlue }) => (
+    <Box
+        sx={{
+            width: 68,
+            height: 68,
+            borderRadius: '50%',
+            background: buildRingGradient(slices, color),
+            display: 'grid',
+            placeItems: 'center',
+            flexShrink: 0,
+        }}
+    >
+        <Box
+            sx={{
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                bgcolor: '#ffffff',
+                display: 'grid',
+                placeItems: 'center',
+                border: `1px solid ${STATS_COLORS.border}`,
+            }}
+        >
+            <Typography variant="subtitle1" fontWeight={950} sx={{ color: STATS_COLORS.navy, lineHeight: 1 }}>
+                {formatNumber(value)}
             </Typography>
         </Box>
+    </Box>
+);
+
+const CenterBreakdown = ({ slices = [] }) => {
+    return (
+        <Stack direction="row" spacing={0.6} sx={{ mt: 'auto', flexWrap: 'wrap', rowGap: 0.6 }}>
+            {slices.slice(0, 5).map((slice) => (
+                <Box
+                    key={slice.centerName || slice.name}
+                    title={slice.centerName || slice.name}
+                    sx={{
+                        width: 22,
+                        height: 5,
+                        borderRadius: '999px',
+                        bgcolor: slice.color || STATS_COLORS.municipalBlue,
+                    }}
+                />
+            ))}
+        </Stack>
     );
 };
 
-const StatisticsMetricCard = ({ statistics }) => {
-    const activeRegistrations = getActiveRegistrations(statistics);
-    const totalParticipants = getTotalParticipants(statistics);
-    const currentMonthRegistrations = getCurrentMonthRegistrations(statistics);
-    const activeEvents = statistics?.totals?.activeEvents || 0;
-    const totalEvents = getTotalCreatedEvents(statistics);
+const StatisticsStatCard = ({ title, value, slices = [], accent = STATS_COLORS.municipalBlue, children }) => (
+    <Card className="statistics-stat-card" sx={{ ...reportCardSx, minHeight: 165, height: '100%' }}>
+        <CardContent sx={{ p: 2, height: '100%', '&:last-child': { pb: 2 } }}>
+            <Stack spacing={1.5} sx={{ height: '100%' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle1" fontWeight={950} sx={{ color: STATS_COLORS.navy, lineHeight: 1.25 }}>
+                            {title}
+                        </Typography>
+                        <Typography variant="h4" fontWeight={950} sx={{ mt: 0.75, color: STATS_COLORS.navy, lineHeight: 1 }}>
+                            {formatNumber(value)}
+                        </Typography>
+                    </Box>
+                    <StatisticsRing value={value} slices={slices} color={accent} />
+                </Stack>
+                {children || <CenterBreakdown slices={slices} />}
+            </Stack>
+        </CardContent>
+    </Card>
+);
+
+const MiniTrafficChart = ({ traffic }) => {
+    const series = traffic?.series || [];
+    const data = traffic?.data || [];
+    const primaryKey = series[0]?.key;
+    const hasTrafficData = Boolean(
+        traffic?.hasData &&
+        primaryKey &&
+        data.some((item) => Number(item[primaryKey] || 0) > 0)
+    );
+    const total = hasTrafficData ? sumValues(data.map((item) => item[primaryKey])) : 0;
 
     return (
-        <Card sx={{ ...reportCardSx, minHeight: { xs: 350, md: 420 } }}>
-            <CardContent sx={{ p: { xs: 2.5, md: 3 }, height: '100%', '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
-                <Stack spacing={2.5} sx={{ height: '100%' }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
-                        <Box
-                            sx={{
-                                width: 52,
-                                height: 52,
-                                borderRadius: '14px',
-                                bgcolor: 'rgba(20, 151, 168, 0.12)',
-                                color: STATS_COLORS.teal,
-                                display: 'grid',
-                                placeItems: 'center',
-                                border: `1px solid ${STATS_COLORS.border}`,
-                            }}
-                        >
-                            <NetworkCheckIcon />
-                        </Box>
-                        <Typography variant="overline" sx={{ color: STATS_COLORS.gold, fontWeight: 950, letterSpacing: 0 }}>
-                            מדד מרכזי
-                        </Typography>
-                    </Stack>
-
-                    <Box>
-                        <Typography variant="h2" sx={{ color: STATS_COLORS.navy, fontWeight: 950, fontSize: { xs: '3.2rem', md: '4.3rem' }, lineHeight: 0.95 }}>
-                            {formatNumber(activeRegistrations)}
-                        </Typography>
-                        <Typography variant="h6" component="h2" sx={{ color: STATS_COLORS.navy, fontWeight: 900, mt: 1 }}>
-                            נרשמים פעילים
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: STATS_COLORS.muted, mt: 0.75 }}>
-                            מבוסס על נתוני האירועים במערכת
+        <StatisticsStatCard
+            title="תנועת משתמשים השנה"
+            value={total}
+            slices={[]}
+            accent={STATS_COLORS.municipalBlue}
+        >
+            <Box sx={{ height: 48, mt: 'auto', direction: 'ltr' }}>
+                {hasTrafficData ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={data} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
+                            <Area
+                                type="monotone"
+                                dataKey={primaryKey}
+                                stroke={STATS_COLORS.municipalBlue}
+                                strokeWidth={2}
+                                fill={STATS_COLORS.track}
+                                dot={false}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <Box
+                        sx={{
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: STATS_COLORS.muted,
+                        }}
+                    >
+                        <Typography variant="caption" fontWeight={800}>
+                            אין נתוני תנועה להצגה
                         </Typography>
                     </Box>
+                )}
+            </Box>
+        </StatisticsStatCard>
+    );
+};
 
-                    <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mt: 'auto', flexWrap: 'wrap', rowGap: 2 }}>
-                        <StatisticsDonutProgress
-                            label="מתוך משתתפים"
-                            value={activeRegistrations}
-                            total={totalParticipants}
-                            color={STATS_COLORS.teal}
-                        />
-                        <StatisticsDonutProgress
-                            label="אירועים פעילים"
-                            value={activeEvents}
-                            total={totalEvents}
-                            color={STATS_COLORS.navy}
-                        />
-                    </Stack>
+const StatisticsSummaryGrid = ({ statistics, yearlyTraffic }) => {
+    const activeUsersCard = getDonutCard(statistics, 'activeSignedUsers');
+    const createdEventsCard = getDonutCard(statistics, 'createdEvents');
+    const participantsCard = getDonutCard(statistics, 'allParticipants');
 
-                    <Box sx={{ borderTop: '1px solid rgba(7, 27, 61, 0.12)', pt: 1.5 }}>
-                        <Stack direction="row" justifyContent="space-between" spacing={2}>
-                            <Typography variant="body2" sx={{ color: STATS_COLORS.muted, fontWeight: 800 }}>
-                                נרשמים החודש
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: STATS_COLORS.navy, fontWeight: 950 }}>
-                                {formatNumber(currentMonthRegistrations)}
-                            </Typography>
-                        </Stack>
-                    </Box>
-                </Stack>
-            </CardContent>
-        </Card>
+    return (
+        <Box
+            className="statistics-summary-grid"
+            sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    lg: 'repeat(4, minmax(0, 1fr))',
+                },
+                gap: { xs: 1.5, md: 2 },
+            }}
+        >
+            <StatisticsStatCard
+                title="נרשמים פעילים"
+                value={activeUsersCard?.total || getActiveRegistrations(statistics)}
+                slices={activeUsersCard?.slices || []}
+            />
+            <MiniTrafficChart traffic={yearlyTraffic} />
+            <StatisticsStatCard
+                title="אירועים שנוצרו"
+                value={createdEventsCard?.total || getTotalCreatedEvents(statistics)}
+                slices={createdEventsCard?.slices || []}
+            />
+            <StatisticsStatCard
+                title="משתתפים בכל הזמנים"
+                value={participantsCard?.total || getTotalParticipants(statistics)}
+                slices={participantsCard?.slices || []}
+            />
+        </Box>
     );
 };
 
@@ -491,27 +706,32 @@ const StatisticsTrafficChartCard = ({
         primaryKey &&
         data.some((item) => series.some((line) => Number(item[line.key] || 0) > 0))
     );
-    const peakPoint = hasTrafficData ? getPeakPoint(data, primaryKey) : null;
 
     return (
-        <Card sx={chartCardSx}>
+        <Card
+            className="statistics-main-chart-card"
+            sx={{
+                ...chartCardSx,
+                height: { xs: 360, md: height + 104 },
+                minHeight: { xs: 360, md: height + 104 },
+            }}
+        >
             <CardContent sx={{ p: { xs: 2.5, md: 3 }, height: '100%', '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
                 <DashboardCardHeader
                     title={title}
                     subtitle={subtitle}
-                    action={<CalendarSelectButton />}
                 />
-                <Box sx={{ height: { xs: 260, md: height }, mt: 2.5, direction: 'ltr' }}>
+                <Box sx={{ height: { xs: 250, md: height }, mt: 2, direction: 'ltr' }}>
                     {hasTrafficData ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data} margin={{ top: 38, right: 8, left: 2, bottom: 0 }}>
+                            <AreaChart data={data} margin={{ top: 34, right: 8, left: 2, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="trafficTealGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={STATS_COLORS.tealLight} stopOpacity={0.28} />
-                                        <stop offset="95%" stopColor={STATS_COLORS.tealLight} stopOpacity={0.02} />
+                                        <stop offset="5%" stopColor={STATS_COLORS.municipalBlueLight} stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor={STATS_COLORS.municipalBlueLight} stopOpacity={0.02} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(7, 27, 61, 0.12)" />
+                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(99, 112, 131, 0.18)" />
                                 <XAxis
                                     dataKey={xAxisKey}
                                     axisLine={false}
@@ -520,7 +740,7 @@ const StatisticsTrafficChartCard = ({
                                     interval={0}
                                 />
                                 <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: STATS_COLORS.muted, fontSize: 11 }} width={28} />
-                                <Tooltip content={<StatisticsTooltip />} cursor={{ stroke: STATS_COLORS.teal, strokeDasharray: '4 4' }} />
+                                <Tooltip content={<StatisticsTooltip />} cursor={{ stroke: STATS_COLORS.municipalBlue, strokeDasharray: '4 4' }} />
                                 <Area
                                     type="monotone"
                                     dataKey={primaryKey}
@@ -532,29 +752,11 @@ const StatisticsTrafficChartCard = ({
                                     type="monotone"
                                     dataKey={primaryKey}
                                     name={primarySeries.name}
-                                    stroke={STATS_COLORS.teal}
+                                    stroke={STATS_COLORS.municipalBlue}
                                     strokeWidth={3}
-                                    dot={{ r: 4, fill: STATS_COLORS.navy, stroke: '#ffffff', strokeWidth: 2 }}
+                                    dot={{ r: 3.5, fill: STATS_COLORS.municipalBlue, stroke: '#ffffff', strokeWidth: 2 }}
                                     activeDot={{ r: 6, fill: STATS_COLORS.gold, stroke: STATS_COLORS.navy, strokeWidth: 2 }}
                                 />
-                                {peakPoint && (
-                                    <ReferenceDot
-                                        x={peakPoint[xAxisKey]}
-                                        y={peakPoint.value}
-                                        r={6}
-                                        fill={STATS_COLORS.gold}
-                                        stroke={STATS_COLORS.navy}
-                                        strokeWidth={2}
-                                    >
-                                        <Label
-                                            value={`שיא פעילות ${formatNumber(peakPoint.value)}`}
-                                            position="top"
-                                            fill={STATS_COLORS.navy}
-                                            fontSize={12}
-                                            fontWeight={900}
-                                        />
-                                    </ReferenceDot>
-                                )}
                             </AreaChart>
                         </ResponsiveContainer>
                     ) : (
@@ -566,7 +768,7 @@ const StatisticsTrafficChartCard = ({
     );
 };
 
-const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect, year }) => {
+const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect }) => {
     const chartData = statistics?.monthlyEvents || [];
     const hasChartData = chartData.some((item) => item.active || item.finished);
 
@@ -580,21 +782,20 @@ const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect, year }) => {
     };
 
     return (
-        <Card sx={chartCardSx}>
-            <CardContent sx={{ p: { xs: 2.5, md: 3 }, height: '100%', '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
+        <Card className="statistics-main-chart-card" sx={chartCardSx}>
+            <CardContent sx={{ p: { xs: 2, md: 2.25 }, height: '100%', '&:last-child': { pb: { xs: 2, md: 2.25 } } }}>
                 <DashboardCardHeader
-                    title={`אירועים לפי חודשים (${year})`}
-                    subtitle="לחיצה על חודש פותחת פירוט פעילות חודשי"
+                    title="אירועים לפי חודשים"
                 />
-                <Box sx={{ height: { xs: 260, md: 305 }, mt: 2.5, direction: 'ltr' }}>
+                <Box sx={{ height: { xs: 250, md: 205 }, mt: { xs: 2, md: 1.5 }, direction: 'ltr' }}>
                     {hasChartData ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
                                 data={chartData}
-                                margin={{ top: 18, right: 8, left: 2, bottom: 0 }}
+                                margin={{ top: 12, right: 8, left: 2, bottom: 0 }}
                                 barCategoryGap="28%"
                             >
-                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(7, 27, 61, 0.1)" />
+                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(99, 112, 131, 0.18)" />
                                 <XAxis
                                     dataKey="month"
                                     axisLine={false}
@@ -603,22 +804,22 @@ const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect, year }) => {
                                     tick={<MonthAxisTick chartData={chartData} onMonthSelect={onMonthSelect} />}
                                 />
                                 <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: STATS_COLORS.muted, fontSize: 11 }} width={28} />
-                                <Tooltip content={<StatisticsTooltip />} cursor={{ fill: 'rgba(20, 151, 168, 0.07)' }} />
-                                <Bar dataKey="active" name="אירועים פעילים" fill={STATS_COLORS.teal} radius={[8, 8, 0, 0]} maxBarSize={24}>
+                                <Tooltip content={<StatisticsTooltip />} cursor={{ fill: 'rgba(0, 59, 139, 0.07)' }} />
+                                <Bar dataKey="active" name="אירועים פעילים" fill={STATS_COLORS.municipalBlue} radius={[6, 6, 0, 0]} maxBarSize={34}>
                                     {chartData.map((monthData) => (
                                         <Cell
                                             key={`active-${monthData.monthIndex}`}
-                                            fill={STATS_COLORS.teal}
+                                            fill={STATS_COLORS.municipalBlue}
                                             cursor="pointer"
                                             onClick={() => handleMonthClick(monthData)}
                                         />
                                     ))}
                                 </Bar>
-                                <Bar dataKey="finished" name="אירועים שהסתיימו" fill="#b8c1cc" radius={[8, 8, 0, 0]} maxBarSize={24}>
+                                <Bar dataKey="finished" name="אירועים שהסתיימו" fill={STATS_COLORS.grey} radius={[6, 6, 0, 0]} maxBarSize={34}>
                                     {chartData.map((monthData) => (
                                         <Cell
                                             key={`finished-${monthData.monthIndex}`}
-                                            fill="#b8c1cc"
+                                            fill={STATS_COLORS.grey}
                                             cursor="pointer"
                                             onClick={() => handleMonthClick(monthData)}
                                         />
@@ -635,95 +836,118 @@ const StatisticsEventsByCenterChart = ({ statistics, onMonthSelect, year }) => {
     );
 };
 
-const StatisticsOverviewCard = ({ statistics }) => {
-    const totalEvents = getTotalCreatedEvents(statistics);
-    const totalParticipants = getTotalParticipants(statistics);
-    const rows = getTopCenterRows(statistics);
-    const maxValue = Math.max(...rows.map((row) => Number(row.value || 0)), 0);
+const CenterMetric = ({ label, value }) => (
+    <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ minWidth: 0 }}>
+        <Typography variant="body2" sx={{ color: STATS_COLORS.muted, fontWeight: 800 }}>
+            {label}
+        </Typography>
+        <Typography variant="body2" sx={{ color: STATS_COLORS.navy, fontWeight: 950 }}>
+            {formatNumber(value)}
+        </Typography>
+    </Stack>
+);
+
+const StatisticsCenterGrid = ({ statistics, selectedCenterName }) => {
+    const centerCards = buildCenterCardRows(statistics);
+    const visibleCenterCards = selectedCenterName
+        ? centerCards.filter((center) => center.centerName === selectedCenterName)
+        : centerCards;
 
     return (
-        <Card sx={{ ...reportCardSx, minHeight: { xs: 420, md: 420 } }}>
-            <CardContent sx={{ p: { xs: 2.5, md: 3 }, height: '100%', '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
-                <DashboardCardHeader
-                    title="סקירת פעילות"
-                    subtitle="אירועים, משתתפים ופילוח מרכזים מתוך נתוני המערכת"
-                />
-                <Box
-                    sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '0.85fr 1.15fr' },
-                        gap: { xs: 2.5, md: 3 },
-                        mt: 3,
-                        height: { md: 'calc(100% - 78px)' },
-                    }}
-                >
-                    <Stack spacing={2.5} justifyContent="center">
-                        <Box>
-                            <Typography variant="body2" sx={{ color: STATS_COLORS.muted, fontWeight: 900 }}>
-                                סך אירועים שנוצרו
-                            </Typography>
-                            <Typography variant="h3" sx={{ color: STATS_COLORS.navy, fontWeight: 950, lineHeight: 1 }}>
-                                {formatNumber(totalEvents)}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ height: 1, bgcolor: 'rgba(7, 27, 61, 0.14)' }} />
-                        <Box>
-                            <Typography variant="body2" sx={{ color: STATS_COLORS.muted, fontWeight: 900 }}>
-                                סך משתתפים / הרשמות
-                            </Typography>
-                            <Typography variant="h3" sx={{ color: STATS_COLORS.navy, fontWeight: 950, lineHeight: 1 }}>
-                                {formatNumber(totalParticipants)}
-                            </Typography>
-                        </Box>
-                    </Stack>
+        <Box
+            className="statistics-main-chart-card"
+            sx={{
+                ...chartCardSx,
+                height: 'auto',
+                minHeight: 0,
+                p: { xs: 2, md: 2.25 },
+            }}
+        >
+            <DashboardCardHeader
+                title="סטטיסטיקות לפי מרכזים"
+                subtitle="תמונת פעילות של שמונת המרכזים"
+            />
 
-                    <Box sx={{ borderInlineStart: { md: '1px solid rgba(7, 27, 61, 0.14)' }, ps: { md: 3 } }}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                            <TrendingUpIcon sx={{ color: STATS_COLORS.gold }} />
-                            <Typography variant="subtitle1" fontWeight={950} sx={{ color: STATS_COLORS.navy }}>
-                                מרכזים מובילים לפי פעילות
-                            </Typography>
-                        </Stack>
-
-                        {rows.length ? (
-                            <Stack spacing={1.4}>
-                                {rows.map((row) => {
-                                    const percentage = maxValue > 0 ? Math.max(6, (Number(row.value || 0) / maxValue) * 100) : 0;
-
-                                    return (
+            <Box
+                className="statistics-center-grid"
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, minmax(0, 1fr))',
+                        lg: 'repeat(4, minmax(0, 1fr))',
+                    },
+                    gap: { xs: 1.5, md: 2 },
+                    mt: 2,
+                }}
+            >
+                {visibleCenterCards.map((center) => (
+                    <Box
+                        key={center.centerName}
+                        className="statistics-center-card"
+                        sx={{
+                            ...reportCardSx,
+                            minHeight: 190,
+                            height: '100%',
+                            borderTop: `4px solid ${center.color || STATS_COLORS.municipalBlue}`,
+                            p: 2,
+                        }}
+                    >
+                        <Stack spacing={1.5} sx={{ height: '100%' }}>
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
+                                <Box
+                                    sx={{
+                                        width: 44,
+                                        height: 44,
+                                        flexShrink: 0,
+                                        display: 'grid',
+                                        placeItems: 'center',
+                                        borderRadius: '4px',
+                                        bgcolor: '#ffffff',
+                                        border: `1px solid ${STATS_COLORS.border}`,
+                                        p: 0.5,
+                                    }}
+                                >
+                                    {center.icon && (
                                         <Box
-                                            key={row.centerName || row.name}
+                                            component="img"
+                                            src={center.icon}
+                                            alt={center.centerName}
                                             sx={{
-                                                display: 'grid',
-                                                gridTemplateColumns: { xs: 'minmax(0, 1fr) 48px', sm: '120px minmax(0, 1fr) 52px' },
-                                                gap: 1,
-                                                alignItems: 'center',
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
                                             }}
-                                        >
-                                            <Typography variant="caption" noWrap sx={{ color: STATS_COLORS.navy, fontWeight: 900 }}>
-                                                {row.centerName || row.name}
-                                            </Typography>
-                                            <Box sx={{ height: 10, bgcolor: STATS_COLORS.track, borderRadius: '999px', overflow: 'hidden', gridColumn: { xs: '1 / 2', sm: 'auto' } }}>
-                                                <Box sx={{ height: '100%', width: `${percentage}%`, bgcolor: row.color || STATS_COLORS.teal, borderRadius: '999px' }} />
-                                            </Box>
-                                            <Typography variant="caption" sx={{ color: STATS_COLORS.navy, fontWeight: 950, textAlign: 'left' }}>
-                                                {formatNumber(row.value)}
-                                            </Typography>
-                                        </Box>
-                                    );
-                                })}
+                                        />
+                                    )}
+                                </Box>
+                                <Typography
+                                    variant="subtitle1"
+                                    component="h2"
+                                    sx={{
+                                        color: STATS_COLORS.navy,
+                                        fontWeight: 950,
+                                        lineHeight: 1.25,
+                                        fontSize: '0.98rem',
+                                    }}
+                                >
+                                    {center.centerName}
+                                </Typography>
                             </Stack>
-                        ) : (
-                            <ChartEmptyState>אין פילוח מרכזים להצגה</ChartEmptyState>
-                        )}
+                            <Stack spacing={1} sx={{ mt: 'auto' }}>
+                                <CenterMetric label="אירועים פעילים:" value={center.activeEvents} />
+                                <CenterMetric label="אירועים שהסתיימו:" value={center.finishedEvents} />
+                                <CenterMetric label="נרשמים:" value={center.registrations} />
+                            </Stack>
+                        </Stack>
                     </Box>
-                </Box>
-            </CardContent>
-        </Card>
+                ))}
+            </Box>
+        </Box>
     );
 };
 
-const MonthStatCard = ({ title, value, subtitle, accent = STATS_COLORS.teal }) => (
+const MonthStatCard = ({ title, value, subtitle, accent = STATS_COLORS.municipalBlue }) => (
     <Card sx={reportCardSx}>
         <CardContent sx={{ p: { xs: 2.5, md: 3 }, '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>
             <Box sx={{ width: 40, height: 4, bgcolor: accent, borderRadius: '999px', mb: 2 }} />
@@ -742,54 +966,18 @@ const MonthStatCard = ({ title, value, subtitle, accent = STATS_COLORS.teal }) =
     </Card>
 );
 
-const MonthDetailsView = ({ monthDetails, onBack, year, centerName }) => {
+const MonthDetailsView = ({ monthDetails, year }) => {
     const monthlyTraffic = normalizeTraffic(
         monthDetails.traffic,
         {
             hasData: false,
-            series: [{ key: 'signups', name: 'הרשמות', color: STATS_COLORS.teal }],
+            series: [{ key: 'signups', name: 'הרשמות', color: STATS_COLORS.municipalBlue }],
             data: monthDetails.traffic?.data || [],
         }
     );
 
     return (
         <Stack spacing={3}>
-            <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                alignItems={{ xs: 'stretch', sm: 'center' }}
-                justifyContent="space-between"
-            >
-                <Box>
-                    <Typography variant="h5" component="h2" fontWeight={950} sx={{ color: STATS_COLORS.navy }}>
-                        פירוט פעילות לחודש {monthDetails.monthName} {year}
-                    </Typography>
-                    {centerName && (
-                        <Typography variant="body2" sx={{ color: STATS_COLORS.muted, mt: 0.5 }}>
-                            מרכז: {centerName}
-                        </Typography>
-                    )}
-                </Box>
-                <Button
-                    variant="outlined"
-                    onClick={onBack}
-                    sx={{
-                        alignSelf: { xs: 'flex-start', sm: 'center' },
-                        borderColor: STATS_COLORS.navy,
-                        color: STATS_COLORS.navy,
-                        borderRadius: '999px',
-                        px: 2.5,
-                        fontWeight: 900,
-                        '&:hover': {
-                            borderColor: STATS_COLORS.teal,
-                            bgcolor: 'rgba(20, 151, 168, 0.08)',
-                        },
-                    }}
-                >
-                    חזרה לשנה
-                </Button>
-            </Stack>
-
             <Box
                 sx={{
                     display: 'grid',
@@ -800,8 +988,8 @@ const MonthDetailsView = ({ monthDetails, onBack, year, centerName }) => {
                     gap: 2.5,
                 }}
             >
-                <MonthStatCard title="אירועים פעילים" value={monthDetails.events.active} accent={STATS_COLORS.teal} />
-                <MonthStatCard title="אירועים שהסתיימו" value={monthDetails.events.finished} accent="#b8c1cc" />
+                <MonthStatCard title="אירועים פעילים" value={monthDetails.events.active} accent={STATS_COLORS.municipalBlue} />
+                <MonthStatCard title="אירועים שהסתיימו" value={monthDetails.events.finished} accent={STATS_COLORS.grey} />
                 <MonthStatCard title="נרשמים בחודש" value={monthDetails.signups} subtitle="הרשמות פעילות בלבד" accent={STATS_COLORS.gold} />
             </Box>
 
@@ -816,10 +1004,35 @@ const MonthDetailsView = ({ monthDetails, onBack, year, centerName }) => {
     );
 };
 
+const BackToYearButton = ({ onClick }) => (
+    <Button
+        variant="outlined"
+        onClick={onClick}
+        sx={{
+            alignSelf: { xs: 'flex-start', sm: 'center' },
+            borderColor: STATS_COLORS.border,
+            color: STATS_COLORS.navy,
+            borderRadius: '4px',
+            px: 2.25,
+            minHeight: 38,
+            fontWeight: 900,
+            bgcolor: '#ffffff',
+            '&:hover': {
+                borderColor: STATS_COLORS.municipalBlue,
+                bgcolor: 'rgba(0, 59, 139, 0.08)',
+            },
+        }}
+    >
+        חזרה לתצוגה שנתית
+    </Button>
+);
+
 const StatisticsPage = () => {
     const { currentUser, userRole, isAdmin, isCoordinator } = useAuth();
     const [statistics, setStatistics] = useState(null);
     const [selectedMonth, setSelectedMonth] = useState(null);
+    const [adminViewMode, setAdminViewMode] = useState('overall');
+    const [selectedCenterName, setSelectedCenterName] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const reportYear = new Date().getFullYear();
@@ -867,6 +1080,10 @@ const StatisticsPage = () => {
         () => normalizeTraffic(statistics?.yearlyTraffic, buildYearlySignupTraffic(statistics)),
         [statistics]
     );
+    const centerOptions = useMemo(
+        () => buildCenterCardRows(statistics).map((center) => center.centerName),
+        [statistics]
+    );
 
     if (!isAdmin && !isCoordinator) {
         return <Navigate to="/home" replace />;
@@ -888,33 +1105,70 @@ const StatisticsPage = () => {
     const periodLabel = visibleMonthDetails
         ? `${visibleMonthDetails.monthName} ${reportYear}`
         : String(reportYear);
+    const showCenterView = isAdmin && adminViewMode === 'centers' && !visibleMonthDetails;
+    const handleCenterSelect = (centerName) => {
+        setSelectedCenterName(centerName || null);
+
+        if (centerName) {
+            setAdminViewMode('centers');
+        }
+    };
 
     return (
         <Box
+            className="statistics-page"
             sx={{
                 position: 'relative',
                 minHeight: '100vh',
-                py: { xs: 3, md: 5 },
-                bgcolor: STATS_COLORS.softBg,
-                background: 'linear-gradient(135deg, #ffffff 0%, #f6fbff 42%, #eaf7fb 100%)',
-                overflow: 'hidden',
+                bgcolor: '#f4f6f9',
             }}
         >
-            <StatisticsDecorativeBackground />
-            <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, direction: 'rtl' }}>
-                <Stack spacing={3}>
-                    <StatisticsDashboardHeader
-                        year={reportYear}
-                        periodLabel={periodLabel}
-                        centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
-                        isMonthView={Boolean(visibleMonthDetails)}
-                    />
+            <StatisticsPageHero
+                centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
+                isAdmin={isAdmin}
+            />
+            <StatisticsActionBar
+                isAdmin={isAdmin}
+                centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
+                activeMode={adminViewMode}
+                onModeChange={setAdminViewMode}
+                centerOptions={centerOptions}
+                selectedCenter={selectedCenterName}
+                onCenterSelect={handleCenterSelect}
+                isMonthView={Boolean(visibleMonthDetails)}
+                monthAction={visibleMonthDetails ? <BackToYearButton onClick={() => setSelectedMonth(null)} /> : null}
+            />
+            <Container
+                maxWidth={false}
+                sx={{
+                    position: 'relative',
+                    zIndex: 1,
+                    direction: 'rtl',
+                    width: '100%',
+                    px: { xs: 2, sm: 3, md: 6 },
+                    py: { xs: 2.5, md: 3.5 },
+                }}
+            >
+                <Stack spacing={2}>
+                    {visibleMonthDetails && (
+                        <Typography
+                            variant="h5"
+                            component="h2"
+                            sx={{
+                                color: STATS_COLORS.navy,
+                                fontWeight: 950,
+                                letterSpacing: 0,
+                            }}
+                        >
+                            סטטיסטיקות לחודש {periodLabel}
+                        </Typography>
+                    )}
 
                     {isLoading && (
                         <Card sx={cardSx}>
                             <CardContent>
                                 <Stack direction="row" spacing={2} alignItems="center">
-                                    <CircularProgress size={24} sx={{ color: STATS_COLORS.teal }} />
+                                    <CircularProgress size={24} sx={{ color: STATS_COLORS.municipalBlue }} />
                                     <Typography sx={{ color: STATS_COLORS.navy, fontWeight: 800 }}>טוען נתונים...</Typography>
                                 </Stack>
                             </CardContent>
@@ -930,7 +1184,7 @@ const StatisticsPage = () => {
                     )}
 
                     {!isLoading && !error && !statistics?.missingCenter && (
-                        <Stack spacing={3}>
+                        <Stack spacing={2}>
                             {!hasData && (
                                 <Alert severity="info">אין נתונים להצגה כרגע</Alert>
                             )}
@@ -948,21 +1202,13 @@ const StatisticsPage = () => {
                                 >
                                     <MonthDetailsView
                                         monthDetails={visibleMonthDetails}
-                                        onBack={() => setSelectedMonth(null)}
                                         year={reportYear}
-                                        centerName={isCoordinator && !isAdmin ? statistics?.centerName : ''}
                                     />
                                 </Box>
-                            ) : (
+                            ) : showCenterView ? (
                                 <Box
-                                    key="yearly-statistics"
+                                    key="center-statistics"
                                     sx={{
-                                        display: 'grid',
-                                        gridTemplateColumns: {
-                                            xs: '1fr',
-                                            lg: 'minmax(280px, 0.35fr) minmax(0, 0.65fr)',
-                                        },
-                                        gap: { xs: 2.5, md: 3 },
                                         animation: 'statisticsViewFade 180ms ease-out',
                                         '@keyframes statisticsViewFade': {
                                             from: { opacity: 0, transform: 'translateY(6px)' },
@@ -970,18 +1216,31 @@ const StatisticsPage = () => {
                                         },
                                     }}
                                 >
-                                    <StatisticsMetricCard statistics={statistics} />
-                                    <StatisticsTrafficChartCard
-                                        title={`מגמת תנועת משתמשים (${reportYear})`}
-                                        subtitle="הרשמות לפי חודשים מתוך נתוני המערכת"
-                                        traffic={yearlyTraffic}
+                                    <StatisticsCenterGrid
+                                        statistics={statistics}
+                                        selectedCenterName={selectedCenterName}
                                     />
+                                </Box>
+                            ) : (
+                                <Box
+                                    key="yearly-statistics"
+                                    className="statistics-dashboard"
+                                    sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: { xs: 1.5, md: 2 },
+                                        animation: 'statisticsViewFade 180ms ease-out',
+                                        '@keyframes statisticsViewFade': {
+                                            from: { opacity: 0, transform: 'translateY(6px)' },
+                                            to: { opacity: 1, transform: 'translateY(0)' },
+                                        },
+                                    }}
+                                >
                                     <StatisticsEventsByCenterChart
                                         statistics={statistics}
                                         onMonthSelect={setSelectedMonth}
-                                        year={reportYear}
                                     />
-                                    <StatisticsOverviewCard statistics={statistics} />
+                                    <StatisticsSummaryGrid statistics={statistics} yearlyTraffic={yearlyTraffic} />
                                 </Box>
                             )}
                         </Stack>
