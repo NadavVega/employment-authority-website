@@ -23,6 +23,7 @@ import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
 import { isPastEvent } from '../utils/eventDates';
 import { ShareMenu } from '../components/share/ShareMenu';
 import { EventMessageDialog } from '../components/share/EventMessageDialog';
+import { PageHero } from '../components/layout/PageHero';
 import eventsDecoration from '../assets/images/city-view.png';
 import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
@@ -522,17 +523,14 @@ const handleRegisterClick = async (event) => {
 
     return (
         <div className="events-page-wrapper" dir="rtl">
-            
-            <header className="events-page-heading">
-                <div className="events-heading-logo event-logo-container">
-                    <img src={employmentLogo} alt="רשות התעסוקה ירושלים" />
-                </div>
-                <div className="events-heading-copy">
-                    <h1>אירועים ופעילויות</h1>
-                    <p>ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
-                </div>
-                <img className="events-heading-decoration" src={eventsDecoration} alt="" aria-hidden="true" />
-            </header>
+
+            <PageHero
+                title="אירועים ופעילויות"
+                subtitle="ימי עיון, הכשרות ואירועי תעסוקה בירושלים"
+                logoSrc={employmentLogo}
+                logoAlt="רשות התעסוקה ירושלים"
+                decorationSrc={eventsDecoration}
+            />
 
             <div className="events-toolbar">
                 <div className="search-container">

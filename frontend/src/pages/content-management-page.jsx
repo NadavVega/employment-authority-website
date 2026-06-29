@@ -7,6 +7,9 @@ import { ApprovedArticleList } from '../components/manager/ApprovedArticleList';
 import { Navigate } from 'react-router-dom';
 import PromotionalContentManager from '../features/promotional-content/promotional-content-manager';
 import BotSettingsDialog from '../components/manager/bot-settings-dialog';
+import { PageHero } from '../components/layout/PageHero';
+import eventsDecoration from '../assets/images/city-view.png';
+import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
 import '../design/content-management.css';
 
@@ -55,59 +58,62 @@ const ContentManagementPage = () => {
     };
 
     return (
-        <Box className="modern-layout-wrapper" sx={{ pt: isAdmin ? 0 : 4, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
+        <Box sx={{ minHeight: '100vh', direction: 'rtl' }}>
+            <PageHero
+                title="ניהול תוכן וכתבות"
+                subtitle={isAdmin ? 'ניהול קרוסלת התוכן, כתבות ובקרת פרסום' : 'פרסום וניהול כתבות'}
+                logoSrc={employmentLogo}
+                logoAlt="רשות התעסוקה ירושלים"
+                decorationSrc={eventsDecoration}
+            />
+
             {isAdmin && (
                 <Box
                     component="nav"
                     aria-label="ניווט ניהול תוכן"
-                    className="content-management-nav"
+                    className="content-management-action-bar"
                 >
-                    <div className="content-management-nav-group">
-                        <button
-                            type="button"
-                            className="content-management-nav-btn"
-                            onClick={() => scrollToSection(carouselManagementRef)}
-                        >
-                            קרוסלת תוכן
-                        </button>
-                        <button
-                            type="button"
-                            className="content-management-nav-btn"
-                            onClick={() => scrollToSection(articlesManagementRef)}
-                        >
-                            כתבות
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(carouselManagementRef)}
+                    >
+                        קרוסלת תוכן
+                    </button>
+                    <button
+                        type="button"
+                        className="content-management-nav-btn"
+                        onClick={() => scrollToSection(articlesManagementRef)}
+                    >
+                        כתבות
+                    </button>
                 </Box>
             )}
 
-            <Typography variant="h4" fontWeight="800" sx={{ color: 'var(--color-primary-dark)', mt: isAdmin ? 4 : 0, mb: 4 }}>
-                ניהול תוכן וכתבות
-            </Typography>
-            
-            {/* FLEXBOX LAYOUT - 'stretch' forces both columns to be equal height */}
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: { xs: 'column', lg: 'row' }, 
-                gap: 4, 
-                alignItems: 'stretch', /* CHANGED: This makes them equal height */
-                width: '100%'
-            }}>
-                
-                {/* RIGHT COLUMN: Form (40% width for admin, 100% for coordinator) */}
-                <Box ref={manualArticleRef} sx={{ 
-                    scrollMarginTop: '88px',
-                    flex: isAdmin ? { xs: '1 1 100%', lg: '0 0 40%' } : '1 1 100%', 
-                    maxWidth: isAdmin ? 'none' : '800px',
-                    margin: isAdmin ? '0' : '0 auto',
+            <Box className="modern-layout-wrapper" sx={{ pt: { xs: 2, md: 3 }, px: { xs: 2, md: 6, lg: 8 }, direction: 'rtl' }}>
+                {/* FLEXBOX LAYOUT - 'stretch' forces both columns to be equal height */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: { xs: 'column', lg: 'row' }, 
+                    gap: 4, 
+                    alignItems: 'stretch', /* CHANGED: This makes them equal height */
                     width: '100%'
                 }}>
-                    {/* Added height: '100%' to the wrapper */}
-                    <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-                        <Typography component="h2" className="content-management-section-title" sx={{ mb: 3 }}>
-                            פרסום כתבה חדשה
-                        </Typography>
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1 }}>
+                    
+                    {/* RIGHT COLUMN: Form (40% width for admin, 100% for coordinator) */}
+                    <Box ref={manualArticleRef} sx={{ 
+                        scrollMarginTop: '104px',
+                        flex: isAdmin ? { xs: '1 1 100%', lg: '0 0 40%' } : '1 1 100%', 
+                        maxWidth: isAdmin ? 'none' : '800px',
+                        margin: isAdmin ? '0' : '0 auto',
+                        width: '100%'
+                    }}>
+                        {/* Added height: '100%' to the wrapper */}
+                        <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                            <Typography component="h2" className="content-management-section-title" sx={{ mb: 3 }}>
+                                פרסום כתבה חדשה
+                            </Typography>
+                            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1 }}>
                             
                             <input 
                                 type="text" name="title" required
@@ -138,55 +144,56 @@ const ContentManagementPage = () => {
                                 {isSubmitting ? 'מפרסם...' : 'פרסם כתבה'}
                             </button>
                         </form>
-                    </div>
-                </Box>
-
-                {/* LEFT COLUMN: List (60% width) - ONLY FOR ADMIN */}
-                {isAdmin && (
-                    <Box ref={articlesManagementRef} sx={{ 
-                        scrollMarginTop: '88px',
-                        flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
-                        width: '100%'
-                    }}>
-                        {/* Added height: '100%' to the wrapper */}
-                        <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-                            
-                            <div className="bot-header-controls content-management-section-header">
-                                <div className="bot-header-text">
-                                    <h2 className="content-management-section-title">ניהול כתבות</h2>
-                                    <p className="content-management-section-subtitle">כתבות שנאספו או פורסמו</p>
-                                </div>
-                                <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
-                                    ⚙️ ניהול הגדרות בוט
-                                </button>
-                            </div>
-                            
-                            <Tabs 
-                                value={activeTab} 
-                                onChange={(e, newValue) => setActiveTab(newValue)} 
-                                centered
-                                sx={{ mb: 2, borderBottom: '1px solid var(--color-border)' }}
-                            >
-                                <Tab label="ממתינות לאישור" />
-                                <Tab label="כתבות מאושרות" />
-                            </Tabs>
-                            
-                            <Box sx={{ flexGrow: 1 }}>
-                                {activeTab === 0 && <ArticleReviewList />}
-                                {activeTab === 1 && <ApprovedArticleList />}
-                            </Box>
                         </div>
                     </Box>
-                )}
 
-            </Box>
+                    {/* LEFT COLUMN: List (60% width) - ONLY FOR ADMIN */}
+                    {isAdmin && (
+                        <Box ref={articlesManagementRef} sx={{ 
+                            scrollMarginTop: '104px',
+                            flex: { xs: '1 1 100%', lg: '1 1 0%' }, 
+                            width: '100%'
+                        }}>
+                            {/* Added height: '100%' to the wrapper */}
+                            <div className="form-contrast-wrapper" style={{ width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                                
+                                <div className="bot-header-controls content-management-section-header">
+                                    <div className="bot-header-text">
+                                        <h2 className="content-management-section-title">ניהול כתבות</h2>
+                                        <p className="content-management-section-subtitle">כתבות שנאספו או פורסמו</p>
+                                    </div>
+                                    <button className="btn-secondary pill-btn" onClick={() => setIsBotSettingsOpen(true)}>
+                                        ⚙️ ניהול הגדרות בוט
+                                    </button>
+                                </div>
+                                
+                                <Tabs 
+                                    value={activeTab} 
+                                    onChange={(e, newValue) => setActiveTab(newValue)} 
+                                    centered
+                                    sx={{ mb: 2, borderBottom: '1px solid var(--color-border)' }}
+                                >
+                                    <Tab label="ממתינות לאישור" />
+                                    <Tab label="כתבות מאושרות" />
+                                </Tabs>
+                                
+                                <Box sx={{ flexGrow: 1 }}>
+                                    {activeTab === 0 && <ArticleReviewList />}
+                                    {activeTab === 1 && <ApprovedArticleList />}
+                                </Box>
+                            </div>
+                        </Box>
+                    )}
 
-            {isAdmin && (
-                <Box ref={carouselManagementRef} sx={{ scrollMarginTop: '88px' }}>
-                    <PromotionalContentManager currentUser={currentUser} />
                 </Box>
-            )}
-            {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
+
+                {isAdmin && (
+                    <Box ref={carouselManagementRef} sx={{ scrollMarginTop: '104px' }}>
+                        <PromotionalContentManager currentUser={currentUser} />
+                    </Box>
+                )}
+                {isAdmin && <BotSettingsDialog open={isBotSettingsOpen} onClose={() => setIsBotSettingsOpen(false)} />}
+            </Box>
         </Box>
     );
 };
