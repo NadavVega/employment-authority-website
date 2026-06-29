@@ -14,6 +14,7 @@ import './design/global-theme.css';
 // Importing page components
 import LoginPage from './pages/login-page';
 import { EventsPage } from './pages/event-page';
+import { ArchivedEventsPage } from './pages/archived-events-page';
 import HomePage from './pages/home-page';
 import AddEventPage from './pages/add-event-page';
 import { EditEventPage } from './pages/edit-event-page';
@@ -60,6 +61,17 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <EventsPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/events/archive"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ArchivedEventsPage />
                   </MainLayout>
                 </ProtectedRoute>
               }

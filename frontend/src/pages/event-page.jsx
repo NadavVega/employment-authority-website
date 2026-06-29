@@ -6,7 +6,7 @@ import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
 import { eventService } from '../services/interfaces/event-services'; 
 
@@ -23,6 +23,7 @@ import { isEventCreatedByCurrentCoordinator } from '../utils/eventOwnership';
 import { isPastEvent } from '../utils/eventDates';
 import { ShareMenu } from '../components/share/ShareMenu';
 import { EventMessageDialog } from '../components/share/EventMessageDialog';
+import { PageHero } from '../components/layout/PageHero';
 import eventsDecoration from '../assets/images/city-view.png';
 import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
@@ -210,8 +211,8 @@ export const EventsPage = () => {
     const pastEvents = [];
 
     realEvents.forEach(event => {
-        // Skip deleted events entirely
-        if (event.status === 'deleted') return;
+        // Skip deleted and archived events entirely
+        if (event.status === 'deleted' || event.status === 'archived') return;
 
         // Permissions Check
         if (event.status === 'pending_approval') {
@@ -253,14 +254,36 @@ export const EventsPage = () => {
         }
     };
 
-    // THIS IS THE MISSING DELETE FUNCTION
-    const handleDeleteEvent = async (eventId) => {
-        if (window.confirm("האם אתה בטוח שברצונך למחוק אירוע זה?")) {
+    const handleArchiveEvent = async (event) => {
+        if (!isAdmin) {
+            alert('רק מנהל יכול להעביר אירוע לארכיון.');
+            return;
+        }
+
+        if (!isPastEvent(event)) {
+            alert('ניתן להעביר לארכיון רק אירועים שהסתיימו.');
+            return;
+        }
+
+        if (window.confirm('האם להעביר את האירוע לארכיון?')) {
             try {
-                await eventService.updateEvent(eventId, { status: 'deleted' });
+                await eventService.updateEvent(event.id, {
+                    status: 'archived',
+                    archivedAt: serverTimestamp(),
+                    archivedBy: currentUser?.uid || currentUser?.email || '',
+                    previousStatus: event.status || 'published',
+                });
+
+                setRealEvents((currentEvents) => (
+                    currentEvents.filter((existingEvent) => existingEvent.id !== event.id)
+                ));
+
+                if (selectedEvent?.id === event.id) {
+                    closeSelectedEvent();
+                }
             } catch (error) {
-                console.error("Failed to delete event:", error);
-                alert("שגיאה במחיקת האירוע.");
+                console.error('Failed to archive event:', error);
+                alert('שגיאה בהעברת האירוע לארכיון.');
             }
         }
     };
@@ -503,6 +526,18 @@ const handleRegisterClick = async (event) => {
                                     buttonClassName="event-row-share-action"
                                 />
                             )}
+                            {isExpired && isAdmin && (
+                                <button
+                                    type="button"
+                                    className="event-row-action btn-secondary pill-btn"
+                                    onClick={(clickEvent) => {
+                                        clickEvent.stopPropagation();
+                                        handleArchiveEvent(event);
+                                    }}
+                                >
+                                    העבר לארכיון
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="event-row-action btn-primary pill-btn"
@@ -522,17 +557,14 @@ const handleRegisterClick = async (event) => {
 
     return (
         <div className="events-page-wrapper" dir="rtl">
-            
-            <header className="events-page-heading">
-                <div className="events-heading-logo event-logo-container">
-                    <img src={employmentLogo} alt="רשות התעסוקה ירושלים" />
-                </div>
-                <div className="events-heading-copy">
-                    <h1>אירועים ופעילויות</h1>
-                    <p>ימי עיון, הכשרות ואירועי תעסוקה בירושלים</p>
-                </div>
-                <img className="events-heading-decoration" src={eventsDecoration} alt="" aria-hidden="true" />
-            </header>
+
+            <PageHero
+                title="אירועים ופעילויות"
+                subtitle="ימי עיון, הכשרות ואירועי תעסוקה בירושלים"
+                logoSrc={employmentLogo}
+                logoAlt="רשות התעסוקה ירושלים"
+                decorationSrc={eventsDecoration}
+            />
 
             <div className="events-toolbar">
                 <div className="search-container">
@@ -557,8 +589,8 @@ const handleRegisterClick = async (event) => {
                     ))}
                     {/* NEW: Archive View Button (Manager Only) */}
                     {isAdmin && (
-                        <button className="btn-secondary pill-btn" onClick={() => alert("תצוגת ארכיון תיבנה בקרוב.")}>
-                            📦 תצוגת ארכיון
+                        <button className="btn-secondary pill-btn" onClick={() => navigate('/events/archive')}>
+                            ארכיון אירועים
                         </button>
                     )}
                     {(userRole === 'coordinator' || userRole === 'admin') && (
@@ -618,7 +650,6 @@ const handleRegisterClick = async (event) => {
                                 isRegistered={registeredEventIds.includes(featuredEvent.id)}
                                 onOpenDetails={(event) => setSelectedEventModal(event)}
                                 onApprove={handleApproveEvent}
-                                onDelete={handleDeleteEvent}
                             />
                         </div>
                     </aside>
@@ -648,7 +679,6 @@ const handleRegisterClick = async (event) => {
                                                 isRegistered={registeredEventIds.includes(event.id)}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
-                                                onDelete={handleDeleteEvent}
                                             />
                                         ))}
                                     </div>
@@ -699,7 +729,8 @@ const handleRegisterClick = async (event) => {
                                                         isCompact={true}
                                                         onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                         onApprove={handleApproveEvent}
-                                                        onDelete={handleDeleteEvent}
+                                                        onArchiveAction={handleArchiveEvent}
+                                                        archiveActionLabel="העבר לארכיון"
                                                     />
                                                 ))}
                                             </div>
@@ -742,7 +773,8 @@ const handleRegisterClick = async (event) => {
                                                 isCompact={true}
                                                 onOpenDetails={(selectedEvent) => setSelectedEventModal(selectedEvent)}
                                                 onApprove={handleApproveEvent}
-                                                onDelete={handleDeleteEvent}
+                                                onArchiveAction={handleArchiveEvent}
+                                                archiveActionLabel="העבר לארכיון"
                                             />
                                         ))}
                                     </div>

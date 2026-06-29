@@ -42,6 +42,8 @@
 
 .card-image-actions { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 11; }
 .edit-pencil-btn-new { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 11; }
+.edit-pencil-btn-new.card-archive-action { width: auto; max-width: 220px; min-width: 32px; border-radius: 999px; padding: 0 10px; gap: 6px; color: white; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.edit-pencil-btn-new.card-archive-action span { overflow: hidden; text-overflow: ellipsis; }
 .edit-pencil-btn-new.MuiIconButton-root { width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; }
 .card-image-actions .card-share-action.MuiIconButton-root { background: rgba(0, 0, 0, 0.5); border: 1px solid white; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; padding: 0; color: white; box-shadow: none; }
 .edit-pencil-btn-new:hover { background: var(--color-primary); transform: scale(1.1); }
