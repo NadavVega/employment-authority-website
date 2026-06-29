@@ -94,9 +94,6 @@ const BotSettingsDialog = ({ open, onClose }) => {
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth dir="rtl">
             <DialogTitle sx={{ fontWeight: 'bold', color: 'var(--color-primary-dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>⚙️ ניהול הגדרות בוט</span>
-                <Typography variant="body2" sx={{ bgcolor: 'rgba(0,0,0,0.05)', px: 2, py: 1, borderRadius: 1, color: 'var(--color-text)' }}>
-                    להפעלת הסריקה, הרץ בטרמינל: <strong>npm run test:bot</strong> (בתיקיית backend/functions)
-                </Typography>
             </DialogTitle>
             
             <DialogContent dividers>

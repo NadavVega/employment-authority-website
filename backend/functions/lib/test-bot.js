@@ -38,7 +38,7 @@ const dotenv = __importStar(require("dotenv"));
 const path = __importStar(require("path"));
 const ScraperBot_1 = require("./services/scraper/ScraperBot");
 // We resolve the absolute path to the frontend .env to ensure consistency
-const envPath = path.resolve(__dirname, '../../../frontend/.env');
+const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 /**
  * Emergency test runner for the ScraperBot.
@@ -47,7 +47,7 @@ dotenv.config({ path: envPath });
 async function testScraper() {
     console.log('--- Starting Scraper Test Session ---');
     const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+    const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
     if (!serviceAccountRaw) {
         console.error('CRITICAL: FIREBASE_SERVICE_ACCOUNT is missing from environment.');
         return;
