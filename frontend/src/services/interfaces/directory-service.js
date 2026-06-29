@@ -265,7 +265,7 @@ export const directoryService = {
           assignedCoordinatorCenterName: assignedCoordinatorData?.centerName || "",
 
           // Employer CRM fields
-          status: profile.status || data.status || "",
+          status: profile.contactStatus || data.contactStatus || profile.status || data.status || "",
           companyId: profile.companyId || data.companyId || "",
           logoUrl: profile.logoUrl || data.logoUrl || "",
           companyDescription:
@@ -465,7 +465,7 @@ export const directoryService = {
       assignedCoordinatorCenterName,
 
       // Employer CRM fields
-      status: profile.status || data.status || "",
+      status: profile.contactStatus || data.contactStatus || profile.status || data.status || "",
       companyId: profile.companyId || data.companyId || "",
       logoUrl: profile.logoUrl || data.logoUrl || "",
       companyDescription:
@@ -673,8 +673,21 @@ export const directoryService = {
       throw new Error("You can edit only employers assigned to you.");
     }
 
-    const company = String(formData.company || "").trim();
-    const address = String(formData.address || "").trim();
+    const normalizePublicValue = (value, fallback = "") => {
+      const normalizedValue = String(value || "").trim();
+
+      if (normalizedValue === "לא צוין") {
+        return String(fallback || "").trim();
+      }
+
+      return normalizedValue;
+    };
+
+    const company = normalizePublicValue(
+      formData.company,
+      employerProfile.company || employerProfile.organization || ""
+    );
+    const address = normalizePublicValue(formData.address, employerProfile.address || "");
     const inputPhone = String(formData.phone || "").trim();
 
     if (!company || !address || !inputPhone) {
@@ -687,63 +700,78 @@ export const directoryService = {
       throw new Error(ISRAELI_PHONE_VALIDATION_ERROR);
     }
 
-    // 1. נסיון עדכון פרופיל ציבורי
-    try {
-      await updateDoc(employerRef, {
-        updatedAt: serverTimestamp(),
-        "profile.company": company,
-        "profile.organization": company,
-        "profile.fullName": String(formData.fullName || "").trim(),
-        "profile.address": address,
-        "profile.field": String(formData.field || "").trim(),
-        "profile.subField": String(formData.subField || "").trim(),
-        "profile.status": String(formData.status || "").trim(),
-        "profile.companyId": String(formData.companyId || "").trim(),
-        "profile.logoUrl": String(formData.logoUrl || "").trim(),
-        "profile.companyDescription": String(formData.companyDescription || "").trim(),
-        "profile.jobsUrl": String(formData.jobsUrl || "").trim(),
-        "profile.lastContactNote": String(formData.lastContactNote || "").trim(),
-        "profile.lastContactDate": formData.lastContactDate || "",
-      });
-    } catch (error) {
-      console.error("Profile Update Error:", error);
-      throw new Error("שגיאת הרשאות בעדכון הפרופיל הציבורי: " + error.message);
+    const safeProfileUpdates = {
+      company,
+      organization: company,
+      fullName: normalizePublicValue(formData.fullName, employerProfile.fullName || ""),
+      address,
+      field: normalizePublicValue(formData.field, employerProfile.field || ""),
+      subField: normalizePublicValue(formData.subField, employerProfile.subField || ""),
+      phone,
+      logoUrl: normalizePublicValue(formData.logoUrl, employerProfile.logoUrl || ""),
+      companyDescription: normalizePublicValue(
+        formData.companyDescription,
+        employerProfile.companyDescription || ""
+      ),
+      jobsUrl: normalizePublicValue(formData.jobsUrl, employerProfile.jobsUrl || ""),
+      contactStatus: normalizePublicValue(
+        formData.status,
+        employerProfile.contactStatus || ""
+      ),
+    };
+
+    const nextProfile = {
+      ...employerProfile,
+    };
+
+    let profileChanged = false;
+
+    Object.entries(safeProfileUpdates).forEach(([fieldName, value]) => {
+      if ((employerProfile[fieldName] || "") !== value) {
+        nextProfile[fieldName] = value;
+        profileChanged = true;
+      }
+    });
+
+    if (!profileChanged) {
+      return {
+        id: normalizedEmployerEmail,
+        email: normalizedEmployerEmail,
+      };
     }
 
-    // 2. נסיון עדכון טלפון ופרטים חסויים
-    try {
-      const privateInfoRef = doc(
-        db,
-        "users",
-        normalizedEmployerEmail,
-        "private_info",
-        "details"
+    const updates = {
+      profile: nextProfile,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (import.meta.env.DEV) {
+      console.info(
+        "[directoryService.updateAssignedEmployerContact] update debug",
+        {
+          currentAuthEmail: currentUser.email || "",
+          currentAuthUid: currentUser.uid || "",
+          employerDocId: employerSnap.id,
+          employerEmailUsedInPath: normalizedEmployerEmail,
+          employerAssignedCoordinatorEmailRoot:
+            employerData.assignedCoordinatorEmail || "",
+          employerAssignedCoordinatorEmailProfile:
+            employerProfile.assignedCoordinatorEmail || "",
+          resolvedAssignedCoordinatorEmail: assignedCoordinatorEmail,
+          docPath: `users/${normalizedEmployerEmail}`,
+          updatePayload: updates,
+          updatePayloadKeys: Object.keys(updates),
+        }
       );
+    }
 
-      const privateInfoSnap = await getDoc(privateInfoRef);
-
-      if (privateInfoSnap.exists()) {
-        await setDoc(
-          privateInfoRef,
-          {
-            phone,
-            directEmail: normalizedEmployerEmail,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } else {
-        await setDoc(privateInfoRef, {
-          phone,
-          directEmail: normalizedEmployerEmail,
-          approved_viewers: [],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
+    try {
+      await updateDoc(employerRef, updates);
     } catch (error) {
-      console.error("Private Info Update Error:", error);
-      throw new Error("שגיאת הרשאות בעדכון הטלפון/פרטים חסויים: " + error.message);
+      console.error("Profile Update Error:", error);
+      throw new Error("שגיאת הרשאות בעדכון הפרופיל הציבורי: " + error.message, {
+        cause: error,
+      });
     }
 
     return {

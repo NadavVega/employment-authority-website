@@ -208,6 +208,121 @@ service cloud.firestore {
         && request.resource.data.assignedAt == request.time;
     }
 
+    function isAssignedCoordinatorForEmployer(userId) {
+      return isCoordinator()
+        && dataHasRole(resource.data, 'employer')
+        && assignedCoordinatorEmail(userId) == authenticatedEmail();
+    }
+
+    function isAllowedAssignedCoordinatorEmployerUpdate(userId) {
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+      let profileChanged = changedFields.hasAny([
+        'profile',
+        'profile.fullName',
+        'profile.name',
+        'profile.companyName',
+        'profile.company',
+        'profile.organization',
+        'profile.address',
+        'profile.field',
+        'profile.subField',
+        'profile.population',
+        'profile.targetPopulation',
+        'profile.phone',
+        'profile.mobile',
+        'profile.logoUrl',
+        'profile.companyDescription',
+        'profile.jobsUrl',
+        'profile.contactStatus'
+      ]);
+      let allowedRootFields = [
+        'profile',
+        'profile.fullName',
+        'profile.name',
+        'profile.companyName',
+        'profile.company',
+        'profile.organization',
+        'profile.address',
+        'profile.field',
+        'profile.subField',
+        'profile.population',
+        'profile.targetPopulation',
+        'profile.phone',
+        'profile.mobile',
+        'profile.logoUrl',
+        'profile.companyDescription',
+        'profile.jobsUrl',
+        'profile.contactStatus',
+        'updatedAt'
+      ];
+      let allowedProfileFields = [
+        'fullName',
+        'name',
+        'companyName',
+        'company',
+        'organization',
+        'address',
+        'field',
+        'subField',
+        'population',
+        'targetPopulation',
+        'phone',
+        'mobile',
+        'logoUrl',
+        'companyDescription',
+        'jobsUrl',
+        'contactStatus'
+      ];
+
+      return isAssignedCoordinatorForEmployer(userId)
+        && changedFields.hasOnly(allowedRootFields)
+        && (
+          !profileChanged
+          || (
+            resource.data.keys().hasAll(['profile'])
+            && resource.data.profile is map
+            && request.resource.data.keys().hasAll(['profile'])
+            && request.resource.data.profile is map
+            && request.resource.data.profile
+              .diff(resource.data.profile)
+              .affectedKeys()
+              .hasOnly(allowedProfileFields)
+            && request.resource.data.profile.get('role', null)
+              == resource.data.profile.get('role', null)
+            && request.resource.data.profile.get('assignedCoordinatorEmail', null)
+              == resource.data.profile.get('assignedCoordinatorEmail', null)
+            && request.resource.data.profile.get('isWhitelisted', null)
+              == resource.data.profile.get('isWhitelisted', null)
+            && request.resource.data.profile.get('isWhiteListed', null)
+              == resource.data.profile.get('isWhiteListed', null)
+            && request.resource.data.profile.get('email', null)
+              == resource.data.profile.get('email', null)
+            && request.resource.data.profile.get('uid', null)
+              == resource.data.profile.get('uid', null)
+            && request.resource.data.profile.get('createdAt', null)
+              == resource.data.profile.get('createdAt', null)
+            && request.resource.data.profile.get('companyId', null)
+              == resource.data.profile.get('companyId', null)
+            && request.resource.data.profile.get('status', null)
+              == resource.data.profile.get('status', null)
+            && request.resource.data.profile.get('lastContactNote', null)
+              == resource.data.profile.get('lastContactNote', null)
+            && request.resource.data.profile.get('lastContactDate', null)
+              == resource.data.profile.get('lastContactDate', null)
+          )
+        )
+        && request.resource.data.get('role', null) == resource.data.get('role', null)
+        && request.resource.data.get('isWhitelisted', null) == resource.data.get('isWhitelisted', null)
+        && request.resource.data.get('isWhiteListed', null) == resource.data.get('isWhiteListed', null)
+        && request.resource.data.get('assignedCoordinatorEmail', null) == resource.data.get('assignedCoordinatorEmail', null)
+        && request.resource.data.get('assignedBy', null) == resource.data.get('assignedBy', null)
+        && request.resource.data.get('assignedAt', null) == resource.data.get('assignedAt', null)
+        && request.resource.data.get('email', null) == resource.data.get('email', null)
+        && request.resource.data.get('uid', null) == resource.data.get('uid', null)
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.updatedAt == request.time;
+    }
+
     // Privacy requests and deterministic private-access grants
     function privacyRequestPath(requestId) {
       return /databases/$(database)/documents/privacy_requests/$(requestId);
@@ -1171,6 +1286,7 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
         || isAllowedCoordinatorAssignment(userId)
+        || isAllowedAssignedCoordinatorEmployerUpdate(userId)
         || (
           isSelfUser(userId)
           && isApplicationUser()

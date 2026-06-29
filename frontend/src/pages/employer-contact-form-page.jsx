@@ -37,6 +37,8 @@ const EmployerContactFormPage = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [resolvedAssignedCoordinatorEmail, setResolvedAssignedCoordinatorEmail] =
+    useState("");
 
   const isCoordinator = userRole === "coordinator";
 
@@ -60,6 +62,7 @@ const EmployerContactFormPage = () => {
         const assignedCoordinatorEmail = employer.assignedCoordinatorEmail
           ? employer.assignedCoordinatorEmail.toLowerCase().trim()
           : "";
+        setResolvedAssignedCoordinatorEmail(assignedCoordinatorEmail);
 
         const currentUserEmail = currentUser?.email
           ? currentUser.email.toLowerCase().trim()
@@ -138,6 +141,20 @@ const EmployerContactFormPage = () => {
     if (!isCoordinator) {
       setMessage("רק רכז יכול להוסיף או לערוך מעסיקים.");
       return;
+    }
+
+    if (isEditMode) {
+      const currentUserEmail = currentUser?.email
+        ? currentUser.email.toLowerCase().trim()
+        : "";
+
+      if (
+        !currentUserEmail ||
+        currentUserEmail !== resolvedAssignedCoordinatorEmail
+      ) {
+        setMessage("רק הרכז האחראי על המעסיק יכול לערוך את הפרטים.");
+        return;
+      }
     }
 
     const validationError = validateRequiredFields();
