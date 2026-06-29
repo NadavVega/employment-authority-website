@@ -7,12 +7,15 @@ import { db } from '../services/firebase/config';
 import EventCalendar from '../features/calendar/home-page-calendar';
 import HeroCarousel from '../features/carousel/hero-carousel';
 import MediaCarousel from '../features/carousel/media-carousel';
+import { PageHero } from '../components/layout/PageHero';
 
 import '../design/event-page.css';
 import { resolveEventImage } from '../utils/eventImageMap';
 import { privacyService } from '../services/interfaces/privacy-service';
 import { promotionalContentService } from '../services/interfaces/promotional-content-service';
 import { DEFAULT_PROMOTIONAL_SLIDES } from '../features/promotional-content/promotional-assets';
+import eventsDecoration from '../assets/images/city-view.png';
+import employmentLogo from '../assets/center-icons/taasuka-logo-color.png';
 
 const SectionTitle = ({ title, icon }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '1px solid var(--color-border)' }}>
@@ -312,7 +315,15 @@ const HomePage = () => {
 
     return (
         <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
-            <Box className="modern-layout-wrapper" sx={{ display: 'flex', flexDirection: 'column', px: { xs: 2, md: 4, xl: 6 }, pt: { xs: 2, md: 4 }, maxWidth: '1600px', width: '100%', mx: 'auto' }}>
+            <PageHero
+                title="רשות התעסוקה ירושלים"
+                subtitle="אירועים, שירותים, כתבות ועדכונים במקום אחד"
+                logoSrc={employmentLogo}
+                logoAlt="רשות התעסוקה ירושלים"
+                decorationSrc={eventsDecoration}
+            />
+
+            <Box className="modern-layout-wrapper" sx={{ display: 'flex', flexDirection: 'column', px: { xs: 2, md: 4, xl: 6 }, pt: { xs: 2, md: 3 }, maxWidth: '1600px', width: '100%', mx: 'auto' }}>
 
                 <Box component="section" aria-label="שירותי רשות התעסוקה ירושלים" sx={{ mb: { xs: 4, md: 5 } }}>
                     <MediaCarousel slides={promotionalSlides} />
