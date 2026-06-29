@@ -224,7 +224,13 @@ const HomePage = () => {
     const [promotionalSlides, setPromotionalSlides] = useState(DEFAULT_PROMOTIONAL_SLIDES);
 
     useEffect(() => {
-        const q = query(collection(db, 'events'));
+        const eventsRef = collection(db, 'events');
+        let q;
+        if (userRole === 'admin' || userRole === 'coordinator') {
+            q = query(eventsRef);
+        } else {
+            q = query(eventsRef, where("status", "==", "published"));
+        }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const now = new Date();
@@ -250,7 +256,7 @@ const HomePage = () => {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [userRole]);
 
     useEffect(() => {
         const q = query(collection(db, 'articles'), where('status', '==', 'approved'));

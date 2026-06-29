@@ -6,7 +6,7 @@ import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
-import { collection, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../services/firebase/config'; 
 import { eventService } from '../services/interfaces/event-services'; 
 
@@ -151,17 +151,27 @@ export const EventsPage = () => {
 
     useEffect(() => {
         const eventsRef = collection(db, 'events');
-        const q = query(eventsRef, orderBy("date", "asc"));
+        
+        let q;
+        if (isAdmin || userRole === 'coordinator') {
+            q = query(eventsRef, orderBy("date", "asc"));
+        } else {
+            q = query(eventsRef, where("status", "==", "published"), orderBy("date", "desc"));
+        }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedEvents = snapshot.docs.map(doc => ({
+            let fetchedEvents = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+            
+            if (!isAdmin && userRole !== 'coordinator') {
+                fetchedEvents.reverse();
+            }
             setRealEvents(fetchedEvents);
         });
         return () => unsubscribe();
-    }, []);
+    }, [isAdmin, userRole]);
 
     useEffect(() => {
         let isActive = true;

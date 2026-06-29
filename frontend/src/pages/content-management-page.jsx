@@ -132,7 +132,7 @@ const ContentManagementPage = () => {
                                 type="text" name="url" dir="ltr" required
                                 placeholder="קישור חיצוני (URL) *" 
                                 className="input-standard" 
-                                value={formData.url} onChange={handleChange} 
+                                value={formData.url} onChange={handleChange}
                             />
                             <textarea 
                                 name="content" rows="5"

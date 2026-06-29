@@ -772,7 +772,6 @@ service cloud.firestore {
         || (
           isEmployer()
           && eventIsPublished(eventData)
-          && eventHasNotPassed(eventData)
         );
     }
 

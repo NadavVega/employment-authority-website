@@ -97,4 +97,5 @@ export class ArticleService {
         const articleRef = doc(db, ARTICLES_COLLECTION, articleId);
         await deleteDoc(articleRef);
     }
+
 }
