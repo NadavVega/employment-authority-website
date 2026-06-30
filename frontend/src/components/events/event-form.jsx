@@ -63,6 +63,16 @@ const normalizeEventImageFields = (data) => {
   };
 };
 
+const normalizeOnlineLocation = (location, isOnline) => {
+  const value = String(location || '').trim();
+
+  if (!isOnline || !value || /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `https://${value}`;
+};
+
 export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel }) => {
   const { currentUser, userRole, isAdmin } = useAuth();
 
@@ -220,10 +230,12 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     }
 
     // location validation
+    const normalizedLocation = normalizeOnlineLocation(formData.location, formData.isOnline);
+
     if (formData.isOnline) {
-      if (!formData.location) {
+      if (!normalizedLocation) {
         newErrors.location = 'שדה זה הוא חובה';
-      } else if (!formData.location.startsWith('http://') && !formData.location.startsWith('https://')) {
+      } else if (!/^https?:\/\//i.test(normalizedLocation)) {
         newErrors.location = 'קישור חייב להתחיל ב-http:// או https://';
       }
     } else {
@@ -283,14 +295,19 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
     try {
       const combinedCoordPhones = coordinatorPhones.map(p => `${p.prefix}-${p.number}`).join(', ');
       const combinedAccPhones = formData.isAccessible ? accessibilityPhones.map(p => `${p.prefix}-${p.number}`).join(', ') : '';
+      const normalizedLocation = normalizeOnlineLocation(formData.location, formData.isOnline);
       const formattedData = {
         ...formData,
         ...normalizeEventImageFields(formData),
+        location: normalizedLocation,
         coordinatorName: formData.coordinatorName,
         capacity: isCapacityUnlimited ? '' : formData.capacity,
         time: `${formData.startTime}-${formData.endTime}`,
         coordinatorPhone: combinedCoordPhones,
-        accessibilityContactPhone: combinedAccPhones
+        accessibilityContactPhone: combinedAccPhones,
+        currentUserUid: currentUser?.uid || '',
+        currentUserEmail: currentUser?.email || '',
+        userRole
       };
       if (isEditMode) {
         EVENT_OWNERSHIP_FIELDS.forEach((field) => {
@@ -307,6 +324,16 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
       }
       formattedData.status = 'published';
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 20000));
+      console.log('Event form save debug', {
+        eventId: isEditMode ? initialData?.id || '' : '',
+        currentUserUid: currentUser?.uid || '',
+        currentUserEmail: currentUser?.email || '',
+        userRole,
+        isOnline: formattedData.isOnline === true,
+        firestorePath: isEditMode ? `events/${initialData?.id || ''}` : 'events',
+        eventPayload: formattedData,
+        eventPayloadKeys: Object.keys(formattedData)
+      });
       const dbOperation = isEditMode
         ? eventService.updateEvent(initialData.id, formattedData)
         : eventService.createEvent(formattedData, currentUser, userRole);
@@ -314,7 +341,11 @@ export const EventForm = ({ initialData, isEditMode = false, onSuccess, onCancel
       alert('האירוע נשמר ופורסם בהצלחה!');
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Submit Error:", error);
+      console.error("Submit Error:", {
+        code: error?.code || error?.cause?.code || '',
+        message: error?.message || error?.cause?.message || '',
+        error
+      });
       setErrors({ global: 'שגיאה בשמירת האירוע: ' + error.message });
     } finally {
       setIsLoading(false);

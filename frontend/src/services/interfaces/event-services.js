@@ -11,7 +11,6 @@ import {
     where,
     getDocs,
     orderBy,
-    arrayUnion,
     Timestamp
 } from 'firebase/firestore';
 
@@ -45,9 +44,56 @@ const EVENT_OWNERSHIP_FIELDS = [
     'coordinatorEmail',
 ];
 
+const COORDINATOR_EVENT_UPDATE_FIELDS = [
+    'title',
+    'type',
+    'date',
+    'time',
+    'startsAt',
+    'endsAt',
+    'location',
+    'capacity',
+    'description',
+    'coordinatorPhone',
+    'coordinatorName',
+    'center',
+    'isOnline',
+    'isAccessible',
+    'accessibilityContactName',
+    'accessibilityContactPhone',
+    'paymentMethod',
+    'price',
+    'discountDetails',
+    'paymentDetails',
+    'media',
+    'image',
+    'photoUrl',
+    'logoUrl',
+    'photoPreview',
+    'status',
+];
+
 const getUserDocIdFromEmail = (email) => {
     return String(email || '').trim().toLowerCase();
 };
+
+const getTimestampDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value.toDate === 'function') {
+        const date = value.toDate();
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+    return null;
+};
+
+const getRegisteredUids = (eventData = {}) => (
+    Array.isArray(eventData.registeredUids) ? eventData.registeredUids : []
+);
+
+const getRegisteredCount = (eventData = {}) => (
+    Number.isInteger(eventData.registeredCount) ? eventData.registeredCount : 0
+);
 
 const buildEventTimeRange = (date, time) => {
     const [startTime, endTime] = String(time || '').split('-');
@@ -134,7 +180,7 @@ const buildEmployerProfileFromFirestore = async (currentUser) => {
 };
 
 export const eventService = {
-    async createEvent(eventDetails, currentUser, userRole) {
+    async createEvent(eventDetails, currentUser) {
         try {
             const eventStatus = 'published';
             const eventTimeRange = buildEventTimeRange(
@@ -155,6 +201,7 @@ export const eventService = {
                 coordinatorName: cleanValue(eventDetails.coordinatorName),
                 coordinatorPhone: eventDetails.coordinatorPhone,
                 center: cleanValue(eventDetails.center),
+                isOnline: eventDetails.isOnline === true,
                 
                 // CRITICAL FIX: These fields were missing from the database save payload
                 isAccessible: eventDetails.isAccessible || false,
@@ -181,12 +228,26 @@ export const eventService = {
                 registeredUids: [],
             };
 
+            console.log('Event create debug', {
+                firestorePath: 'events',
+                currentUserUid: currentUser?.uid || '',
+                currentUserEmail: currentUser?.email || '',
+                userRole: eventDetails?.userRole || '',
+                isOnline: payload.isOnline === true,
+                eventPayload: payload,
+                eventPayloadKeys: Object.keys(payload)
+            });
+
             const docRef = await addDoc(collection(db, 'events'), payload);
             return { id: docRef.id, status: eventStatus };
 
         } catch (error) {
-            console.error("Error creating event:", error);
-            throw new Error("Failed to upload the event.");
+            console.error("Error creating event:", {
+                code: error?.code || '',
+                message: error?.message || '',
+                error
+            });
+            throw new Error("Failed to upload the event.", { cause: error });
         }
     },
 
@@ -231,30 +292,69 @@ export const eventService = {
             const docRef = doc(db, 'events', eventId);
             const existingSnap = await getDoc(docRef);
             const existingData = existingSnap.exists() ? existingSnap.data() : {};
-            const payload = { ...updatedData };
+            const rawPayload = { ...updatedData };
+            let payload = {};
 
-            delete payload.id;
+            delete rawPayload.id;
 
             EVENT_OWNERSHIP_FIELDS.forEach((field) => {
                 if (Object.prototype.hasOwnProperty.call(existingData, field)) {
-                    payload[field] = existingData[field];
+                    rawPayload[field] = existingData[field];
                 } else {
-                    delete payload[field];
+                    delete rawPayload[field];
                 }
             });
 
-            if (payload.date && payload.time) {
+            if (rawPayload.date && rawPayload.time) {
                 Object.assign(
-                    payload,
-                    buildEventTimeRange(payload.date, payload.time)
+                    rawPayload,
+                    buildEventTimeRange(rawPayload.date, rawPayload.time)
                 );
             }
+
+            if (rawPayload.userRole === 'coordinator') {
+                COORDINATOR_EVENT_UPDATE_FIELDS.forEach((field) => {
+                    if (Object.prototype.hasOwnProperty.call(rawPayload, field)) {
+                        payload[field] = rawPayload[field];
+                    }
+                });
+
+                EVENT_OWNERSHIP_FIELDS.forEach((field) => {
+                    if (Object.prototype.hasOwnProperty.call(rawPayload, field)) {
+                        payload[field] = rawPayload[field];
+                    }
+                });
+            } else {
+                payload = { ...rawPayload };
+                delete payload.currentUserUid;
+                delete payload.currentUserEmail;
+                delete payload.userRole;
+            }
+
+            console.log('Event update debug', {
+                eventId,
+                currentUserUid: updatedData?.currentUserUid || '',
+                currentUserEmail: updatedData?.currentUserEmail || '',
+                userRole: updatedData?.userRole || '',
+                existingCreatedBy: existingData.createdBy || '',
+                existingCreatedByUid: existingData.createdByUid || '',
+                existingCreatedByEmail: existingData.createdByEmail || '',
+                existingCoordinatorEmail: existingData.coordinatorEmail || '',
+                existingAssignedCoordinatorEmail: existingData.assignedCoordinatorEmail || '',
+                rawPayloadKeys: Object.keys(rawPayload),
+                updatePayloadKeys: Object.keys(payload),
+                updatePayload: payload
+            });
 
             await updateDoc(docRef, payload);
             return true;
         } catch (error) {
-            console.error("Error updating event:", error);
-            throw new Error("Failed to update the event.");
+            console.error("Error updating event:", {
+                code: error?.code || '',
+                message: error?.message || '',
+                error
+            });
+            throw new Error("Failed to update the event.", { cause: error });
         }
     },
 
@@ -273,6 +373,7 @@ export const eventService = {
         const signupId = `${eventId}_${employerData.uid}`;
         const registeredAtISO = new Date().toISOString();
 
+        try {
         await runTransaction(db, async (transaction) => {
             const eventSnap = await transaction.get(eventRef);
 
@@ -286,9 +387,24 @@ export const eventService = {
                 throw new Error('EVENT_NOT_AVAILABLE');
             }
 
-            const existingRegistration = await transaction.get(registrationRef);
+            const eventEndsAt = getTimestampDate(eventData.endsAt);
 
-            if (existingRegistration.exists()) {
+            if (!getTimestampDate(eventData.startsAt) || !eventEndsAt) {
+                throw new Error('EVENT_TIME_RANGE_MISSING');
+            }
+
+            if (eventEndsAt.getTime() < Date.now()) {
+                throw new Error('EVENT_PASSED');
+            }
+
+            console.log('Event registration existing registration read path', `events/${eventId}/registrations/${employerData.uid}`);
+            const existingRegistration = await transaction.get(registrationRef);
+            const currentRegisteredUids = getRegisteredUids(eventData);
+
+            if (
+                existingRegistration.exists() ||
+                currentRegisteredUids.includes(employerData.uid)
+            ) {
                 throw new Error('ALREADY_REGISTERED');
             }
 
@@ -297,15 +413,22 @@ export const eventService = {
                 eventData.capacity === 'ללא הגבלה';
 
             const capacity = parseInt(eventData.capacity, 10) || 0;
-            const registeredCount = parseInt(eventData.registeredCount, 10) || 0;
+            const registeredCount = getRegisteredCount(eventData);
 
             if (!isUnlimited && registeredCount >= capacity) {
                 throw new Error('EVENT_FULL');
             }
 
             const isFreeEvent = paymentMethod === 'none' || paymentMethod === 'free';
+            const eventUpdatePayload = {
+                registeredCount: registeredCount + 1,
+                registeredUids: [...currentRegisteredUids, employerData.uid],
+                lastRegistrationAt: serverTimestamp()
+            };
+            const registrationPath = `events/${eventId}/registrations/${employerData.uid}`;
+            const eventPath = `events/${eventId}`;
 
-            transaction.set(registrationRef, {
+            const registrationPayload = {
             signupId,
             uid: employerData.uid,
 
@@ -321,14 +444,44 @@ export const eventService = {
 
             registeredAt: serverTimestamp(),
             registeredAtISO
-        });
+        };
 
-            transaction.update(eventRef, {
-                registeredCount: registeredCount + 1,
-                registeredUids: arrayUnion(employerData.uid),
-                lastRegistrationAt: serverTimestamp()
+            console.log('Event registration debug snapshot', {
+                eventId,
+                currentUserUid: employerData.uid,
+                currentUserEmail: employerData.email || '',
+                userRole: employerData.role || 'employer',
+                registrationPath,
+                eventPath,
+                existingEventData: eventData,
+                existingRegistrationExists: existingRegistration.exists(),
+                oldRegisteredUids: currentRegisteredUids,
+                finalRegisteredUids: eventUpdatePayload.registeredUids,
+                oldRegisteredCount: registeredCount,
+                newRegisteredCount: eventUpdatePayload.registeredCount,
+                eventStatus: eventData.status,
+                eventStartsAt: eventData.startsAt,
+                eventEndsAt: eventData.endsAt,
+                eventCapacity: eventData.capacity
             });
+            console.log('Event registration document path', registrationPath);
+            console.log('Event registration payload', registrationPayload);
+
+            console.log('Event registration event update path', eventPath);
+            console.log('Event registration event update payload', eventUpdatePayload);
+
+            transaction.set(registrationRef, registrationPayload);
+            transaction.update(eventRef, eventUpdatePayload);
         });
+        } catch (error) {
+            console.error('Event registration Firebase error', {
+                code: error?.code || '',
+                message: error?.message || '',
+                error
+            });
+            console.error('Event registration Firebase full error object', error);
+            throw error;
+        }
 
         return {
             success: true,
