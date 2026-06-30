@@ -354,6 +354,18 @@ const handleRegisterClick = async (event) => {
         return;
     }
 
+    console.log('Event registration submit currentUser.uid', currentUser.uid);
+    console.log('Event registration submit currentUser.email', currentUser.email || '');
+    console.log('Event registration submit userRole', userRole);
+    console.log('Event registration submit eventId', event.id);
+    console.log('Event registration submit event.status', event.status);
+    console.log('Event registration submit event.startsAt', event.startsAt);
+    console.log('Event registration submit event.endsAt', event.endsAt);
+    console.log('Event registration submit event.capacity', event.capacity);
+    console.log('Event registration submit event.registeredCount', event.registeredCount);
+    console.log('Event registration submit event.registeredUids', event.registeredUids);
+    console.log('Event registration submit user data preview', buildRegistrationUserData());
+
     setIsRegistering(true);
 
     try {

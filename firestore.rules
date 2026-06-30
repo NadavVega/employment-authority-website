@@ -1527,7 +1527,13 @@ service cloud.firestore {
       allow delete: if false;
 
       match /registrations/{registrationId} {
-        allow get, list: if isAdmin()
+        allow get: if isAdmin()
+          || (
+            isEmployer()
+            && registrationId == request.auth.uid
+          )
+          || eventIsOwnedByCurrentCoordinator(eventId);
+        allow list: if isAdmin()
           || (
             isEmployer()
             && resource.data.keys().hasAll(['uid'])
