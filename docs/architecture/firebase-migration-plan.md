@@ -307,9 +307,11 @@ orthogonal to event publication; migration rejects unknown values.
 together by the browser; employer updates include registration/payment status.
 **Problem:** Payment confirmation is not a trusted transition and registration
 identity is exposed/duplicated.
-**Why it matters:** Financial and attendance state can be incorrect or
-manipulated.
-**Recommended design:** Normalized registrations/payments/attempts, server row
+**Why it matters:** Financial and registration/participation state can be
+incorrect or manipulated. Physical attendance is not measured by the current
+product.
+**Recommended design:** Employer-owned registration cycles, expiring paid
+capacity holds, payments/attempts/evidence classification, server event-row
 locking, idempotency, and signed webhooks.
 **Migration risk:** Provider selection, historical payment evidence, and
 rollback after real charges.
@@ -448,15 +450,15 @@ and compiled tracked Function artifacts also require cleanup at final removal.
 
 | Firestore source | PostgreSQL target | Transformation notes |
 |---|---|---|
-| `users/{email}` | `application_users`, `user_profiles`, `user_roles`, `coordinators`, `employers`, `employer_contacts`, `employer_crm_details` | split identity/person/company/role; canonicalize center; preserve legacy mapping |
+| `users/{email}` | `application_users`, `user_profiles`, `user_roles`, historical `coordinators`, `employers`, `employer_contacts`, `employer_contact_interactions` | split identity/person/company/role; canonicalize center; preserve one-to-many lineage; import `contactHistory` only when meaning/actor/time are reliable |
 | Firebase Auth users | `auth_identities(provider=firebase)` | match primarily by verified normalized email, report ambiguity, never guess |
-| root/profile center fields | `centers`, `coordinators`, `employer_center_relationships` | approved center dictionary and aliases |
-| assigned coordinator email | `coordinator_assignments` | resolve both sides; detect missing/cross-center/duplicate active assignments |
+| root/profile center fields | `centers`, historical `coordinators`, `employer_center_relationships` | approved center dictionary and aliases; at most one active coordinator row and one active employer center |
+| assigned coordinator email | `coordinator_assignments` | resolve both sides; detect missing/cross-center/duplicate active assignments; never infer a center transfer |
 | `private_info/details` | `employer_private_information` | remove legacy `approved_viewers`; validate/normalize contact values |
 | `privacy_requests` | `privacy_requests`, `privacy_request_decisions` | status/stage mapping; resolve employer/coordinator UUIDs |
-| `private_access` | `privacy_access_grants` | require valid approved source; add approved expiry policy; quarantine unverifiable grants |
+| `private_access` | `privacy_access_grants` | require valid approved source; apply approved expiry duration; quarantine unverifiable grants; record migration/system actor |
 | `events` | `events`, `event_publication_history`, `event_media` | status canonicalization; timestamps; owner/center resolution; no UID array |
-| event `registrations` | `event_registrations`, possibly `payments` | status mapping; resolve Firebase UID to user/employer; identify orphaned registrations |
+| event `registrations` | employer-owned `event_registrations` cycles, possibly `payments` | resolve Firebase UID to an active/historical employer contact and organization; assign deterministic cycle numbers; quarantine ambiguous ownership; classify payment evidence explicitly |
 | `notifications` | `notifications` | resolve recipient/actor; drop or quarantine unrelated/missing recipients |
 | `articles` | `articles`, history, sources/media | `pending -> pending_review`, `approved -> published`; SHA-256 source URL |
 | `promotional_content` | `promotional_content_items`, `media_assets` | role audience -> role FK; external/local asset mapping |
@@ -477,8 +479,14 @@ Mappings are explicit transform code with a rejected-record report:
   `previousStatus`; archive fields set separately. Ambiguous rows require
   review.
 - Event `deleted` -> `deleted_at`; do not create a new publication status.
-- Registration `registered` -> `confirmed`; `pending_payment` unchanged;
-  cancellation spelling variants -> `cancelled`.
+- Registration `registered` may establish a confirmed registration cycle only
+  after employer/contact ownership reconciliation; it does **not** establish a
+  successful payment. `pending_payment` becomes a legacy cycle with an explicit
+  hold disposition; cancellation spelling variants -> `cancelled`.
+- A paid legacy registration creates payment evidence as
+  `provider_verified`, `legacy_unverified`, `missing`, or
+  `manual_reconciliation`. Unknown/missing proof never maps to
+  provider-verified `succeeded`.
 - Article `pending`/`pending_review` -> `pending_review`;
   `approved`/`published` -> `published`; `rejected` unchanged.
 
@@ -512,6 +520,8 @@ cut over.
 ### Stage 2 — Users, centers, employers, and directory reads
 
 - Idempotent identity/directory importer and reconciliation.
+- Historical center-specific coordinator rows with at most one active row per
+  application user; one active center relationship per employer.
 - Read-only, field-minimized employer/center APIs.
 - Shadow comparison against current UI data.
 - Feature-flagged frontend directory API adapter.
@@ -522,6 +532,8 @@ Exit: role/center scopes and counts reconcile; no private/CRM leakage.
 
 - Employer create/edit, private/CRM endpoints, center relationship and
   admin-controlled assignment.
+- Append-only CRM/contact interactions; ambiguous legacy `contactHistory` is
+  archived rather than guessed into active history.
 - Employer provisioning/link flow.
 
 Exit: direct Firestore directory writes disabled for migrated cohort/domain;
@@ -530,6 +542,8 @@ Exit: direct Firestore directory writes disabled for migrated cohort/domain;
 ### Stage 4 — Privacy plus trusted workflow notifications
 
 - Requests, decisions, grants, expiry/revocation.
+- Principal/lifecycle side effects for suspension, role/contact/coordinator
+  deactivation, transfer, assignment ending, and center/employer deactivation.
 - Server-selected privacy notifications.
 - Migrate/validate legacy requests/grants.
 
@@ -546,6 +560,8 @@ Exit: upload verification and object rollback tested; no new base64 fields.
 ### Stage 6 — Events
 
 - Canonical event workflow, moderation, archive/restore, owner/center policies.
+- Immutable historical event center and automatic remoderation after material
+  coordinator edits to published events.
 - Extract/migrate event images through media pipeline.
 
 Exit: coordinator events require approval; event lists are paginated/scoped;
@@ -553,11 +569,15 @@ no registrant UIDs in event DTOs.
 
 ### Stage 7 — Registrations and payments
 
-- Transactional registration/capacity.
+- Employer-owned registration cycles and one active cycle per event/employer.
+- Transactional capacity including expiring paid holds, late webhook handling,
+  cancellation/refund, and safe re-registration.
 - `/me/registrations` reload-safe query.
-- Provider integration, attempts, signed webhook, reconciliation/refund.
+- Provider integration, attempts, signed webhook, reconciliation/refund, and
+  explicit legacy/unverified/missing payment evidence.
 
-Exit: paid confirmation is server-only; concurrency/idempotency tests pass.
+Exit: paid confirmation is server-only; overbooking, hold expiry, late webhook,
+refund, re-registration, concurrency, and idempotency tests pass.
 
 ### Stage 8 — Notification inbox
 
@@ -576,11 +596,13 @@ Exit: coordinator/scraper cannot publish; Cloud Function output reconciles.
 
 ### Stage 10 — Analytics
 
-- SQL aggregate endpoints and metric definitions.
+- SQL aggregate endpoints using confirmed registration as participation,
+  historical event center attribution, separate active-hold counts, explicit
+  cancellation/refund treatment, and declared timezone boundaries.
 - Remove client collection scans/N+1 Firestore reads.
 
 Exit: admin/coordinator scoped dashboards reconcile and query plans meet agreed
-budgets.
+budgets. Physical attendance is explicitly not reported.
 
 ### Stage 11 — Better Auth
 
@@ -661,11 +683,24 @@ auth provider produced the subject.
   transformers while preserving source JSON/checksum.
 - Normalize email case, timestamps to UTC, phones/URLs, center aliases, and
   status mappings.
+- Record timestamp provenance. Missing/ambiguous local timestamps are
+  quarantined or explicitly marked as inferred; PostgreSQL `DEFAULT now()` is
+  never silently used as historical event/payment/interaction time.
 - Use deterministic target UUIDs (for example UUIDv5 from a fixed namespace and
   canonical source path) or persist mappings before child imports.
 - Resolve Firebase UID/email collisions explicitly.
 - Split employer organization, contact, user, private, CRM, center, and
   assignment records.
+- Produce one deterministic transform `item_key` per intended target row (for
+  example `user`, `role:employer`, `event_media:<hash>`). One source document
+  may therefore produce multiple targets in the same table.
+- Convert reliable `contactHistory` entries into append-only interactions;
+  record unreliable entries as `archived` run items with encrypted source
+  evidence instead of inventing active CRM facts.
+- Resolve each registration to an employer organization plus the submitting
+  contact/user. A Firebase UID by itself is not organization ownership.
+- Classify paid legacy records as provider-verified, legacy-unverified,
+  missing-evidence, or manual-reconciliation candidates.
 - Decode/hash base64 media and create an object-upload manifest.
 - Reject unknown/permissive status mappings rather than defaulting.
 
@@ -674,10 +709,16 @@ auth provider produced the subject.
 - Import parent/reference tables before children.
 - Use bounded transactions and `INSERT ... ON CONFLICT` with immutable source
   keys/checksums.
-- Record every source-to-target path in `legacy_record_mappings`.
-- Re-running the same source checksum must be a no-op.
+- Create/reuse canonical `legacy_record_mappings` keyed by source system/path
+  plus target table/primary key.
+- Record every transform item in `data_migration_run_items`, including its run,
+  item key, source checksum, outcome, and optional canonical mapping.
+- Re-running the same source checksum reuses canonical mappings and records an
+  `unchanged` item for the new run.
 - A changed source checksum performs an allowlisted upsert or emits a conflict;
   it never blindly overwrites a moderated/production-newer row.
+- Ambiguous identity, ownership, status, center, or payment evidence records
+  `quarantined`/`conflict` without a canonical target mapping.
 - Disable external side effects (notifications, payment calls, scraper jobs)
   during import.
 
@@ -691,10 +732,18 @@ For every domain produce machine-readable and human-readable reports:
 - source path without target mapping and target row without source mapping;
 - orphan foreign-key candidates before import and anti-join checks after;
 - duplicate normalized email, Firebase UID, company number/name, assignment,
-  registration, grant, source URL, and notification key;
+  active event/employer registration cycle, grant, source URL, and
+  recipient-scoped notification key;
 - event registration subcollection count versus legacy event count/UID array;
+- registration UID/contact/employer proof and deterministic cycle assignment;
+- paid registration evidence classification; verified success totals are
+  reconciled separately from legacy-unverified/missing/manual rows;
 - privacy grant with missing/unapproved source request;
 - center/assignment mismatch;
+- multiple active coordinator rows for one user or active employer-center rows
+  for one employer;
+- canonical mappings with no run evidence, run items with invalid mapping
+  outcomes, and one-to-many source/target counts by `migration_run_id`;
 - sample field-level checks and deterministic checksums;
 - PostgreSQL constraint validation and API shadow-contract comparisons.
 

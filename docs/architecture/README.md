@@ -26,6 +26,14 @@ disposable database tests, health/config/error conventions, and temporary
 Firebase token-to-application-principal bridge. It must not cut over a product
 domain.
 
+The design baseline has completed its final architecture/security/data review.
+Registration ownership and cycles, transactional paid-capacity holds,
+historical coordinator and employer-center relationships, principal lifecycle
+invalidation, private-data access, published-event remoderation, migration
+lineage, and initial analytics definitions are resolved for implementation.
+The `OPEN DECISION` items in [Architecture decisions](decisions.md) remain
+implementation gates only for the stages that depend on them.
+
 Better Auth authentication tables are intentionally not defined in the
 application DDL. Generate them from the pinned Better Auth version/plugin set
 during the authentication implementation and keep the application link through

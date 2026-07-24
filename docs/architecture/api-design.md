@@ -65,7 +65,8 @@ fields are not accepted through these endpoints.
 - **Policy:** authenticated subject must resolve through `auth_identities`.
 - **Request:** none.
 - **Response:** application user ID, safe profile, active roles, coordinator
-  center summary and/or employer memberships needed by UI navigation.
+  center summary and/or the one active employer membership needed by UI
+  navigation. Historical/inactive relationships are never principal claims.
 - **Errors:** `IDENTITY_NOT_LINKED` (403), `USER_SUSPENDED` (403).
 
 ### `PATCH /api/v1/me/profile`
@@ -128,20 +129,32 @@ accept a reason. They do not manipulate Better Auth sessions directly.
 
 ### `GET /api/v1/employers/:id/private-information`
 
-- **Roles:** employer contact, coordinator, optionally privileged admin.
+- **Roles:** employer contact or coordinator. Admin role alone is not eligible.
 - **Policy:** `EmployerPolicy.readPrivate` and `PrivacyPolicy.hasAccess`:
   owner contact, active same-center assignment, or active/unexpired grant.
 - **Request:** optional access purpose if required by audit policy.
 - **Response:** minimum private contact DTO.
 - **Errors:** 404/403, `PRIVACY_GRANT_EXPIRED`, `ASSIGNMENT_INACTIVE`.
-- **Audit:** every successful privileged read.
+- **Audit:** every successful read with authorization basis; private values are
+  excluded from the audit payload.
 
 ### `GET /api/v1/employers/:id/crm`
 
-- **Roles:** assigned coordinator or admin.
+- **Roles:** assigned coordinator.
 - **Policy:** `EmployerPolicy.readCrm` with active center relationship and
-  assignment.
-- **Response:** CRM status/contact history only.
+  assignment. Admin CRM access is not part of the baseline.
+- **Response:** append-only CRM/contact interactions, keyset-paginated.
+
+### `POST /api/v1/employers/:id/crm/interactions`
+
+- **Roles:** assigned coordinator.
+- **Policy:** active employer, center relationship, and assignment.
+- **Request:** allowlisted interaction kind, summary, occurred time, and an
+  optional employer contact belonging to the same employer. Actor identity is
+  server-derived.
+- **Response:** immutable interaction record.
+- **Audit:** creation is audited; normal application operations do not edit or
+  delete interaction history.
 
 ### `POST /api/v1/employers`
 
@@ -164,8 +177,8 @@ accept a reason. They do not manipulate Better Auth sessions directly.
 
 ### `PATCH /api/v1/employers/:id/private-information`
 
-- **Roles:** managing employer contact, active assigned coordinator, or
-  privileged admin.
+- **Roles:** managing employer contact or active assigned coordinator. Admin
+  role alone is not eligible.
 - **Policy:** `EmployerPolicy.updatePrivate`; every change audited.
 - **Request:** private contact fields.
 - **Response:** updated private DTO.
@@ -197,7 +210,8 @@ create-assignment endpoint.
 
 ### `GET /api/v1/privacy-requests`
 
-- **Roles:** employer, coordinator; admin only if product grants oversight.
+- **Roles:** employer or coordinator. Admin role alone has no baseline privacy
+  inbox access.
 - **Policy:** participant-scoped inbox/history.
 - **Request:** status, actionable-only, cursor/limit.
 - **Response:** safe request summaries and allowed actions. No unrelated
@@ -227,8 +241,10 @@ create-assignment endpoint.
 
 ### `POST /api/v1/privacy-grants/:id/revoke`
 
-- **Roles:** employer owner, affected admin if approved, or server process for
-  assignment/center changes.
+- **Roles:** employer owner or server lifecycle operation for
+  assignment/center/coordinator changes. Admin role alone does not gain private
+  read access; an admin-triggered assignment operation may still cause
+  server-owned revocation.
 - **Policy:** `PrivacyPolicy.revokeGrant`.
 - **Request:** reason.
 - **Response:** revoked status/timestamp.
@@ -267,8 +283,12 @@ There is no browser endpoint to create an already-approved grant.
 
 - **Roles:** owner coordinator or admin.
 - **Policy:** `EventPolicy.update`; coordinator owns event and changes only
-  editable fields. Material published edits may return to draft/pending review
-  according to the open moderation decision.
+  editable fields. A coordinator change to title, description, type/audience,
+  time, location/online/external URL, accessibility details, capacity, payment
+  configuration, public contact details, center, or event media is material.
+  For a published event the update and `published -> pending_approval`
+  transition occur atomically. Center is server-owned/admin-only and immutable
+  after first submission.
 - **Response:** event and current status.
 - **Errors:** stale version/conflict, event ended, invalid transition.
 
@@ -291,27 +311,32 @@ stale pages cannot overwrite newer moderation changes.
 ### `POST /api/v1/events/:id/registrations`
 
 - **Roles:** employer.
-- **Policy:** `RegistrationPolicy.register`; derives user and employer from
-  principal, checks event state/time/capacity and duplicate under transaction.
-- **Request:** only non-authoritative choices required by the flow; employer ID
-  may be accepted only when the principal manages multiple employers and is
-  checked against memberships.
-- **Response:** registration ID/status; for provider payments, a safe checkout
-  action/session reference.
-- **Errors:** already registered (409), full (409), registration closed (409),
-  payment unavailable (503), invalid employer membership.
+- **Policy:** `RegistrationPolicy.register`; derives employer, contact, and user
+  from the single active principal membership, checks event
+  state/time/capacity, locks the event, expires stale holds, and enforces one
+  active registration cycle per event/employer.
+- **Request:** only non-authoritative flow choices. No employer, contact, user,
+  cycle, hold-expiry, or success fields are accepted.
+- **Response:** registration-cycle ID/status/number; for provider payments, a
+  safe checkout action and server-selected hold expiry.
+- **Errors:** active cycle already exists (409), refund not resolved (409), full
+  (409), registration closed (409), payment unavailable (503), inactive
+  membership.
 
 ### `GET /api/v1/me/registrations`
 
 - **Roles:** employer.
-- **Policy:** self.
+- **Policy:** current active employer membership. Returns that organization's
+  current and historical cycles, including cycles submitted by a prior active
+  contact only when organization-level policy permits.
 - **Request:** status/cursor/limit.
 - **Response:** durable registration/event/payment summaries used to restore UI
   state after reload.
 
 ### `POST /api/v1/registrations/:id/cancel`
 
-- **Roles:** owning employer or admin.
+- **Roles:** active managing contact for the owning employer or admin for an
+  audited support operation.
 - **Policy:** cancellation window/state; payment refund policy when applicable.
 - **Request:** reason.
 - **Response:** registration/payment outcome.
@@ -321,8 +346,9 @@ stale pages cannot overwrite newer moderation changes.
 - **Roles:** event owner coordinator or admin.
 - **Policy:** `RegistrationPolicy.listForEvent`.
 - **Request:** status/cursor/limit.
-- **Response:** necessary participant DTO; excludes unrelated private employer
-  fields.
+- **Response:** necessary employer-organization registration DTO with
+  submitting-contact evidence only when authorized; excludes unrelated private
+  employer fields.
 
 ### Payment endpoints
 
@@ -330,12 +356,15 @@ stale pages cannot overwrite newer moderation changes.
 |---|---|---|
 | `POST /api/v1/registrations/:id/payment-attempts` | registration owner | Creates/reuses idempotent checkout attempt; never accepts success |
 | `GET /api/v1/registrations/:id/payment` | registration owner, event owner/admin with scoped fields | Safe status only |
-| `POST /api/v1/payments/webhooks/:provider` | anonymous transport, signed provider | Verify raw signature, deduplicate event, transactionally update payment/registration |
-| `POST /api/v1/payments/:id/reconcile` | admin | Audited exceptional reconciliation with reason/evidence |
+| `POST /api/v1/payments/webhooks/:provider` | anonymous transport, signed provider | Verify raw signature, deduplicate event, lock event/registration, confirm only before hold expiry, and refund/escalate late success |
+| `POST /api/v1/payments/:id/reconcile` | admin | Audited exceptional reconciliation with reason, evidence, actor, and timestamp |
 | `POST /api/v1/payments/:id/refunds` | admin | Provider refund plus trusted state transition |
 
 Webhook routes are rate-limited appropriately but cannot require a user
 session. Invalid signatures return provider-compatible 4xx without processing.
+Payment responses distinguish provider-verified, legacy-unverified,
+missing-evidence, and manually reconciled records. A legacy `registered` value
+does not appear as verified payment.
 
 ## Notifications
 
@@ -394,7 +423,11 @@ Coordinator creation never accepts `status: published`.
 | `GET /api/v1/content/scrape-runs` | admin | Run history/errors/counts |
 
 Scheduled scraper execution uses a protected internal job command, not this
-user endpoint. All discovered articles enter `pending_review`.
+user endpoint. All discovered articles enter `pending_review`. Fetching uses an
+approved scheme/host allowlist, redirect cap with per-hop revalidation,
+private/loopback/link-local IP blocking after DNS resolution, response-size
+limits, connection/total timeouts, and safe parser limits. Manual invocation is
+authenticated, admin-authorized, rate-limited, and audited.
 
 ### Promotional content
 
@@ -425,7 +458,9 @@ published items for `audience_role_id` or all audiences, ordered server-side.
 ### `DELETE /api/v1/media/:id`
 
 Soft-deletes only when policy permits and no protected live reference requires
-it. Object deletion is asynchronous after retention.
+it. The server uses indexed reverse lookups across employer logos, event media,
+article hero media, and promotional content before object deletion. Object
+deletion is asynchronous after retention.
 
 ## Analytics and audit
 
@@ -441,7 +476,12 @@ it. Object deletion is asynchronous after retention.
 
 Representative endpoints may include `/analytics/events`,
 `/analytics/registrations`, and `/analytics/content`. Metric definitions are
-versioned/documented.
+versioned/documented. Initial definitions use confirmed registration as
+participation, preserve historical event-center attribution, report unexpired
+paid holds separately, exclude cancelled cycles from current participation,
+report refunds separately, and declare/echo timezone and date boundaries. The
+initial server-configured reporting timezone is `Asia/Jerusalem`. Physical
+attendance is not measured initially.
 
 ### `GET /api/v1/audit-logs`
 

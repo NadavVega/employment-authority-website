@@ -168,13 +168,18 @@ type ApplicationPrincipal = {
   authSubject: string;
   roles: Array<'admin' | 'coordinator' | 'employer'>;
   coordinator?: { id: string; centerId: string };
-  employerContacts: Array<{
+  employerContact?: {
     contactId: string;
     employerId: string;
     canManageEmployer: boolean;
-  }>;
+  };
 };
 ```
+
+Backend V2 initially permits one active employer-contact organization and one
+active coordinator relationship per application user. Historical inactive
+relationships are excluded. A future multi-employer/multi-center expansion must
+change both the principal contract and policy/query tests.
 
 The API ignores role, center, employer ID, and user ID claims supplied in a
 request body.
@@ -186,8 +191,9 @@ For a migrated endpoint:
 
 1. React obtains the current Firebase ID token.
 2. The API verifies it server-side with Firebase Admin.
-3. The Firebase UID resolves through `auth_identities`.
-4. NestJS loads application roles/relationships from PostgreSQL.
+3. The Firebase UID resolves through a non-retired `auth_identities` row.
+4. NestJS requires an active `application_users` row and loads only active
+   roles/relationships from PostgreSQL.
 5. The same policy/service code used after Better Auth executes.
 
 This lets data/API migration happen without a simultaneous session migration.
@@ -218,6 +224,41 @@ For separate frontend/API hosts, prefer subdomains of the same organizational
 site and `Secure`, `HttpOnly`, appropriately scoped cookies. Configure exact
 trusted origins and credentialed CORS; never use wildcard credentialed CORS.
 
+### Principal invariants and lifecycle side effects
+
+Provider authentication never bypasses current application state.
+`AuthService` constructs a principal only when all applicable conditions hold:
+
+- the provider identity exists and `retired_at IS NULL`;
+- the application user is `active`;
+- every included role grant has not been revoked;
+- an included coordinator row is active and its center is active;
+- an included employer contact is not deleted and its employer is active and
+  not deleted; and
+- scoped operations still load and verify current assignment, center
+  relationship, grant, and resource state.
+
+Trusted lifecycle services apply these side effects transactionally:
+
+| Change | Immediate authorization/data effects |
+|---|---|
+| User suspension | No principal is issued. Better Auth sessions/Firebase refresh tokens are revoked where supported, and any still-valid token is denied on the next API request. Assignments/grants remain recorded but are unusable; resumption does not recreate anything already revoked. |
+| Auth identity retirement | That provider subject no longer resolves and its provider session is revoked where supported. Other non-retired linked providers and domain relationships are unaffected. |
+| Coordinator/employer role removal | Deactivate the corresponding active domain relationship. Coordinator removal also ends assignments and revokes/cancels affected privacy state. Employer role removal deactivates the active employer contact. |
+| Employer-contact deactivation | Remove that person's employer membership, private self-access, and registration authority immediately. Existing registrations/payments remain historical. Organization-level grants are unchanged; a pending employer decision may be completed only by another active managing contact, otherwise it remains inaccessible until expiry/cancellation. |
+| Coordinator deactivation | End active assignments, revoke grants held by that coordinator, cancel their pending requests and requests awaiting their review, and remove coordinator capabilities. |
+| Coordinator center transfer | In one operation: end assignments and affected privacy state, deactivate the old center-specific coordinator row, then create a new active coordinator row for the new center. Historical events/requests keep the old coordinator ID. |
+| Employer deactivation/deletion | Deny new writes, registration, and private access; end its active center relationship/assignment, revoke all active privacy grants for it, and cancel its pending requests. Existing financial/workflow history remains. |
+| Assignment termination | Assignment-based CRM/private access ends immediately. Revoke the employer's active grants and cancel requests whose routing/approval captured the terminated assignment; unaffected historical decisions remain evidence. |
+| Center relationship termination | Terminate the employer's assignment in the same transaction, revoke its active privacy grants, and cancel its pending requests before ending the relationship. |
+
+Wall-clock expiry invalidates a privacy request/grant before its housekeeping
+job persists `expired`. Resuming a suspended user does not automatically
+reinstate revoked relationships or grants. Apart from suspension or identity
+retirement, the provider session may remain valid, but the API rebuilds the
+principal on every request so a removed role/relationship/assignment is
+immediately absent and cannot authorize through stale session claims.
+
 ## 6. Authorization architecture
 
 Authentication is applied globally, with explicit anonymous routes for health,
@@ -244,11 +285,12 @@ payment webhooks. Authentication alone never grants domain access.
   approved public DTO, filtered/paginated by policy.
 - Employer profile management: active contact with
   `can_manage_employer`, active assigned coordinator, or admin.
-- CRM data: assigned coordinator within the active employer-center
-  relationship, or admin with explicit permission.
+- CRM interaction data: active assigned coordinator within the active
+  employer-center relationship. Admin CRM access is not part of the baseline.
 - Private data: employer contact for self, active assigned coordinator, or
-  active consent grant. Admin access is an open product/security decision and,
-  if allowed, must be audited as a privileged access.
+  active consent grant. Admin role alone never grants private contact access.
+  Future break-glass access requires a separate permission/design and is not
+  implemented in the baseline.
 - Existing unassigned employer assignment: admin only by default.
 - New employer creation by coordinator: may atomically create the center
   relationship and assignment to the creator if product retains that workflow.
@@ -262,6 +304,15 @@ payment webhooks. Authentication alone never grants domain access.
 - Admins moderate/publish/reject/cancel/archive/restore.
 - Center and owner are derived from the principal/server relationship, not the
   request body.
+- Any coordinator change to a public-facing field on a published event is
+  material and atomically changes `published -> pending_approval`. The initial
+  material set is title, description, type/audience, start/end time, location
+  or external URL, online/accessibility details, capacity, payment
+  configuration, center, and event media. Center changes are admin-only and
+  event center becomes immutable after first submission.
+- Only internal audit metadata or explicitly admin-only operational fields may
+  change without remoderation. Contact details are public-facing and therefore
+  material.
 
 ### `PrivacyPolicy`
 
@@ -275,18 +326,30 @@ payment webhooks. Authentication alone never grants domain access.
 - Request lists are participant-scoped.
 - Grants require active status, current time inside the validity interval, and
   active coordinator status.
+- Grant issuance locks the employer row and persists any
+  wall-clock-expired active grant before inserting a replacement; it never
+  waits for the scheduled expiry sweep.
 - Assignment/center changes revoke affected grants and cancel stale pending
   requests in the same server operation.
+- Grant expiry/revocation records a user or stable system actor. Private reads
+  audit `owner_contact`, `assignment`, or `privacy_grant:<id>` as the
+  authorization basis without copying private values.
 
 ### `RegistrationPolicy`
 
-- Caller has an active employer contact and employer role.
+- Registration belongs to an employer organization, not the login user.
+- Caller has the one active employer contact and employer role; the server
+  derives employer/contact/user IDs and records the contact/user as submission
+  evidence.
 - Event is published, not archived/cancelled/ended, and registration is open.
-- Duplicate registration is rejected by policy and database uniqueness.
-- Capacity is checked under a row lock/transaction.
+- At most one non-terminal registration cycle exists for `(event, employer)`.
+  Re-registration creates a new cycle only after cancellation/payment expiry
+  and required refund resolution.
+- Capacity is checked under an event row lock/transaction. Confirmed
+  registrations and unexpired paid holds consume capacity.
 - Employer cannot select another employer/user or confirm payment.
-- Event owner/admin may view participant DTOs; public event DTOs never contain
-  registrant identifiers.
+- Event owner/admin may view organization registration DTOs; public event DTOs
+  never contain submitting contact/user identifiers.
 
 ### `NotificationPolicy`
 
@@ -303,6 +366,11 @@ payment webhooks. Authentication alone never grants domain access.
 - Only admin publishes, rejects, archives, configures sources/keywords, or
   triggers a manual scrape.
 - Scheduled scraper runs use a system principal and remain pending review.
+- Scraper fetches enforce an approved HTTP(S) scheme/host allowlist, revalidate
+  every redirect, cap redirects and response bytes, block loopback/link-local/
+  private/internal addresses after DNS resolution, and use connection/total
+  timeouts. Manual invocation is authenticated/admin-authorized,
+  rate/concurrency limited, and audited.
 
 ## 7. Workflow state machines
 
@@ -325,12 +393,15 @@ rejected
   -- owner revise --------> draft
 
 published
+  -- material owner edit -> pending_approval
   -- admin cancel --------> cancelled
 ```
 
-Admins may publish an admin-created draft directly. Whether material edits to a
-published event return it to approval is an open product decision; the secure
-default is yes for coordinator edits.
+Admins may publish an admin-created draft directly. Material coordinator edits
+use one transaction to update the event, change
+`published -> pending_approval`, append publication history, and audit the
+before/after fields. There is no interval where unreviewed values remain
+published.
 
 ### Event archive/restore
 
@@ -366,24 +437,56 @@ active grant
 ### Event registration
 
 ```text
-free registration request -> confirmed
-paid registration request -> pending_payment
-capacity exhausted         -> waitlisted (if enabled) or conflict
-pending_payment            -> confirmed only after trusted payment success
-pending/confirmed/waitlist -> cancelled by eligible employer or admin
+free registration cycle request -> confirmed
+paid registration cycle request -> pending_payment + expiring capacity hold
+pending_payment + verified success before expiry -> confirmed
+pending_payment + failure/cancellation ----------> cancelled
+pending_payment + hold expiry --------------------> payment_expired
+confirmed + eligible cancellation/refund --------> cancelled
+capacity exhausted -------------------------------> conflict
+terminal cycle + resolved refund -> a later request may create cycle N+1
 ```
+
+Waitlisting is not part of the initial Backend V2 baseline. Add it only after a
+product workflow defines ordering, promotion, notification, and paid-hold
+behavior.
+
+Paid capacity-hold rules:
+
+1. The registration service locks the event row, marks any stale holds expired,
+   counts confirmed cycles plus unexpired `pending_payment` holds, and rejects a
+   full event.
+2. It creates one new registration cycle and a server-chosen hold expiry in the
+   same transaction. The browser cannot choose employer/contact ownership,
+   cycle number, hold expiry, or payment state.
+3. Creating/reusing a checkout attempt does not extend a hold unless a
+   documented server policy does so under the same event lock.
+4. A verified provider success locks the event and registration. Before hold
+   expiry it confirms the cycle transactionally. After expiry it never confirms
+   automatically: it records the payment, initiates refund where supported,
+   and raises audited reconciliation.
+5. Failure/cancellation releases capacity by terminating the cycle. A confirmed
+   paid cancellation follows the provider refund policy before another cycle is
+   allowed.
+6. Partial/full refunds are financial states; a refund does not silently change
+   participation unless the registration cancellation workflow explicitly does
+   so.
 
 ### Payment
 
 ```text
+legacy claim without proof -> unverified
 created -> pending|requires_action
 pending|requires_action -> succeeded|failed|cancelled
 succeeded -> partially_refunded -> refunded
 succeeded -> refunded
+unverified -> succeeded|failed only by audited manual reconciliation/evidence
 ```
 
 Only signed provider webhooks or an audited admin reconciliation can record
 success. Retry/idempotency keys make repeated requests/events harmless.
+Firestore `registered` is registration evidence only; it is never sufficient
+payment evidence.
 
 ### Article moderation
 
@@ -419,7 +522,9 @@ temporary bearer credentials and never log them.
 
 Public site images may use a public/custom delivery domain. Private assets use
 short-lived signed GETs or API authorization. Object deletion is delayed and
-idempotent; abandoned pending uploads have a lifecycle cleanup job.
+idempotent; reverse-reference queries prove that no live employer, event,
+article, or promotional row still uses the asset before object deletion.
+Abandoned pending uploads have a lifecycle cleanup job.
 
 Migration extracts base64 event images, hashes/deduplicates them, uploads the
 binary once, and replaces the Firestore field with a `media_assets` reference.
@@ -439,15 +544,39 @@ Start with live, indexed SQL for:
 Use a small number of grouped queries or CTEs, not one query per event.
 Coordinator center scope is derived from `coordinators.center_id`.
 
-Precompute only after measurement. Likely candidates are long-range monthly
-center dashboards and expensive repeated historical exports. Options are a
-materialized view refreshed by a job or an aggregate table updated
-transactionally/job-based. Short API caching (for example 30–60 seconds) is
-acceptable for non-sensitive dashboard aggregates only after query plans show a
-need.
+Precompute only after measured query plans and production demand demonstrate a
+need. No warehouse, Redis, materialized view, aggregate table, or analytics
+cache is part of the initial architecture. Any later cache/precomputation is a
+separate reviewed decision with freshness and privacy semantics.
 
-Every metric needs a definition: included registration statuses, event time
-zone, cancellation/refund handling, center attribution date, and late data.
+Initial metric definitions:
+
+- **Registrations by event:** confirmed current registration cycles grouped by
+  event. Payment attempts and expired/cancelled cycles are not registrations;
+  they may be reported separately as funnel metrics.
+- **Registrations by center:** the same confirmed cycles attributed through the
+  immutable historical `events.center_id`.
+- **Employer participation:** distinct employer organizations with a confirmed
+  registration cycle for the selected event/date scope.
+- **Current capacity/utilization:** confirmed cycles plus unexpired
+  `pending_payment` holds consume capacity. Report confirmed and held counts
+  separately; utilization normally means confirmed/capacity.
+- **Coordinator activity:** allowlisted audit actions and append-only CRM
+  interactions, with the coordinator/center context captured at action time.
+- **Privacy workflow:** requests by outcome/stage, decision latency, and grants
+  by active/expired/revoked status; never expose private contact values.
+- **Moderation:** event/article submissions, publications, rejections, and
+  decision latency from their status histories.
+
+`participation` means confirmed registration, not physical attendance.
+Backend V2 initially has no attendance/check-in measurement. Cancellations
+cease to count as current participation; historical/as-of reporting uses cycle
+timestamps. Refunds are reported separately and affect participation only when
+the registration is cancelled. PostgreSQL timestamps are UTC; each endpoint
+declares its reporting timezone and date-boundary semantics. The initial
+server-configured reporting timezone is `Asia/Jerusalem`, and every response
+echoes the timezone used. No warehouse, Redis, materialized view, or
+precomputed aggregate is introduced without measured need.
 
 ## 10. Validation, errors, and API versioning
 
@@ -492,6 +621,14 @@ scraper configuration.
 Runtime database credentials must not have permission to update/delete audit
 rows.
 
+Private-data read audits store actor, employer subject, timestamp, request ID,
+purpose when required, and authorization basis (`owner_contact`, `assignment`,
+or `privacy_grant:<id>`). They never store the email, phone, mobile, notes, or a
+raw private DTO. The runtime database role receives only append/read privileges
+needed for audit operations; `UPDATE`, `DELETE`, and `TRUNCATE` on
+`audit_logs`/append-only interaction and status-history tables are denied in
+reviewed database-grant migrations, never through frontend logic.
+
 ## 12. Testing architecture
 
 ### Unit tests
@@ -508,6 +645,7 @@ Apply all Drizzle migrations and test:
 
 - foreign keys, composite center constraints, checks, and partial uniqueness;
 - concurrent registration/capacity behavior;
+- paid-hold expiry, late webhook, refund, and re-registration-cycle behavior;
 - idempotency and webhook deduplication;
 - privacy approval/grant transaction atomicity; and
 - rollback behavior on mid-transaction failure.

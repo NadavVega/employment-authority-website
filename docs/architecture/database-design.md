@@ -35,13 +35,14 @@ erDiagram
     APPLICATION_USERS ||--o{ AUTH_IDENTITIES : maps
     APPLICATION_USERS ||--o{ USER_ROLES : receives
     ROLES ||--o{ USER_ROLES : grants
-    APPLICATION_USERS ||--o| COORDINATORS : becomes
+    APPLICATION_USERS ||--o{ COORDINATORS : serves_as
     CENTERS ||--o{ COORDINATORS : contains
 
     EMPLOYERS ||--o{ EMPLOYER_CONTACTS : has
-    APPLICATION_USERS o|--o| EMPLOYER_CONTACTS : provisions
+    APPLICATION_USERS o|--o{ EMPLOYER_CONTACTS : provisions
     EMPLOYERS ||--o| EMPLOYER_PRIVATE_INFORMATION : protects
-    EMPLOYERS ||--o| EMPLOYER_CRM_DETAILS : tracks
+    EMPLOYERS ||--o{ EMPLOYER_CONTACT_INTERACTIONS : records
+    EMPLOYER_CONTACTS o|--o{ EMPLOYER_CONTACT_INTERACTIONS : concerns
     EMPLOYERS ||--o{ EMPLOYER_CENTER_RELATIONSHIPS : relates
     CENTERS ||--o{ EMPLOYER_CENTER_RELATIONSHIPS : scopes
     EMPLOYER_CENTER_RELATIONSHIPS ||--o{ COORDINATOR_ASSIGNMENTS : permits
@@ -61,7 +62,8 @@ erDiagram
     EVENTS ||--o{ EVENT_MEDIA : uses
     MEDIA_ASSETS ||--o{ EVENT_MEDIA : attaches
     EVENTS ||--o{ EVENT_REGISTRATIONS : accepts
-    APPLICATION_USERS ||--o{ EVENT_REGISTRATIONS : submits
+    EMPLOYER_CONTACTS ||--o{ EVENT_REGISTRATIONS : submits
+    APPLICATION_USERS ||--o{ EVENT_REGISTRATIONS : submitted_by
     EMPLOYERS ||--o{ EVENT_REGISTRATIONS : represents
     EVENT_REGISTRATIONS ||--o| PAYMENTS : requires
     PAYMENTS ||--o{ PAYMENT_ATTEMPTS : retries
@@ -104,7 +106,8 @@ Maps an external authentication subject to one `application_users` row.
   key.
 
 Authorization always uses `application_user_id` after authentication has been
-resolved. Email is never used as a relational primary key.
+resolved through a row with `retired_at IS NULL`, and the application user must
+be active. Email is never used as a relational primary key.
 
 ### `user_profiles`
 
@@ -119,7 +122,10 @@ stores grants and revocation history. A partial unique index prevents duplicate
 active grants while allowing old revoked grants to remain as evidence.
 
 Role membership alone is not sufficient for row access. NestJS policies also
-check center, ownership, assignment, and consent.
+check active center/employer/contact/coordinator state, ownership, assignment,
+and consent. Role removal and corresponding domain deactivation are one trusted
+lifecycle operation; historical role/domain rows never enter the current
+principal.
 
 ### `centers` and `coordinators`
 
@@ -127,9 +133,13 @@ Centers have stable UUIDs and unique human-maintained codes/names.
 `coordinators` links one application user to a center and stores only
 coordinator-domain fields.
 
-The schema currently models one active primary center per coordinator. A
-multi-center coordinator requirement is an open product decision; it would
-replace the direct `center_id` with a temporal relationship table.
+Each coordinator row is one historical center-specific relationship. A partial
+unique index permits at most one active coordinator row per application user.
+A center transfer deactivates the old row and creates a new row; existing
+events, assignments, requests, and grants keep the old coordinator ID.
+
+Backend V2 intentionally supports one active coordinator center at a time.
+Simultaneous multi-center coordinator membership is deferred.
 
 The composite unique key `(coordinator.id, coordinator.center_id)` supports
 foreign keys that structurally prevent cross-center event ownership and
@@ -178,22 +188,31 @@ PostgreSQL/Render encryption at rest and TLS are required. Application-level
 field encryption is an open security decision because it affects lookup,
 deduplication, key management, and incident recovery.
 
-### `employer_crm_details`
+### `employer_contact_interactions`
 
-Separates internal relationship state and contact notes from public employer
-data. Admins and the actively assigned coordinator may access it; ordinary
-directory users may not.
+Stores append-only contact activity instead of overwriting one
+`last_contact_note`. An optional employer contact uses a composite foreign key
+to prove that the person belongs to the same employer. A stable actor identity
+plus optional application-user/coordinator references preserve migrated/system
+attribution.
+
+Only the actively assigned coordinator may use the baseline CRM endpoint.
+Ordinary directory users, employer contacts, and admin role alone do not gain
+CRM-note access. Legacy `contactHistory` becomes active CRM history only when
+its meaning, timestamp, and actor are sufficiently reliable; otherwise it is
+archived as migration evidence.
 
 ### `employer_center_relationships`
 
 Models the company-to-center boundary explicitly and temporally.
 
-- Only one active relationship for the same employer/center pair.
-- At most one active `primary` center per employer.
+- At most one active center relationship per employer.
 - Historical relationships are ended, not overwritten.
 
-Additional non-primary relationships are representable, but their product
-meaning must be agreed before use.
+There is no `relationship_kind` and no primary/secondary behavior in the
+initial Backend V2 baseline. Simultaneous multi-center employers are deferred;
+adding them later requires coordinated schema, policy, principal, API, and
+analytics changes.
 
 ### `coordinator_assignments`
 
@@ -231,6 +250,9 @@ Constraints prevent:
 - a coordinator-review state without an assigned coordinator; and
 - terminal states without a resolution timestamp.
 
+Whether assigned-coordinator review is required is derived from the captured
+assignment fields; it is not stored as a second boolean.
+
 The request contains a purpose and expiry. Policy checks both persisted status
 and wall-clock expiry; a scheduled job changing stale rows to `expired` is
 housekeeping, not the security boundary.
@@ -247,19 +269,29 @@ key.
 
 Created atomically with an approved privacy request. The composite foreign key
 proves that the source request is for the same employer and requesting
-coordinator. Grants have an explicit scope, validity interval, status,
-revocation actor, and reason.
+coordinator. The baseline has only one grant meaning—access to that employer's
+private contact block—so no redundant scope column is stored. Grants have a
+validity interval, status, and revocation/expiration actor evidence.
 
 A partial unique index prevents duplicate active grants for the same
-employer/coordinator/scope. `PrivacyPolicy` authorizes a grant only when:
+employer/coordinator pair. `PrivacyPolicy` authorizes a grant only when:
 
 - `status = active`;
 - `valid_from <= now() < expires_at`;
 - the user is still an active coordinator; and
 - no assignment/center change has triggered revocation.
 
-Grant revocation and assignment changes are server-side transactions. Grants
-are never physically deleted by normal application operations.
+Grant revocation and assignment changes are server-side transactions. The
+expiry job uses the active-expiry partial index and records `expired_at` plus a
+stable system actor; wall-clock policy denial does not wait for the job.
+Grant renewal/issuance also locks the employer row and persists a
+wall-clock-expired active row for the pair before inserting its replacement.
+Automated revocation records a system identity even when no human user is the
+actor. Grants are never physically deleted by normal application operations.
+
+Successful private reads write an audit row containing actor, employer,
+timestamp, request/purpose, and authorization basis (`owner_contact`,
+`assignment`, or the grant ID), never the private values.
 
 ## Events, registrations, and payments
 
@@ -293,6 +325,11 @@ The public upcoming, center moderation, owner, and archive indexes support the
 main API paths. Events never contain registration IDs, Firebase UIDs, or a
 denormalized registration count.
 
+After first submission, `center_id` is historical attribution and cannot be
+changed. A material coordinator edit to any public-facing field/media on a
+published event atomically changes `published -> pending_approval` and appends
+history/audit.
+
 ### `event_publication_history`
 
 Append-only publication transitions with actor, reason, and timestamp. It is
@@ -301,24 +338,56 @@ workflows.
 
 ### `event_registrations`
 
-One durable row per `(event_id, registrant_user_id)` prevents duplicate
-registrations. The employer foreign key records which organization the user
-represented at registration time. Re-registration transitions the existing row
-rather than inserting a duplicate.
+An event registration belongs to an employer organization. Each row is one
+registration cycle and records:
+
+- event and employer;
+- monotonically increasing cycle number for that event/employer;
+- the active employer contact and application user that submitted it;
+- current cycle status and lifecycle timestamps; and
+- paid capacity-hold expiry where applicable.
+
+A composite contact foreign key proves that the submitting contact belongs to
+the employer and is linked to the recorded application user.
+`RegistrationPolicy` additionally verifies that the contact relationship,
+application user, employer role, and employer are all active; all three IDs are
+derived from the principal, not accepted as authority from the browser.
+
+Partial uniqueness permits at most one non-terminal (`pending_payment` or
+`confirmed`) cycle for `(event_id, employer_id)`. Cancelled/payment-expired
+cycles remain immutable evidence. A later registration creates cycle N+1 only
+after the previous cycle is terminal and any required refund is resolved.
 
 The server locks the event row and evaluates capacity inside the registration
 transaction. Capacity cannot safely be enforced with a static check constraint
 because it depends on other rows.
 
 For free events the server creates a `confirmed` registration atomically. For
-paid events it creates `pending_payment`; only a verified webhook or explicit
-admin reconciliation may confirm it.
+paid events it creates `pending_payment` with a server-selected expiry. A
+pending payment consumes capacity only while that hold remains unexpired.
+Creating a hold, expiring stale holds, counting confirmed/unexpired holds, and
+creating/confirming a cycle all occur under the event row lock.
+
+Failure/cancellation releases the hold. A success received after hold expiry
+never confirms automatically; it is refunded where supported or quarantined
+for audited reconciliation. Waitlisting is not in the initial model.
 
 ### `payments`, `payment_attempts`, and `payment_webhook_events`
 
-`payments` is the logical payment for a registration; at most one exists per
-registration. It stores amount/currency snapshots, status, provider reference,
-refund amount, and an application idempotency key.
+`payments` is the logical payment for one registration cycle; at most one
+exists per cycle. It stores amount/currency snapshots, status, provider
+reference, refund amount, idempotency, and evidence classification:
+
+- `provider_verified` — trusted provider/webhook evidence;
+- `legacy_unverified` — legacy record asserts payment/registration but has no
+  trustworthy provider evidence;
+- `missing` — a paid legacy registration has no payment evidence; or
+- `manual_reconciliation` — an authorized administrator supplied reason,
+  evidence reference, actor, and timestamp.
+
+`unverified` is not a success state. A Firestore `registered` value can create
+registration migration evidence but cannot create a provider-verified
+`succeeded` payment.
 
 `payment_attempts` records retries, the provider used for that attempt, and a
 provider-scoped attempt reference. The provider snapshot makes webhook lookup
@@ -331,6 +400,11 @@ payment” across tables without brittle triggers. `PaymentsService` performs th
 payment and registration transition in one transaction, and integration tests
 prove it. Browser requests never select a successful payment state.
 
+Payment checks require consistent success/failure/cancellation timestamps and
+full/partial refund amounts. Re-registration after a paid cancellation is
+blocked until the earlier payment is failed, cancelled, fully refunded, or
+explicitly resolved by reconciliation policy.
+
 Webhook payloads require a documented redaction and retention policy and must
 never contain card secrets.
 
@@ -341,9 +415,10 @@ Subject fields provide non-FK links to heterogeneous workflows, while the
 payload carries minimal display metadata.
 
 Indexes support newest-first recipient pagination and unread counts. A
-deduplication key prevents duplicate workflow notifications. Only backend
-domain services create rows; recipients may read, dismiss, or mark their own
-notifications as read.
+deduplication key is unique per recipient, so one workflow can safely notify
+multiple recipients while retries cannot duplicate a recipient's row. Only
+backend domain services create rows; recipients may read, dismiss, or mark
+their own notifications as read.
 
 ## Content and moderation
 
@@ -352,7 +427,10 @@ notifications as read.
 Replace the `settings/bot_config` document and provide explicit scraper
 configuration and execution history. Manual scraper runs require admin policy;
 scheduled runs use a system principal. Partial source failures are retained in
-the run record.
+the run record. Fetch policy enforces approved HTTP(S) schemes/hosts, redirect
+limits with per-hop revalidation, DNS/IP blocking for loopback/link-local/
+private/internal destinations, response-size and parser limits, timeouts, and
+manual-trigger rate/concurrency limits.
 
 ### `articles` and `article_status_history`
 
@@ -387,6 +465,9 @@ The lifecycle is:
 
 Foreign keys use `ON DELETE RESTRICT`; application cleanup marks assets deleted
 and an asynchronous job removes the object after the retention window.
+Reverse-reference indexes cover employer logos, event media, article hero
+media, and promotional media so cleanup can prove that no live reference
+remains without full-table scans.
 
 ## Audit and migration evidence
 
@@ -395,17 +476,27 @@ and an asynchronous job removes the object after the retention window.
 Append-only security/business audit containing actor, action, subject,
 request/correlation ID, network metadata, and redacted before/after state.
 Database grants for the API runtime role must allow `INSERT` and `SELECT` as
-needed but deny `UPDATE` and `DELETE`.
+needed but deny `UPDATE`, `DELETE`, and `TRUNCATE`. This is enforced through
+reviewed database-role grants, never frontend logic.
 
 Audit payload builders must exclude passwords, auth/session tokens, payment
 secrets, presigned URLs, and private contact values unless a security-approved
-redacted representation is required.
+redacted representation is required. Private reads record authorization basis
+without recording the returned values.
 
-### `data_migration_runs` and `legacy_record_mappings`
+### `data_migration_runs`, `legacy_record_mappings`, and
+`data_migration_run_items`
 
-Record migration manifests, counts, reconciliation, source document paths,
-target keys, and source checksums. Their unique source mapping makes import
-retries idempotent and provides traceability for rollback/reconciliation.
+`data_migration_runs` records run manifests, counts, and reconciliation.
+`legacy_record_mappings` is canonical lineage keyed by source system/path plus
+target table/primary key. Including the target key permits one Firebase
+document to produce multiple rows—even several rows in the same target table.
+
+`data_migration_run_items` records per-run source checksum and a deterministic
+transform item key. Mapped/unchanged items reference canonical mappings;
+ambiguous/conflicting/rejected/archived items deliberately do not. Repeated
+runs therefore retain evidence without replacing canonical identity. An index
+beginning with `migration_run_id` supports reconciliation.
 
 ## Deletion and retention
 
@@ -420,23 +511,60 @@ retries idempotent and provides traceability for rollback/reconciliation.
 - Exact retention periods for private data, notifications, webhook payloads,
   audit logs, rejected content, and backups are open legal/product decisions.
 
+## Analytics semantics
+
+Live SQL is sufficient for the initial reporting surface:
+
+- confirmed registration cycles grouped by event provide registrations by
+  event;
+- joining those cycles to immutable `events.center_id` provides registrations
+  by historical center;
+- distinct confirmed `employer_id` values provide employer participation;
+- confirmed cycles plus unexpired `pending_payment` holds are the transactional
+  capacity consumers, while confirmed/capacity is the default utilization
+  ratio;
+- allowlisted `audit_logs` actions and `employer_contact_interactions` provide
+  coordinator activity with actor/center context captured at action time;
+- privacy request/decision/grant timestamps provide workflow volume, outcome,
+  and latency; and
+- event/article status histories provide moderation volume and latency.
+
+`participation` means confirmed registration. Physical attendance is not
+measured. Current metrics exclude cancelled/payment-expired cycles; refunds are
+financial metrics and affect participation only through an explicit
+registration cancellation. Timestamps are stored in UTC. Every report declares
+its timezone/date boundary and echoes it in the response; the initial
+server-configured reporting timezone is `Asia/Jerusalem`.
+
 ## Index and query strategy
 
 The schema indexes the access patterns required by the proposed API:
 
 - keyset-paginated employer directory by status/name/ID;
+- append-only employer CRM interactions by employer/time;
 - active coordinator/employer assignments and center relationships;
 - privacy inboxes by employer, requester, assigned coordinator, status, and
-  expiry;
+  request/grant expiry;
 - upcoming published events, scoped moderation queues, ownership, and archive;
-- event/user/employer registration lists;
-- payment status, attempts, provider references, and unprocessed webhooks;
+- event/employer registration cycles, submitter history, and paid-hold expiry;
+- payment uniqueness/provider references and unprocessed webhooks;
 - recipient notification feed/unread rows;
-- article publication and moderation feeds; and
-- audit lookups by subject, actor, and request.
+- article publication and moderation feeds;
+- media reverse-reference cleanup;
+- chronological/subject/actor/request audit lookups; and
+- migration reconciliation by run and canonical target.
+
+The final review removed the duplicate active-user role index, broad privacy
+grantee index, payment-attempt/payment-status time indexes, and redundant
+employer-center partial indexes. The industry index remains because the
+documented employer directory supports industry + status filtering and stable
+name/ID pagination. Every remaining index is a primary/unique constraint,
+foreign-key/reverse-reference path, or a documented endpoint/job access path.
 
 Every list endpoint still requires a bounded limit. Additional indexes are
-added only after reviewing real `EXPLAIN (ANALYZE, BUFFERS)` output.
+added only after reviewing real `EXPLAIN (ANALYZE, BUFFERS)` output. No
+speculative analytics indexes, warehouse, cache, materialized view, or
+precomputed aggregate is part of the baseline.
 
 ## Drizzle compatibility
 
@@ -470,12 +598,22 @@ Validated on 2026-07-24 against a new disposable `postgres:16-alpine` database:
 
 - `psql` executed the complete file with `ON_ERROR_STOP=1`; the transaction
   committed successfully;
-- PostgreSQL created 34 `app` tables and reported 235 validated catalog
-  constraints with no unvalidated constraints;
-- catalog inspection confirmed the intended unique indexes for one active
-  coordinator assignment per employer, one active privacy grant per
-  employer/coordinator/scope, one registration per event/user, and
-  provider-scoped payment-attempt references;
+- PostgreSQL created 35 `app` tables, 118 indexes, 252 validated catalog
+  constraints, and 77 foreign keys, with no unvalidated constraints or invalid
+  indexes;
+- catalog and behavioral checks confirmed at most one active coordinator row
+  per application user, one active center relationship and assignment per
+  employer, one active registration cycle per event/employer, one active
+  privacy grant per employer/coordinator, and provider-scoped payment-attempt
+  references;
+- lifecycle fixtures confirmed that coordinator transfers and employer-center
+  transfers retain historical rows, a cancelled registration can be followed
+  by cycle N+1, expired grants can be replaced, and the same notification
+  deduplication key can be used for different recipients but not twice for one
+  recipient;
+- migration fixtures confirmed one source document can map to multiple target
+  primary keys and repeated runs can reference the same canonical mapping or
+  quarantine an ambiguous item;
 - a static name check found no duplicate type, table, constraint, or explicit
   index names; and
 - a static creation-order check found no missing or forward table references.

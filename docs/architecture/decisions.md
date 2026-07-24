@@ -155,13 +155,22 @@ coordinator assignments.
 
 - Migration must resolve/flag duplicate organizations and identity collisions.
 - Existing free-form center values require a canonical alias dictionary.
+- A coordinator relationship is center-specific and historical. One
+  application user may have multiple inactive coordinator rows over time, but
+  at most one active coordinator row.
+- Backend V2 initially permits one active center relationship per employer.
+  Simultaneous primary/secondary employer-center relationships are deferred.
+- CRM/contact activity is append-only when reliable. Ambiguous legacy
+  `contactHistory` is archived as migration evidence rather than collapsed into
+  a mutable latest-note field.
 
 ## ADR-007 — Privacy access is explicit, expiring, and revocable
 
 **Status:** Required by findings
 
-**Decision:** Use request, decision, and grant tables. An active grant has a
-scope, validity interval, status, source request, and revocation evidence.
+**Decision:** Use request, decision, and grant tables. The baseline grant has
+one meaning—access to one employer's private contact block—and records a
+validity interval, status, source request, and revocation/expiration evidence.
 
 **Why:**
 
@@ -174,6 +183,9 @@ scope, validity interval, status, source request, and revocation evidence.
 - Policy checks current time as well as persisted status.
 - Expiry jobs improve state hygiene but are not the security boundary.
 - Grant creation is atomic with final approval.
+- Expiry and automated lifecycle revocation record a stable system actor.
+- Private-data access audits record the authorization basis without copying
+  private values into the audit payload.
 
 ## ADR-008 — Event archive is orthogonal to publication
 
@@ -197,22 +209,40 @@ scope, validity interval, status, source request, and revocation evidence.
 
 **Status:** Required by findings
 
-**Decision:** Store one registration row per event/user. Payment records and
-attempts are separate. Only trusted server logic confirms payment and
-registration.
+**Decision:** An event registration belongs to an employer organization. Each
+row is one durable registration cycle for `(event, employer)` and records the
+authenticated employer contact/user that submitted it. Lifecycle transitions
+update that cycle's status/timestamps, but a later registration never reuses
+the row. At most one
+non-terminal cycle is active for an event/employer pair. A later registration
+after cancellation, payment-hold expiry, or completed refund creates a new
+cycle instead of overwriting the prior cycle. Payment records and attempts are
+separate. Only trusted server logic confirms payment and registration.
 
 **Why:**
 
 - Current client-influenced status can bypass trusted confirmation.
 - Event UID arrays expose identities and duplicate subcollection state.
-- PostgreSQL uniqueness, row locks, and idempotency handle concurrency.
+- A user ID is neither an employer organization nor proof of an active
+  employer-contact relationship.
+- PostgreSQL partial uniqueness, event row locks, expiring capacity holds, and
+  idempotency handle concurrency.
 
 **Consequences:**
 
 - Free registration confirms transactionally.
-- Paid registration remains pending until a signed webhook/admin
-  reconciliation succeeds.
+- Paid registration remains pending and consumes capacity only while its
+  server-created hold is unexpired. A signed webhook or audited manual
+  reconciliation may confirm it.
+- Expired holds never become confirmed merely because a late webhook arrives;
+  the payment is refunded or sent to manual reconciliation.
+- Failed/cancelled payments release the hold. Re-registration creates a new
+  cycle only after the previous cycle is terminal and any required refund is
+  resolved.
 - Event counts are SQL aggregates, not stored UID arrays.
+- Historical legacy payment claims are represented as verified,
+  legacy-unverified, missing-evidence, or manually reconciled. A Firestore
+  `registered` value alone never becomes verified payment evidence.
 
 ## ADR-010 — Object storage instead of database/base64 media
 
@@ -275,18 +305,126 @@ requires them.
 
 - Metric definitions and query plans are reviewed.
 - Redis/read replicas/warehouse are not initial dependencies.
+- Initial `participation` means confirmed registration, not physical
+  attendance.
+- Center reporting uses the event's historical center. Event center becomes
+  immutable once the event is submitted.
+- Pending-payment holds are reported separately from confirmed registrations;
+  unexpired holds consume capacity but are not participation.
+- Cancellations and refunds follow versioned metric definitions, and all date
+  boundaries declare a timezone. The initial server-configured reporting
+  timezone is `Asia/Jerusalem`, and responses echo the timezone used.
+
+## ADR-013 — Principal resolution requires active application relationships
+
+**Status:** Required by findings
+
+**Decision:** A valid provider session/token is necessary but not sufficient.
+`AuthService` resolves only a non-retired provider identity for an active
+application user. It includes only active role grants and, for scoped roles,
+active coordinator/employer-contact relationships whose related center or
+employer is active.
+
+**Why:**
+
+- Provider sessions can outlive role, contact, center, assignment, or
+  application-user changes.
+- Separately stored role and domain rows can otherwise drift into an
+  authorization escalation.
+
+**Consequences:**
+
+- Suspension or identity retirement is enforced on every request even before a
+  provider session is physically revoked.
+- Role/domain relationship changes are one trusted transaction with assignment,
+  privacy-request, grant, and session side effects.
+- Historical rows remain for evidence but are never included in a current
+  principal.
+
+## ADR-014 — Migration lineage separates identity from run evidence
+
+**Status:** Required by migration design
+
+**Decision:** Canonical source-to-target mappings and per-run transformation
+evidence are separate records. Canonical mapping identity includes source
+system, source path, target table, and target primary key. Per-run items record
+mapped, unchanged, quarantined, conflicting, rejected, or intentionally
+archived outcomes.
+
+**Why:**
+
+- One Firebase document can create multiple target rows.
+- Repeated snapshot/delta runs must retain evidence without inventing a new
+  canonical identity.
+- Ambiguous identity, ownership, status, or payment evidence must be reportable
+  without creating a guessed target relationship.
+
+**Consequences:**
+
+- A run can link many evidence items to existing canonical mappings.
+- Quarantined/conflicting source items have run evidence but no canonical
+  target mapping.
+- Reconciliation queries are keyed by migration run.
+
+## ADR-015 — Admin role does not imply private-contact access
+
+**Status:** Required privacy baseline
+
+**Decision:** Admin role alone cannot read or update employer private contact
+data. Employer self-access, active assignment, or an active unexpired privacy
+grant are the only baseline authorization bases.
+
+**Consequences:**
+
+- There is no admin private-data endpoint bypass.
+- Future break-glass access requires a separate explicit permission/design,
+  mandatory reason, actor, timestamp, authorization basis, and privileged audit
+  record.
+- Break-glass access is not implemented in the initial Backend V2.
+
+## ADR-016 — Material published-event edits return to moderation
+
+**Status:** Required moderation baseline
+
+**Decision:** A coordinator edit to a published event's public-facing content
+atomically updates the row and transitions `published -> pending_approval`.
+Material fields initially include title, description, type/audience,
+date/time, location/online/external URLs, accessibility/public contact details,
+capacity, payment configuration, center, and media. Event center is immutable
+after first submission.
+
+**Consequences:**
+
+- Unreviewed coordinator content is never left published.
+- Publication history and audit are written in the same transaction.
+- Only internal audit metadata or explicit admin-only operational changes may
+  avoid remoderation.
 
 ## Assumptions used in the design
 
 - One active coordinator assignment per employer matches current product
   behavior.
-- One active primary center relationship per employer is the initial model.
+- Only admin assigns an existing employer. A coordinator may receive an atomic
+  assignment only as part of creating a genuinely new employer.
+- One active center relationship per employer is the Backend V2 initial model;
+  simultaneous multi-center employers are deferred.
+- One application user may have historical coordinator rows but only one active
+  coordinator relationship.
 - One active employer-contact organization per authenticated employer user
   matches the current role model.
 - An unassigned employer can complete privacy approval without coordinator
   approval, matching documented intended behavior.
-- Event registration uniqueness is per event/user, not per entire company.
+- Event registration belongs to the employer organization and permits at most
+  one active cycle per event/employer pair.
+- Re-registration creates a new cycle only after the prior cycle is terminal
+  and required refund handling is complete.
 - Admin is the moderation authority for coordinator events and content.
+- Coordinator-authored and scraped articles require admin review; admins may
+  create and separately publish content.
+- Admin role alone does not grant access to employer private contact data.
+- Cross-center private-data access requires an active, unexpired privacy grant;
+  it is not implied by coordinator role.
+- Physical attendance/check-in is outside the initial Backend V2 scope.
 - PostgreSQL 14+ features/extensions used by the schema are available in the
   selected environment.
 
@@ -295,43 +433,12 @@ mapping together before implementation.
 
 ## Open decisions
 
-### OPEN DECISION — Admin access to employer private data
-
-Should admin have routine private-data access, a separate permission, a
-break-glass workflow with reason, or no access? Recommendation: no role-only
-blanket access; require explicit privileged permission/reason and audit if
-operationally necessary.
-
-### OPEN DECISION — Center cardinality and cross-center behavior
-
-Can a coordinator belong to multiple centers? Can an employer have multiple
-simultaneous center relationships? May a coordinator request privacy access
-across centers? The schema supports secondary employer-center relationships but
-uses one coordinator center and one primary employer center initially.
-
-### OPEN DECISION — Assignment authority
-
-Recommendation: only admin assigns an existing unassigned employer; a
-coordinator may be atomically assigned only to an employer they create. Decide
-whether an assignment-request/approval workflow is required.
-
 ### OPEN DECISION — Employer/contact deduplication and ownership
 
 Define what constitutes one employer organization, how duplicate company names
-and registration numbers merge, whether one user may represent multiple
-employers, and who becomes the primary/manageable contact.
-
-### OPEN DECISION — Registration uniqueness
-
-Is registration per authenticated contact (recommended current-compatible
-model), per employer organization, or does an employer submit multiple
-attendees? This changes uniqueness and participant tables.
-
-### OPEN DECISION — Event moderation after edits
-
-Must material coordinator edits to an already published event return to
-`pending_approval`? Recommendation: yes for title/time/location/payment/content;
-define which minor fields can remain published.
+and registration numbers merge, and who becomes the primary/manageable
+contact. The initial authorization model still permits only one active employer
+organization per authenticated employer user.
 
 ### OPEN DECISION — Event archive eligibility and retention
 
@@ -345,11 +452,18 @@ refund/cancellation policy, reconciliation authority, receipt requirements,
 financial retention, and PCI/legal responsibilities. `external_link`/Bit may
 not provide trusted automated confirmation without a provider callback.
 
-### OPEN DECISION — Privacy duration, revocation, and retention
+### OPEN DECISION — Privacy duration and retention
 
-Set request/grant expiry defaults, employer self-revocation behavior,
-assignment-change behavior, notification schedule, renewal, and retention of
-rejected/expired requests.
+Set request/grant expiry defaults, renewal windows, notification schedule, and
+retention of rejected/expired requests. Access is already denied at wall-clock
+expiry; the job records the persisted `expired` transition.
+
+### OPEN DECISION — Private-field application encryption
+
+Decide before private-data cutover whether database/storage encryption at rest
+is sufficient or selected employer private fields also require
+application-level envelope encryption. If selected, define key custody,
+rotation, lookup/deduplication behavior, recovery, and audit requirements.
 
 ### OPEN DECISION — Better Auth login methods
 
@@ -368,18 +482,6 @@ SameSite, CORS, CSRF, and trusted-origin settings can be finalized.
 Which assets are public, which require signed GET, allowed MIME/size/dimensions,
 responsive variants, malware scanning, moderation, copyright retention, and
 orphan/deletion windows?
-
-### OPEN DECISION — Content permissions
-
-Should coordinator-authored articles always require admin review
-(recommended), can admins publish directly, and can coordinators edit rejected
-or published items?
-
-### OPEN DECISION — Analytics definitions
-
-Approve metric definitions for active/finished events, registrations vs
-participants, pending/cancelled/refunded payments, center attribution, date
-timezone, and historical reassignment.
 
 ### OPEN DECISION — Retention, RPO/RTO, and hosting tier
 

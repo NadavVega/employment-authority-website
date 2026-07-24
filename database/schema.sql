@@ -120,11 +120,12 @@ CREATE TYPE event_media_purpose AS ENUM (
 CREATE TYPE registration_status AS ENUM (
   'pending_payment',
   'confirmed',
-  'waitlisted',
-  'cancelled'
+  'cancelled',
+  'payment_expired'
 );
 
 CREATE TYPE payment_status AS ENUM (
+  'unverified',
   'created',
   'pending',
   'requires_action',
@@ -133,6 +134,13 @@ CREATE TYPE payment_status AS ENUM (
   'cancelled',
   'partially_refunded',
   'refunded'
+);
+
+CREATE TYPE payment_evidence_status AS ENUM (
+  'provider_verified',
+  'legacy_unverified',
+  'missing',
+  'manual_reconciliation'
 );
 
 CREATE TYPE payment_attempt_status AS ENUM (
@@ -181,6 +189,24 @@ CREATE TYPE migration_run_status AS ENUM (
   'validated',
   'failed',
   'rolled_back'
+);
+
+CREATE TYPE migration_run_item_outcome AS ENUM (
+  'mapped',
+  'unchanged',
+  'quarantined',
+  'conflict',
+  'rejected',
+  'archived'
+);
+
+CREATE TYPE employer_interaction_kind AS ENUM (
+  'note',
+  'call',
+  'email',
+  'meeting',
+  'status_change',
+  'migration'
 );
 
 CREATE TABLE roles (
@@ -325,10 +351,6 @@ CREATE UNIQUE INDEX uq_user_roles_active_assignment
   ON user_roles (application_user_id, role_id)
   WHERE revoked_at IS NULL;
 
-CREATE INDEX ix_user_roles_active_user
-  ON user_roles (application_user_id, role_id)
-  WHERE revoked_at IS NULL;
-
 CREATE INDEX ix_user_roles_active_role
   ON user_roles (role_id, application_user_id)
   WHERE revoked_at IS NULL;
@@ -351,13 +373,16 @@ CREATE TABLE coordinators (
     FOREIGN KEY (center_id)
     REFERENCES centers(id)
     ON DELETE RESTRICT,
-  CONSTRAINT uq_coordinators_application_user UNIQUE (application_user_id),
   CONSTRAINT uq_coordinators_id_center UNIQUE (id, center_id),
   CONSTRAINT ck_coordinators_active_state CHECK (
     (is_active AND deactivated_at IS NULL)
     OR (NOT is_active AND deactivated_at IS NOT NULL)
   )
 );
+
+CREATE UNIQUE INDEX uq_coordinators_active_application_user
+  ON coordinators (application_user_id)
+  WHERE is_active;
 
 CREATE INDEX ix_coordinators_center_active
   ON coordinators (center_id, id)
@@ -460,8 +485,12 @@ CREATE INDEX ix_employers_directory
   WHERE deleted_at IS NULL;
 
 CREATE INDEX ix_employers_industry
-  ON employers (industry, display_name, id)
-  WHERE deleted_at IS NULL;
+  ON employers (industry, status, display_name, id)
+  WHERE industry IS NOT NULL AND deleted_at IS NULL;
+
+CREATE INDEX ix_employers_logo_media_active
+  ON employers (logo_media_asset_id)
+  WHERE logo_media_asset_id IS NOT NULL AND deleted_at IS NULL;
 
 CREATE TABLE employer_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -483,6 +512,8 @@ CREATE TABLE employer_contacts (
     REFERENCES application_users(id)
     ON DELETE RESTRICT,
   CONSTRAINT uq_employer_contacts_id_employer UNIQUE (id, employer_id),
+  CONSTRAINT uq_employer_contacts_id_employer_user
+    UNIQUE (id, employer_id, application_user_id),
   CONSTRAINT ck_employer_contacts_full_name_nonempty CHECK (btrim(full_name) <> '')
 );
 
@@ -529,31 +560,54 @@ CREATE TABLE employer_private_information (
 );
 
 COMMENT ON TABLE employer_private_information IS
-  'Sensitive employer contact/CRM data. Never include in public employer serializers; access is decided by PrivacyPolicy.';
+  'Sensitive employer contact data. Never include in public employer serializers; access is decided by PrivacyPolicy.';
 
-CREATE TABLE employer_crm_details (
-  employer_id uuid PRIMARY KEY,
-  contact_status text,
-  last_contact_note text,
-  last_contact_at timestamptz,
-  updated_by_user_id uuid,
+CREATE TABLE employer_contact_interactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employer_id uuid NOT NULL,
+  employer_contact_id uuid,
+  interaction_kind employer_interaction_kind NOT NULL,
+  summary text NOT NULL,
+  occurred_at timestamptz NOT NULL,
+  recorded_by_user_id uuid,
+  recorded_by_coordinator_id uuid,
+  recorded_by_identity text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT fk_employer_crm_details_employer
+  source_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  CONSTRAINT fk_employer_contact_interactions_employer
     FOREIGN KEY (employer_id)
     REFERENCES employers(id)
     ON DELETE RESTRICT,
-  CONSTRAINT fk_employer_crm_details_updated_by
-    FOREIGN KEY (updated_by_user_id)
+  CONSTRAINT fk_employer_contact_interactions_contact
+    FOREIGN KEY (employer_contact_id, employer_id)
+    REFERENCES employer_contacts(id, employer_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_employer_contact_interactions_user
+    FOREIGN KEY (recorded_by_user_id)
     REFERENCES application_users(id)
-    ON DELETE SET NULL
+    ON DELETE SET NULL,
+  CONSTRAINT fk_employer_contact_interactions_coordinator
+    FOREIGN KEY (recorded_by_coordinator_id)
+    REFERENCES coordinators(id)
+    ON DELETE RESTRICT,
+  CONSTRAINT ck_employer_contact_interactions_summary_nonempty CHECK (
+    btrim(summary) <> ''
+  ),
+  CONSTRAINT ck_employer_contact_interactions_actor_nonempty CHECK (
+    btrim(recorded_by_identity) <> ''
+  )
 );
+
+CREATE INDEX ix_employer_contact_interactions_employer_time
+  ON employer_contact_interactions (employer_id, occurred_at DESC, id DESC);
+
+COMMENT ON TABLE employer_contact_interactions IS
+  'Append-only CRM/contact activity. Legacy contactHistory is imported here only when its meaning and actor/timestamp are sufficiently reliable; otherwise it is archived as migration evidence.';
 
 CREATE TABLE employer_center_relationships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employer_id uuid NOT NULL,
   center_id uuid NOT NULL,
-  relationship_kind text NOT NULL DEFAULT 'primary',
   started_at timestamptz NOT NULL DEFAULT now(),
   ended_at timestamptz,
   created_by_user_id uuid,
@@ -577,9 +631,6 @@ CREATE TABLE employer_center_relationships (
     ON DELETE SET NULL,
   CONSTRAINT uq_employer_center_relationships_identity
     UNIQUE (id, employer_id, center_id),
-  CONSTRAINT ck_employer_center_relationships_kind_nonempty CHECK (
-    btrim(relationship_kind) <> ''
-  ),
   CONSTRAINT ck_employer_center_relationships_period CHECK (
     ended_at IS NULL OR ended_at >= started_at
   ),
@@ -589,13 +640,9 @@ CREATE TABLE employer_center_relationships (
   )
 );
 
-CREATE UNIQUE INDEX uq_employer_center_relationships_active_pair
-  ON employer_center_relationships (employer_id, center_id)
-  WHERE ended_at IS NULL;
-
-CREATE UNIQUE INDEX uq_employer_center_relationships_active_primary
+CREATE UNIQUE INDEX uq_employer_center_relationships_active_employer
   ON employer_center_relationships (employer_id)
-  WHERE ended_at IS NULL AND relationship_kind = 'primary';
+  WHERE ended_at IS NULL;
 
 CREATE INDEX ix_employer_center_relationships_center_active
   ON employer_center_relationships (center_id, employer_id)
@@ -660,7 +707,6 @@ CREATE TABLE privacy_requests (
   employer_id uuid NOT NULL,
   assigned_coordinator_id uuid,
   coordinator_assignment_id uuid,
-  requires_assigned_coordinator_review boolean NOT NULL,
   status privacy_request_status NOT NULL DEFAULT 'awaiting_employer',
   purpose text NOT NULL,
   expires_at timestamptz NOT NULL,
@@ -692,12 +738,10 @@ CREATE TABLE privacy_requests (
     (
       assigned_coordinator_id IS NULL
       AND coordinator_assignment_id IS NULL
-      AND NOT requires_assigned_coordinator_review
     )
     OR (
       assigned_coordinator_id IS NOT NULL
       AND coordinator_assignment_id IS NOT NULL
-      AND requires_assigned_coordinator_review
       AND requester_coordinator_id <> assigned_coordinator_id
     )
   ),
@@ -767,14 +811,16 @@ CREATE TABLE privacy_access_grants (
   employer_id uuid NOT NULL,
   grantee_coordinator_id uuid NOT NULL,
   source_privacy_request_id uuid NOT NULL,
-  scope text NOT NULL DEFAULT 'employer_private_details',
   status privacy_grant_status NOT NULL DEFAULT 'active',
   granted_by_user_id uuid NOT NULL,
   valid_from timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
   revoked_at timestamptz,
   revoked_by_user_id uuid,
+  revoked_by_identity text,
   revocation_reason text,
+  expired_at timestamptz,
+  expired_by_identity text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT fk_privacy_access_grants_source
@@ -795,41 +841,49 @@ CREATE TABLE privacy_access_grants (
     ON DELETE SET NULL,
   CONSTRAINT uq_privacy_access_grants_source_request
     UNIQUE (source_privacy_request_id),
-  CONSTRAINT ck_privacy_access_grants_scope_nonempty CHECK (btrim(scope) <> ''),
   CONSTRAINT ck_privacy_access_grants_period CHECK (expires_at > valid_from),
   CONSTRAINT ck_privacy_access_grants_status_state CHECK (
     (
       status = 'active'
       AND revoked_at IS NULL
       AND revoked_by_user_id IS NULL
+      AND revoked_by_identity IS NULL
       AND revocation_reason IS NULL
+      AND expired_at IS NULL
+      AND expired_by_identity IS NULL
     )
     OR (
       status = 'revoked'
       AND revoked_at IS NOT NULL
-      AND revoked_by_user_id IS NOT NULL
+      AND revoked_at >= valid_from
+      AND revoked_by_identity IS NOT NULL
+      AND btrim(revoked_by_identity) <> ''
       AND revocation_reason IS NOT NULL
       AND btrim(revocation_reason) <> ''
+      AND expired_at IS NULL
+      AND expired_by_identity IS NULL
     )
     OR (
       status = 'expired'
       AND revoked_at IS NULL
       AND revoked_by_user_id IS NULL
+      AND revoked_by_identity IS NULL
       AND revocation_reason IS NULL
+      AND expired_at IS NOT NULL
+      AND expired_at >= expires_at
+      AND expired_by_identity IS NOT NULL
+      AND btrim(expired_by_identity) <> ''
     )
   )
 );
 
-CREATE UNIQUE INDEX uq_privacy_access_grants_active_scope
-  ON privacy_access_grants (employer_id, grantee_coordinator_id, scope)
+CREATE UNIQUE INDEX uq_privacy_access_grants_active_pair
+  ON privacy_access_grants (employer_id, grantee_coordinator_id)
   WHERE status = 'active';
 
-CREATE INDEX ix_privacy_access_grants_grantee
-  ON privacy_access_grants (
-    grantee_coordinator_id,
-    status,
-    expires_at
-  );
+CREATE INDEX ix_privacy_access_grants_active_expiry
+  ON privacy_access_grants (expires_at, id)
+  WHERE status = 'active';
 
 COMMENT ON TABLE privacy_access_grants IS
   'Access is valid only when status=active, valid_from<=now()<expires_at, and no server-side revocation condition applies.';
@@ -1037,36 +1091,57 @@ CREATE TABLE event_media (
   CONSTRAINT ck_event_media_display_order CHECK (display_order >= 0)
 );
 
+CREATE INDEX ix_event_media_asset
+  ON event_media (media_asset_id, event_id);
+
 CREATE TABLE event_registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id uuid NOT NULL,
-  registrant_user_id uuid NOT NULL,
   employer_id uuid NOT NULL,
+  cycle_number integer NOT NULL,
+  submitted_by_contact_id uuid NOT NULL,
+  submitted_by_user_id uuid NOT NULL,
   status registration_status NOT NULL,
   registered_at timestamptz NOT NULL DEFAULT now(),
+  capacity_hold_expires_at timestamptz,
   confirmed_at timestamptz,
   cancelled_at timestamptz,
   cancelled_by_user_id uuid,
   cancellation_reason text,
+  payment_expired_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT fk_event_registrations_event
     FOREIGN KEY (event_id)
     REFERENCES events(id)
     ON DELETE RESTRICT,
-  CONSTRAINT fk_event_registrations_user
-    FOREIGN KEY (registrant_user_id)
-    REFERENCES application_users(id)
-    ON DELETE RESTRICT,
   CONSTRAINT fk_event_registrations_employer
     FOREIGN KEY (employer_id)
     REFERENCES employers(id)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_event_registrations_submitting_contact
+    FOREIGN KEY (
+      submitted_by_contact_id,
+      employer_id,
+      submitted_by_user_id
+    )
+    REFERENCES employer_contacts(id, employer_id, application_user_id)
     ON DELETE RESTRICT,
   CONSTRAINT fk_event_registrations_cancelled_by
     FOREIGN KEY (cancelled_by_user_id)
     REFERENCES application_users(id)
     ON DELETE SET NULL,
-  CONSTRAINT uq_event_registrations_event_user
-    UNIQUE (event_id, registrant_user_id),
+  CONSTRAINT uq_event_registrations_cycle
+    UNIQUE (event_id, employer_id, cycle_number),
+  CONSTRAINT ck_event_registrations_cycle_positive CHECK (cycle_number > 0),
+  CONSTRAINT ck_event_registrations_hold_state CHECK (
+    status <> 'pending_payment'
+    OR (
+      capacity_hold_expires_at IS NOT NULL
+      AND capacity_hold_expires_at > registered_at
+      AND confirmed_at IS NULL
+      AND payment_expired_at IS NULL
+    )
+  ),
   CONSTRAINT ck_event_registrations_confirmed_state CHECK (
     status <> 'confirmed' OR confirmed_at IS NOT NULL
   ),
@@ -1076,6 +1151,7 @@ CREATE TABLE event_registrations (
       AND cancelled_at IS NOT NULL
       AND cancellation_reason IS NOT NULL
       AND btrim(cancellation_reason) <> ''
+      AND payment_expired_at IS NULL
     )
     OR (
       status <> 'cancelled'
@@ -1083,20 +1159,41 @@ CREATE TABLE event_registrations (
       AND cancelled_by_user_id IS NULL
       AND cancellation_reason IS NULL
     )
+  ),
+  CONSTRAINT ck_event_registrations_payment_expired_state CHECK (
+    (
+      status = 'payment_expired'
+      AND capacity_hold_expires_at IS NOT NULL
+      AND payment_expired_at IS NOT NULL
+      AND payment_expired_at >= capacity_hold_expires_at
+      AND confirmed_at IS NULL
+    )
+    OR (
+      status <> 'payment_expired'
+      AND payment_expired_at IS NULL
+    )
   )
 );
 
+CREATE UNIQUE INDEX uq_event_registrations_active_employer
+  ON event_registrations (event_id, employer_id)
+  WHERE status IN ('pending_payment', 'confirmed');
+
 CREATE INDEX ix_event_registrations_event_status
-  ON event_registrations (event_id, status, registered_at, id);
+  ON event_registrations (event_id, status, registered_at DESC, id DESC);
 
 CREATE INDEX ix_event_registrations_user_time
-  ON event_registrations (registrant_user_id, registered_at DESC, id);
+  ON event_registrations (submitted_by_user_id, registered_at DESC, id DESC);
 
 CREATE INDEX ix_event_registrations_employer_time
-  ON event_registrations (employer_id, registered_at DESC, id);
+  ON event_registrations (employer_id, registered_at DESC, id DESC);
+
+CREATE INDEX ix_event_registrations_active_hold_expiry
+  ON event_registrations (capacity_hold_expires_at, id)
+  WHERE status = 'pending_payment';
 
 COMMENT ON TABLE event_registrations IS
-  'One durable registration row per event/user. Re-registration changes this row through a server-authorized transition.';
+  'Each row is one employer-owned registration cycle. The backend derives the active employer/contact from the principal, preserves terminal cycles, and creates a new cycle only after cancellation/payment expiry and required refund resolution.';
 
 CREATE TABLE payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1104,10 +1201,16 @@ CREATE TABLE payments (
   amount numeric(12,2) NOT NULL,
   currency char(3) NOT NULL DEFAULT 'ILS',
   status payment_status NOT NULL DEFAULT 'created',
-  provider text NOT NULL,
+  evidence_status payment_evidence_status NOT NULL DEFAULT 'provider_verified',
+  evidence_reference text,
+  provider text,
   provider_payment_reference text,
-  idempotency_key text NOT NULL,
+  idempotency_key text,
   refunded_amount numeric(12,2) NOT NULL DEFAULT 0,
+  reconciled_by_user_id uuid,
+  reconciled_by_identity text,
+  reconciled_at timestamptz,
+  reconciliation_reason text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   succeeded_at timestamptz,
@@ -1117,27 +1220,95 @@ CREATE TABLE payments (
     FOREIGN KEY (registration_id)
     REFERENCES event_registrations(id)
     ON DELETE RESTRICT,
+  CONSTRAINT fk_payments_reconciled_by
+    FOREIGN KEY (reconciled_by_user_id)
+    REFERENCES application_users(id)
+    ON DELETE SET NULL,
   CONSTRAINT uq_payments_registration UNIQUE (registration_id),
   CONSTRAINT uq_payments_idempotency_key UNIQUE (idempotency_key),
   CONSTRAINT ck_payments_amount CHECK (amount > 0),
   CONSTRAINT ck_payments_currency CHECK (currency ~ '^[A-Z]{3}$'),
-  CONSTRAINT ck_payments_provider_nonempty CHECK (btrim(provider) <> ''),
-  CONSTRAINT ck_payments_idempotency_nonempty CHECK (btrim(idempotency_key) <> ''),
+  CONSTRAINT ck_payments_provider_nonempty CHECK (
+    provider IS NULL OR btrim(provider) <> ''
+  ),
+  CONSTRAINT ck_payments_idempotency_nonempty CHECK (
+    idempotency_key IS NULL OR btrim(idempotency_key) <> ''
+  ),
+  CONSTRAINT ck_payments_evidence_reference_nonempty CHECK (
+    evidence_reference IS NULL OR btrim(evidence_reference) <> ''
+  ),
+  CONSTRAINT ck_payments_evidence_state CHECK (
+    (
+      evidence_status = 'provider_verified'
+      AND status <> 'unverified'
+      AND provider IS NOT NULL
+      AND idempotency_key IS NOT NULL
+      AND reconciled_by_user_id IS NULL
+      AND reconciled_by_identity IS NULL
+      AND reconciled_at IS NULL
+      AND reconciliation_reason IS NULL
+    )
+    OR (
+      evidence_status IN ('legacy_unverified', 'missing')
+      AND status = 'unverified'
+      AND provider_payment_reference IS NULL
+      AND succeeded_at IS NULL
+      AND reconciled_by_user_id IS NULL
+      AND reconciled_by_identity IS NULL
+      AND reconciled_at IS NULL
+      AND reconciliation_reason IS NULL
+    )
+    OR (
+      evidence_status = 'manual_reconciliation'
+      AND status <> 'unverified'
+      AND reconciled_by_identity IS NOT NULL
+      AND btrim(reconciled_by_identity) <> ''
+      AND reconciled_at IS NOT NULL
+      AND reconciliation_reason IS NOT NULL
+      AND btrim(reconciliation_reason) <> ''
+    )
+  ),
+  CONSTRAINT ck_payments_status_timestamps CHECK (
+    (
+      status IN ('succeeded', 'partially_refunded', 'refunded')
+      AND succeeded_at IS NOT NULL
+    )
+    OR (
+      status NOT IN ('succeeded', 'partially_refunded', 'refunded')
+      AND succeeded_at IS NULL
+    )
+  ),
+  CONSTRAINT ck_payments_failed_state CHECK (
+    (status = 'failed' AND failed_at IS NOT NULL)
+    OR (status <> 'failed' AND failed_at IS NULL)
+  ),
+  CONSTRAINT ck_payments_cancelled_state CHECK (
+    (status = 'cancelled' AND cancelled_at IS NOT NULL)
+    OR (status <> 'cancelled' AND cancelled_at IS NULL)
+  ),
+  CONSTRAINT ck_payments_refund_state CHECK (
+    (
+      status = 'partially_refunded'
+      AND refunded_amount > 0
+      AND refunded_amount < amount
+    )
+    OR (
+      status = 'refunded'
+      AND refunded_amount = amount
+    )
+    OR (
+      status NOT IN ('partially_refunded', 'refunded')
+      AND refunded_amount = 0
+    )
+  ),
   CONSTRAINT ck_payments_refund_amount CHECK (
     refunded_amount >= 0 AND refunded_amount <= amount
-  ),
-  CONSTRAINT ck_payments_succeeded_state CHECK (
-    status NOT IN ('succeeded', 'partially_refunded', 'refunded')
-    OR succeeded_at IS NOT NULL
   )
 );
 
 CREATE UNIQUE INDEX uq_payments_provider_reference
   ON payments (provider, provider_payment_reference)
   WHERE provider_payment_reference IS NOT NULL;
-
-CREATE INDEX ix_payments_status_created
-  ON payments (status, created_at, id);
 
 CREATE TABLE payment_attempts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1178,9 +1349,6 @@ CREATE TABLE payment_attempts (
 CREATE UNIQUE INDEX uq_payment_attempts_provider_reference
   ON payment_attempts (provider, provider_attempt_reference)
   WHERE provider_attempt_reference IS NOT NULL;
-
-CREATE INDEX ix_payment_attempts_payment_time
-  ON payment_attempts (payment_id, created_at DESC);
 
 CREATE TABLE payment_webhook_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1253,7 +1421,7 @@ CREATE TABLE notifications (
 );
 
 CREATE UNIQUE INDEX uq_notifications_deduplication_key
-  ON notifications (deduplication_key)
+  ON notifications (recipient_user_id, deduplication_key)
   WHERE deduplication_key IS NOT NULL AND deleted_at IS NULL;
 
 CREATE INDEX ix_notifications_recipient_created
@@ -1425,6 +1593,10 @@ CREATE INDEX ix_articles_author_status
   ON articles (author_user_id, status, created_at DESC)
   WHERE author_user_id IS NOT NULL AND deleted_at IS NULL;
 
+CREATE INDEX ix_articles_hero_media_active
+  ON articles (hero_media_asset_id)
+  WHERE hero_media_asset_id IS NOT NULL AND deleted_at IS NULL;
+
 CREATE TABLE article_status_history (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   article_id uuid NOT NULL,
@@ -1507,6 +1679,10 @@ CREATE INDEX ix_promotional_content_active_order
   ON promotional_content_items (audience_role_id, display_order, id)
   WHERE status = 'published' AND deleted_at IS NULL;
 
+CREATE INDEX ix_promotional_content_media_active
+  ON promotional_content_items (media_asset_id)
+  WHERE media_asset_id IS NOT NULL AND deleted_at IS NULL;
+
 CREATE TABLE audit_logs (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   actor_user_id uuid,
@@ -1536,18 +1712,21 @@ CREATE TABLE audit_logs (
 );
 
 CREATE INDEX ix_audit_logs_subject_time
-  ON audit_logs (subject_type, subject_id, occurred_at DESC);
+  ON audit_logs (subject_type, subject_id, occurred_at DESC, id DESC);
 
 CREATE INDEX ix_audit_logs_actor_time
-  ON audit_logs (actor_user_id, occurred_at DESC)
+  ON audit_logs (actor_user_id, occurred_at DESC, id DESC)
   WHERE actor_user_id IS NOT NULL;
 
 CREATE INDEX ix_audit_logs_request
   ON audit_logs (request_id)
   WHERE request_id IS NOT NULL;
 
+CREATE INDEX ix_audit_logs_occurred_time
+  ON audit_logs (occurred_at DESC, id DESC);
+
 COMMENT ON TABLE audit_logs IS
-  'Append-only security/business audit. Database permissions must deny UPDATE and DELETE to the API runtime role.';
+  'Append-only security/business audit. Database permissions must deny UPDATE, DELETE, and TRUNCATE to the API runtime role.';
 
 CREATE TABLE data_migration_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1579,20 +1758,23 @@ CREATE TABLE data_migration_runs (
 
 CREATE TABLE legacy_record_mappings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  migration_run_id uuid NOT NULL,
   source_system text NOT NULL,
   source_document_path text NOT NULL,
   target_table text NOT NULL,
   target_primary_key text NOT NULL,
-  source_payload_sha256 text NOT NULL,
-  imported_at timestamptz NOT NULL DEFAULT now(),
-  validation_errors jsonb NOT NULL DEFAULT '[]'::jsonb,
-  CONSTRAINT fk_legacy_record_mappings_run
-    FOREIGN KEY (migration_run_id)
+  first_migration_run_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT fk_legacy_record_mappings_first_run
+    FOREIGN KEY (first_migration_run_id)
     REFERENCES data_migration_runs(id)
     ON DELETE RESTRICT,
   CONSTRAINT uq_legacy_record_mappings_source_target
-    UNIQUE (source_system, source_document_path, target_table),
+    UNIQUE (
+      source_system,
+      source_document_path,
+      target_table,
+      target_primary_key
+    ),
   CONSTRAINT ck_legacy_record_mappings_source_nonempty CHECK (
     btrim(source_system) <> ''
   ),
@@ -1601,13 +1783,71 @@ CREATE TABLE legacy_record_mappings (
   ),
   CONSTRAINT ck_legacy_record_mappings_target_nonempty CHECK (
     btrim(target_table) <> '' AND btrim(target_primary_key) <> ''
-  ),
-  CONSTRAINT ck_legacy_record_mappings_checksum CHECK (
-    source_payload_sha256 ~ '^[0-9a-f]{64}$'
   )
 );
 
 CREATE INDEX ix_legacy_record_mappings_target
   ON legacy_record_mappings (target_table, target_primary_key);
+
+CREATE TABLE data_migration_run_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  migration_run_id uuid NOT NULL,
+  source_system text NOT NULL,
+  source_document_path text NOT NULL,
+  item_key text NOT NULL,
+  source_payload_sha256 text NOT NULL,
+  outcome migration_run_item_outcome NOT NULL,
+  canonical_mapping_id uuid,
+  validation_errors jsonb NOT NULL DEFAULT '[]'::jsonb,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  recorded_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT fk_data_migration_run_items_run
+    FOREIGN KEY (migration_run_id)
+    REFERENCES data_migration_runs(id)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_data_migration_run_items_mapping
+    FOREIGN KEY (canonical_mapping_id)
+    REFERENCES legacy_record_mappings(id)
+    ON DELETE RESTRICT,
+  CONSTRAINT uq_data_migration_run_items_identity
+    UNIQUE (
+      migration_run_id,
+      source_system,
+      source_document_path,
+      item_key
+    ),
+  CONSTRAINT ck_data_migration_run_items_source_nonempty CHECK (
+    btrim(source_system) <> ''
+    AND btrim(source_document_path) <> ''
+    AND btrim(item_key) <> ''
+  ),
+  CONSTRAINT ck_data_migration_run_items_checksum CHECK (
+    source_payload_sha256 ~ '^[0-9a-f]{64}$'
+  ),
+  CONSTRAINT ck_data_migration_run_items_mapping_state CHECK (
+    (
+      outcome IN ('mapped', 'unchanged')
+      AND canonical_mapping_id IS NOT NULL
+    )
+    OR (
+      outcome IN ('quarantined', 'conflict', 'rejected', 'archived')
+      AND canonical_mapping_id IS NULL
+    )
+  )
+);
+
+CREATE INDEX ix_data_migration_run_items_run
+  ON data_migration_run_items (
+    migration_run_id,
+    outcome,
+    source_document_path,
+    id
+  );
+
+COMMENT ON TABLE legacy_record_mappings IS
+  'Canonical source-to-target lineage. One source document may have multiple rows because target_primary_key participates in identity.';
+
+COMMENT ON TABLE data_migration_run_items IS
+  'Per-run transformation evidence. Ambiguous/conflicting items are quarantined without a canonical target mapping.';
 
 COMMIT;
