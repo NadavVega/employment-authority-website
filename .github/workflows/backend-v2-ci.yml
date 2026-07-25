@@ -1,0 +1,57 @@
+name: Backend V2 CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend-v2/**'
+      - 'database/schema.sql'
+      - '.github/workflows/backend-v2-ci.yml'
+  push:
+    branches:
+      - main
+      - feat/backend-v2-foundation
+    paths:
+      - 'backend-v2/**'
+      - 'database/schema.sql'
+      - '.github/workflows/backend-v2-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend-v2
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: employment_authority_v2_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d employment_authority_v2_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/employment_authority_v2_test
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend-v2/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:integration
