@@ -41,6 +41,10 @@ jobs:
           --health-retries 10
     env:
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/employment_authority_v2_test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/employment_authority_v2_test
+      MIGRATION_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/employment_authority_v2_test
+      DATABASE_SSL: disable
+      FIREBASE_PROJECT_ID: backend-v2-ci-project
     steps:
       - uses: actions/checkout@v6
 
@@ -55,3 +59,8 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run test:integration
+      - run: npm run db:check
+      - run: npm run db:generate
+      - run: git diff --exit-code -- drizzle
+      - run: npm run test:smoke
+      - run: npm run test:smoke:production

@@ -2,10 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import {
   AuthenticationRequiredException,
+  DependencyUnavailableException,
   IdentityNotLinkedException,
 } from '../common/errors/api-exceptions';
 import type { ApplicationPrincipal } from './application-principal';
 import {
+  FirebaseAuthenticationUnavailableError,
   FIREBASE_TOKEN_VERIFIER,
   InvalidFirebaseTokenError,
   type FirebaseTokenVerifier,
@@ -29,6 +31,9 @@ export class AuthenticationService {
     } catch (error: unknown) {
       if (error instanceof InvalidFirebaseTokenError) {
         throw new AuthenticationRequiredException();
+      }
+      if (error instanceof FirebaseAuthenticationUnavailableError) {
+        throw new DependencyUnavailableException();
       }
       throw error;
     }

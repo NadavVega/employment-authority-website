@@ -322,7 +322,7 @@ export const employerPrivateInformationInApp = app.table("employer_private_infor
 			name: "fk_employer_private_information_employer"
 		}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.employerId, table.primaryContactId],
+			columns: [table.primaryContactId, table.employerId],
 			foreignColumns: [employerContactsInApp.id, employerContactsInApp.employerId],
 			name: "fk_employer_private_information_primary_contact"
 		}).onDelete("restrict"),
@@ -349,7 +349,7 @@ export const employerContactInteractionsInApp = app.table("employer_contact_inte
 }, (table) => [
 	index("ix_employer_contact_interactions_employer_time").using("btree", table.employerId.asc().nullsLast(), table.occurredAt.desc().nullsFirst(), table.id.desc().nullsFirst()),
 	foreignKey({
-			columns: [table.employerId, table.employerContactId],
+			columns: [table.employerContactId, table.employerId],
 			foreignColumns: [employerContactsInApp.id, employerContactsInApp.employerId],
 			name: "fk_employer_contact_interactions_contact"
 		}).onDelete("restrict"),
@@ -392,7 +392,7 @@ export const coordinatorAssignmentsInApp = app.table("coordinator_assignments", 
 			name: "fk_coordinator_assignments_assigned_by"
 		}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.employerId, table.centerId, table.centerRelationshipId],
+			columns: [table.centerRelationshipId, table.employerId, table.centerId],
 			foreignColumns: [employerCenterRelationshipsInApp.id, employerCenterRelationshipsInApp.employerId, employerCenterRelationshipsInApp.centerId],
 			name: "fk_coordinator_assignments_center_relationship"
 		}).onDelete("restrict"),
@@ -473,7 +473,7 @@ export const privacyRequestsInApp = app.table("privacy_requests", {
 	index("ix_privacy_requests_requester_status").using("btree", table.requesterCoordinatorId.asc().nullsLast(), table.status.asc().nullsLast(), table.createdAt.desc().nullsFirst()),
 	uniqueIndex("uq_privacy_requests_active_request").using("btree", table.employerId.asc().nullsLast(), table.requesterCoordinatorId.asc().nullsLast()).where(sql`(status = ANY (ARRAY['awaiting_employer'::app.privacy_request_status, 'awaiting_coordinator'::app.privacy_request_status]))`),
 	foreignKey({
-			columns: [table.employerId, table.assignedCoordinatorId, table.coordinatorAssignmentId],
+			columns: [table.coordinatorAssignmentId, table.employerId, table.assignedCoordinatorId],
 			foreignColumns: [coordinatorAssignmentsInApp.id, coordinatorAssignmentsInApp.employerId, coordinatorAssignmentsInApp.coordinatorId],
 			name: "fk_privacy_requests_assignment"
 		}).onDelete("restrict"),
@@ -548,7 +548,7 @@ export const privacyAccessGrantsInApp = app.table("privacy_access_grants", {
 			name: "fk_privacy_access_grants_revoked_by"
 		}).onDelete("set null"),
 	foreignKey({
-			columns: [table.employerId, table.granteeCoordinatorId, table.sourcePrivacyRequestId],
+			columns: [table.sourcePrivacyRequestId, table.employerId, table.granteeCoordinatorId],
 			foreignColumns: [privacyRequestsInApp.id, privacyRequestsInApp.requesterCoordinatorId, privacyRequestsInApp.employerId],
 			name: "fk_privacy_access_grants_source"
 		}).onDelete("restrict"),
@@ -628,7 +628,7 @@ export const eventsInApp = app.table("events", {
 			name: "fk_events_deleted_by"
 		}).onDelete("set null"),
 	foreignKey({
-			columns: [table.centerId, table.ownerCoordinatorId],
+			columns: [table.ownerCoordinatorId, table.centerId],
 			foreignColumns: [coordinatorsInApp.id, coordinatorsInApp.centerId],
 			name: "fk_events_owner_coordinator_center"
 		}).onDelete("restrict"),
@@ -716,7 +716,7 @@ export const eventRegistrationsInApp = app.table("event_registrations", {
 			name: "fk_event_registrations_event"
 		}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.employerId, table.submittedByContactId, table.submittedByUserId],
+			columns: [table.submittedByContactId, table.employerId, table.submittedByUserId],
 			foreignColumns: [employerContactsInApp.id, employerContactsInApp.employerId, employerContactsInApp.applicationUserId],
 			name: "fk_event_registrations_submitting_contact"
 		}).onDelete("restrict"),

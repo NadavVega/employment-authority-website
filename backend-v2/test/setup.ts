@@ -10,5 +10,7 @@ process.env.DATABASE_SSL = 'disable';
 process.env.DB_POOL_MAX = '2';
 process.env.DB_CONNECTION_TIMEOUT_MS = '500';
 process.env.DB_IDLE_TIMEOUT_MS = '1000';
+process.env.DB_STATEMENT_TIMEOUT_MS = '5000';
+process.env.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS = '5000';
 process.env.DB_READINESS_TIMEOUT_MS = '500';
 process.env.FIREBASE_PROJECT_ID = 'backend-v2-test-project';

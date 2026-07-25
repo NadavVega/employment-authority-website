@@ -9,6 +9,7 @@ import { Pool } from 'pg';
 import { StructuredLoggerService } from '../common/logging/structured-logger.service';
 import { AppConfigService } from '../config/app-config.service';
 import * as schema from './schema';
+import { checkDatabaseReadiness } from './readiness';
 
 @Injectable()
 export class DatabaseService
@@ -22,6 +23,11 @@ export class DatabaseService
     private readonly logger: StructuredLoggerService,
   ) {
     this.pool = new Pool(config.databasePoolConfig);
+    this.pool.on('error', (error: Error) => {
+      this.logger.errorEvent('database_pool_error', {
+        errorType: error.constructor.name,
+      });
+    });
     this.db = drizzle(this.pool, { schema });
   }
 
@@ -35,23 +41,10 @@ export class DatabaseService
   }
 
   async isReady(): Promise<boolean> {
-    let client;
-    try {
-      client = await this.pool.connect();
-      await client.query('select set_config($1, $2, false)', [
-        'statement_timeout',
-        String(this.config.databaseReadinessTimeoutMs),
-      ]);
-      await client.query('select 1');
-      return true;
-    } catch {
-      return false;
-    } finally {
-      if (client) {
-        await client.query('reset statement_timeout').catch(() => undefined);
-        client.release();
-      }
-    }
+    return checkDatabaseReadiness(
+      this.pool,
+      this.config.databaseReadinessTimeoutMs,
+    );
   }
 
   async onApplicationShutdown(): Promise<void> {

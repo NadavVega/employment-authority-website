@@ -1460,9 +1460,9 @@
           "tableTo": "employer_center_relationships",
           "schemaTo": "app",
           "columnsFrom": [
+            "center_relationship_id",
             "employer_id",
-            "center_id",
-            "center_relationship_id"
+            "center_id"
           ],
           "columnsTo": [
             "id",
@@ -2269,8 +2269,8 @@
           "tableTo": "employer_contacts",
           "schemaTo": "app",
           "columnsFrom": [
-            "employer_id",
-            "employer_contact_id"
+            "employer_contact_id",
+            "employer_id"
           ],
           "columnsTo": [
             "id",
@@ -2611,8 +2611,8 @@
           "tableTo": "employer_contacts",
           "schemaTo": "app",
           "columnsFrom": [
-            "employer_id",
-            "primary_contact_id"
+            "primary_contact_id",
+            "employer_id"
           ],
           "columnsTo": [
             "id",
@@ -3431,8 +3431,8 @@
           "tableTo": "employer_contacts",
           "schemaTo": "app",
           "columnsFrom": [
-            "employer_id",
             "submitted_by_contact_id",
+            "employer_id",
             "submitted_by_user_id"
           ],
           "columnsTo": [
@@ -3922,8 +3922,8 @@
           "tableTo": "coordinators",
           "schemaTo": "app",
           "columnsFrom": [
-            "center_id",
-            "owner_coordinator_id"
+            "owner_coordinator_id",
+            "center_id"
           ],
           "columnsTo": [
             "id",
@@ -5327,9 +5327,9 @@
           "tableTo": "privacy_requests",
           "schemaTo": "app",
           "columnsFrom": [
+            "source_privacy_request_id",
             "employer_id",
-            "grantee_coordinator_id",
-            "source_privacy_request_id"
+            "grantee_coordinator_id"
           ],
           "columnsTo": [
             "id",
@@ -5671,9 +5671,9 @@
           "tableTo": "coordinator_assignments",
           "schemaTo": "app",
           "columnsFrom": [
+            "coordinator_assignment_id",
             "employer_id",
-            "assigned_coordinator_id",
-            "coordinator_assignment_id"
+            "assigned_coordinator_id"
           ],
           "columnsTo": [
             "id",

@@ -8,16 +8,19 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "nest start --watch",
     "start": "node dist/main.js",
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:smoke": "node test/smoke/startup-smoke.mjs",
+    "test:smoke:production": "node test/smoke/startup-smoke.mjs start",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
-    "db:migrate": "tsx src/database/migrate.ts"
+    "db:migrate": "tsx src/database/migrate.ts",
+    "db:provision-runtime-role": "tsx src/database/provision-runtime-role.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
@@ -38,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@nestjs/cli": "11.0.24",
     "@nestjs/testing": "11.1.28",
     "@types/express": "5.0.6",
     "@types/node": "26.1.1",

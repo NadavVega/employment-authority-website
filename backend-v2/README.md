@@ -51,10 +51,14 @@ npm run db:migrate
 npm run dev
 ```
 
+`npm run dev` uses the standard Nest CLI TypeScript watch compiler so
+decorator metadata required by Nest dependency injection is preserved.
+
 The API uses:
 
 - `GET /api/v1/health` for liveness
-- `GET /api/v1/health/ready` for PostgreSQL readiness
+- `GET /api/v1/health/ready` for PostgreSQL reachability and migration/schema
+  compatibility
 
 ## Development commands
 
@@ -63,14 +67,29 @@ npm run lint
 npm run build
 npm test
 npm run test:integration
+npm run test:smoke
+npm run test:smoke:production
 npm run db:generate
 npm run db:check
 npm run db:migrate
+npm run db:provision-runtime-role
 ```
 
 `test:integration` requires `TEST_DATABASE_URL` pointing to a clean,
 disposable PostgreSQL database. It applies every migration and verifies the
-approved table, index, constraint, and foreign-key catalog.
+approved table, index, constraint, foreign-key catalog, negative principal
+states, readiness states, and runtime privileges.
+
+The integration harness rejects database names that are not explicitly marked
+as test databases and always rejects production/staging-looking hosts or
+database names. Loopback targets are preferred. A non-production remote test
+target additionally requires
+`TEST_DATABASE_DESTRUCTIVE_ACK=I_UNDERSTAND:<exact_database_name>` before any
+pool is opened.
+
+The reviewed dependency advisory status and intentionally deferred incompatible
+audit suggestions are recorded in
+[`DEPENDENCY_ADVISORIES.md`](DEPENDENCY_ADVISORIES.md).
 
 Example:
 
@@ -96,6 +115,40 @@ npm run db:generate
 
 Review generated SQL before committing it. Use `db:migrate` for versioned
 migrations; do not use schema push as a staging or production strategy.
+
+## Database credentials and privileges
+
+Production and staging use separate database concerns:
+
+- `MIGRATION_DATABASE_URL` is the owner/migration credential used only by
+  release migration and privilege-provisioning jobs.
+- `DATABASE_URL` is the API runtime credential. It must not own the `app`
+  schema/tables or have superuser, role-management, database-creation, or
+  bypass-RLS capabilities.
+
+`NODE_ENV=production` requires `MIGRATION_DATABASE_URL` and
+`DATABASE_SSL=verify-full` before the migration pool can be created. The
+runtime uses the same verified-TLS requirement.
+
+Create the runtime role through the deployment platform or an administrator
+without hardcoding a password in this repository. Then run, as the migration
+owner:
+
+```bash
+DATABASE_RUNTIME_ROLE=backend_v2_runtime npm run db:provision-runtime-role
+```
+
+Run provisioning after every schema migration so grants for new objects are
+reviewed instead of being inherited broadly. The provisioning command grants
+runtime DML, denies application-schema DDL, removes runtime access to migration
+evidence, grants read-only access to the Drizzle migration version required by
+readiness, and denies `UPDATE`, `DELETE`, and `TRUNCATE` on `audit_logs` and
+the approved append-only interaction/status-history tables.
+
+Runtime pool defaults apply a 15-second statement timeout and a 30-second idle
+transaction timeout; both are configurable. Idle pool errors are logged using
+only a safe error type. Readiness runs in a short transaction and destroys the
+checked client if rollback/cleanup cannot be proven.
 
 ## Temporary Firebase identity bridge
 

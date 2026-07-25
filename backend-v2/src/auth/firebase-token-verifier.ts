@@ -14,3 +14,10 @@ export class InvalidFirebaseTokenError extends Error {
     this.name = 'InvalidFirebaseTokenError';
   }
 }
+
+export class FirebaseAuthenticationUnavailableError extends Error {
+  constructor() {
+    super('Firebase authentication is unavailable');
+    this.name = 'FirebaseAuthenticationUnavailableError';
+  }
+}

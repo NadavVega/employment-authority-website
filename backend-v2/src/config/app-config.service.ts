@@ -59,6 +59,13 @@ export class AppConfigService {
         infer: true,
       }),
       idleTimeoutMillis: this.config.get('DB_IDLE_TIMEOUT_MS', { infer: true }),
+      statement_timeout: this.config.get('DB_STATEMENT_TIMEOUT_MS', {
+        infer: true,
+      }),
+      idle_in_transaction_session_timeout: this.config.get(
+        'DB_IDLE_IN_TRANSACTION_TIMEOUT_MS',
+        { infer: true },
+      ),
       application_name: 'employment-authority-backend-v2',
       ssl: sslMode === 'verify-full' ? { rejectUnauthorized: true } : false,
     };
